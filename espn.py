@@ -20,13 +20,20 @@ import requests
 
 import teams
 
-SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1"
-CORE = "https://site.api.espn.com/apis/v2/sports/soccer/usa.1"
+# ESPN serves the same MLS feed from a few hostnames; some are more tolerant of
+# datacenter IPs than others, so we try each in turn. (The data branch built by
+# the GitHub Action is the primary source in production — see feed.py — but this
+# live path is used locally and by the Action itself.)
+BASES = [
+    "https://site.api.espn.com",
+    "https://site.web.api.espn.com",
+]
+STANDINGS_PATH = "/apis/v2/sports/soccer/usa.1/standings"
+SCOREBOARD_PATH = "/apis/site/v2/sports/soccer/usa.1/scoreboard"
+SUMMARY_PATH = "/apis/site/v2/sports/soccer/usa.1/summary"
 TIMEOUT = 12
 
-# ESPN's CDN blocks requests from datacenter IPs (e.g. Streamlit Cloud) unless
-# they look like a real browser. These headers mimic Chrome so the public feed
-# answers us from the cloud the same way it does from a home connection.
+# Look like a real browser so ESPN's CDN doesn't reject us as a bot.
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -44,15 +51,18 @@ class ESPNError(RuntimeError):
     pass
 
 
-def _get(url, params=None):
-    try:
-        r = requests.get(url, params=params, headers=HEADERS, timeout=TIMEOUT)
-        r.raise_for_status()
-        return r.json()
-    except requests.RequestException as e:
-        raise ESPNError(f"Could not reach ESPN ({e}).") from e
-    except ValueError as e:
-        raise ESPNError("ESPN returned an unreadable response.") from e
+def _get(path, params=None):
+    """GET a path from the first ESPN host that answers successfully."""
+    last_err = None
+    for base in BASES:
+        try:
+            r = requests.get(base + path, params=params, headers=HEADERS, timeout=TIMEOUT)
+            r.raise_for_status()
+            return r.json()
+        except (requests.RequestException, ValueError) as e:
+            last_err = e
+            continue
+    raise ESPNError(f"Could not reach the score feed ({last_err}).")
 
 
 # --------------------------------------------------------------------------- #
@@ -74,7 +84,7 @@ def get_standings():
     Rows are sorted by points then goal difference (ESPN's own order is kept
     when present, but we re-sort defensively).
     """
-    data = _get(f"{CORE}/standings")
+    data = _get(STANDINGS_PATH)
     season = _season_label(data.get("season"))
 
     # ESPN maps its own conference names to islands via the team map: whichever
@@ -149,7 +159,7 @@ def get_matches(days_back=7, days_ahead=14):
     start = today - timedelta(days=days_back)
     end = today + timedelta(days=days_ahead)
     rng = f"{_ymd(start)}-{_ymd(end)}"
-    data = _get(f"{SITE}/scoreboard", params={"dates": rng, "limit": 300})
+    data = _get(SCOREBOARD_PATH, params={"dates": rng, "limit": 300})
 
     matches = []
     for ev in data.get("events", []):
@@ -230,7 +240,7 @@ def get_win_probabilities(event_id):
     Percentages are de-vigged (normalised to sum to 100) so they read as a
     clean 'chance to win' — the same figure MLS match previews quote.
     """
-    data = _get(f"{SITE}/summary", params={"event": event_id})
+    data = _get(SUMMARY_PATH, params={"event": event_id})
     books = data.get("pickcenter") or data.get("odds") or []
     if not books:
         return None

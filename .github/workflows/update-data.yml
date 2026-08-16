@@ -1,0 +1,49 @@
+name: Update league data
+
+# Runs on GitHub's servers (which can reach the score feed) and publishes a
+# fresh feed.json to the `data` branch. The Streamlit app reads that branch, so
+# it never has to call the feed directly — which is what caused the 403s.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every ~15 minutes (GitHub schedules are best-effort)
+  workflow_dispatch:          # lets you run it manually from the Actions tab
+  push:
+    branches: [main]          # rebuild immediately whenever code changes
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Build feed.json
+        run: python build_feed.py
+
+      - name: Publish to data branch
+        run: |
+          set -e
+          cp feed.json "$RUNNER_TEMP/feed.json"
+          git config user.name "shpl-data-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout --orphan data-tmp
+          git rm -rf . >/dev/null 2>&1 || true
+          cp "$RUNNER_TEMP/feed.json" feed.json
+          git add -f feed.json
+          git commit -m "Update league data ($(date -u +%FT%TZ))"
+          git branch -M data-tmp data
+          git push -f origin data

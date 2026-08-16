@@ -16,14 +16,14 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
-import espn
+import feed as datafeed
 import teams
 
 st.set_page_config(
     page_title="St. Helena Premier League",
     page_icon="⚽",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # St. Helena is UTC+0 all year.
@@ -36,21 +36,11 @@ ISLAND_META = {
 
 
 # --------------------------------------------------------------------------- #
-# Cached data fetchers
+# Cached data (one snapshot powers every page)
 # --------------------------------------------------------------------------- #
-@st.cache_data(ttl=300, show_spinner=False)
-def load_standings():
-    return espn.get_standings()
-
-
-@st.cache_data(ttl=60, show_spinner=False)
-def load_matches(days_back=10, days_ahead=21):
-    return espn.get_matches(days_back=days_back, days_ahead=days_ahead)
-
-
-@st.cache_data(ttl=600, show_spinner=False)
-def load_win_prob(event_id):
-    return espn.get_win_probabilities(event_id)
+@st.cache_data(ttl=120, show_spinner=False)
+def load_feed():
+    return datafeed.load_feed()
 
 
 # --------------------------------------------------------------------------- #
@@ -63,75 +53,79 @@ CSS = """
   --ink:#eef1f6; --muted:rgba(238,241,246,.55); --accent:#e4572e;
   --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
+html{ font-size:19px; }   /* scales the whole app up */
 html, body, [class*="st-"], .stMarkdown, p, span, div { font-family: var(--font); }
 
-/* nudge Streamlit's native controls up in size */
-.stRadio label p { font-size: 1.08rem !important; }
-button[data-baseweb="tab"]{ font-size:1.06rem !important; font-weight:600 !important; }
-.block-container{ padding-top:2.2rem; max-width:1150px; }
+/* Sidebar */
+section[data-testid="stSidebar"]{ min-width:290px; }
+.side-title{ font-size:1.55rem; font-weight:800; line-height:1.1; margin:.2rem 0 .1rem; }
+.side-sub{ font-size:.95rem; color:var(--muted); margin:0 0 .4rem; }
+.stRadio label p { font-size:1.2rem !important; font-weight:600; }
+button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !important; }
+.block-container{ padding-top:2rem; max-width:1250px; }
 
 /* Header */
-.hero-title{ font-size:3rem; font-weight:800; letter-spacing:-1px; line-height:1.05; margin:0; }
-.hero-sub{ font-size:1.15rem; color:var(--muted); margin:.45rem 0 0; }
+.hero-title{ font-size:3.7rem; font-weight:800; letter-spacing:-1.5px; line-height:1.02; margin:0; }
+.hero-sub{ font-size:1.35rem; color:var(--muted); margin:.5rem 0 0; }
 
 /* Section eyebrow */
-.eyebrow{ font-size:1.5rem; font-weight:800; letter-spacing:.2px; margin:.2rem 0 1rem;
-          display:flex; align-items:center; gap:.6rem; }
-.eyebrow .bar{ width:34px; height:4px; border-radius:99px; display:inline-block; }
-.hint{ font-size:1rem; color:var(--muted); margin:-.4rem 0 1.2rem; }
+.eyebrow{ font-size:2rem; font-weight:800; letter-spacing:.1px; margin:.2rem 0 1.1rem;
+          display:flex; align-items:center; gap:.7rem; }
+.eyebrow .bar{ width:40px; height:5px; border-radius:99px; display:inline-block; }
+.hint{ font-size:1.2rem; color:var(--muted); margin:-.2rem 0 1.4rem; }
 
-.dot{ width:15px; height:15px; border-radius:50%; display:inline-block; flex:0 0 auto;
+.dot{ width:17px; height:17px; border-radius:50%; display:inline-block; flex:0 0 auto;
       box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); vertical-align:middle; }
 
 /* Standings table */
-.tbl{ width:100%; border-collapse:collapse; font-size:1.08rem; }
-.tbl thead th{ text-transform:uppercase; font-size:.78rem; letter-spacing:.6px;
-   color:var(--muted); font-weight:700; padding:.5rem .5rem; border-bottom:1px solid var(--line);
+.tbl{ width:100%; border-collapse:collapse; font-size:1.28rem; }
+.tbl thead th{ text-transform:uppercase; font-size:.9rem; letter-spacing:.6px;
+   color:var(--muted); font-weight:700; padding:.55rem .5rem; border-bottom:1px solid var(--line);
    text-align:center; }
 .tbl thead th.l{ text-align:left; }
-.tbl td{ padding:.72rem .5rem; border-bottom:1px solid rgba(255,255,255,.05); text-align:center; }
+.tbl td{ padding:.85rem .5rem; border-bottom:1px solid rgba(255,255,255,.05); text-align:center; }
 .tbl td.club{ text-align:left; font-weight:600; }
-.tbl td.club .dot{ margin-right:.6rem; }
-.tbl td.rank{ color:var(--muted); font-variant-numeric:tabular-nums; width:2.4rem; }
-.tbl td.pts{ font-weight:800; font-size:1.15rem; }
+.tbl td.club .dot{ margin-right:.65rem; }
+.tbl td.rank{ color:var(--muted); font-variant-numeric:tabular-nums; width:2.6rem; }
+.tbl td.pts{ font-weight:800; font-size:1.4rem; }
 .tbl tr:hover td{ background:rgba(255,255,255,.03); }
 .tbl tr.cutoff td{ border-bottom:2px solid rgba(255,255,255,.22); }
 .tbl tr.qual td.rank{ color:#57c66a; font-weight:700; }
-.legend{ font-size:.92rem; color:var(--muted); margin-top:.7rem; }
+.legend{ font-size:1.05rem; color:var(--muted); margin-top:.9rem; }
 .legend b{ color:#57c66a; }
 
 /* Match cards */
-.match{ border:1px solid var(--line); border-left-width:5px; border-radius:16px;
-   padding:1.05rem 1.25rem; margin-bottom:.9rem; background:var(--panel); }
-.match .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.55rem; }
-.mrow{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.18rem 0; }
-.tname{ display:flex; align-items:center; gap:.7rem; font-size:1.35rem; font-weight:600; }
-.tname .dot{ width:17px; height:17px; }
+.match{ border:1px solid var(--line); border-left-width:6px; border-radius:18px;
+   padding:1.2rem 1.5rem; margin-bottom:1rem; background:var(--panel); }
+.match .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.65rem; }
+.mrow{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.24rem 0; }
+.tname{ display:flex; align-items:center; gap:.8rem; font-size:1.75rem; font-weight:600; }
+.tname .dot{ width:20px; height:20px; }
 .tname.win{ font-weight:800; }
 .tname.lose{ color:var(--muted); }
-.score{ font-size:1.7rem; font-weight:800; min-width:1.8rem; text-align:center;
+.score{ font-size:2.2rem; font-weight:800; min-width:2rem; text-align:center;
         font-variant-numeric:tabular-nums; }
-.status{ font-size:.98rem; color:var(--muted); }
-.kick{ font-size:1rem; color:var(--muted); margin-top:.5rem; }
-.live{ color:#fff; background:var(--accent); padding:.18rem .6rem; border-radius:99px;
-       font-size:.82rem; font-weight:800; letter-spacing:.4px; }
+.status{ font-size:1.1rem; color:var(--muted); }
+.kick{ font-size:1.15rem; color:var(--muted); margin-top:.6rem; }
+.live{ color:#fff; background:var(--accent); padding:.22rem .7rem; border-radius:99px;
+       font-size:.95rem; font-weight:800; letter-spacing:.4px; }
 .match.islive{ border-color:var(--accent); }
 
 /* Win probability bar */
-.wp{ margin:.7rem 0 .2rem; }
-.wp .bar{ height:12px; border-radius:99px; overflow:hidden; display:flex; }
+.wp{ margin:.85rem 0 .2rem; }
+.wp .bar{ height:15px; border-radius:99px; overflow:hidden; display:flex; }
 .wp .bar > div{ height:100%; }
-.wp .labels{ display:flex; justify-content:space-between; font-size:.95rem; margin-top:.45rem; color:var(--ink); }
+.wp .labels{ display:flex; justify-content:space-between; font-size:1.1rem; margin-top:.5rem; color:var(--ink); }
 .wp .labels .mid{ color:var(--muted); }
-.wp .note{ font-size:.9rem; color:var(--muted); margin-top:.35rem; }
+.wp .note{ font-size:1rem; color:var(--muted); margin-top:.4rem; }
 
 /* Club cards */
-.clubgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:.8rem; }
-.club{ border:1px solid var(--line); border-left-width:5px; border-radius:14px;
-   padding:.95rem 1.1rem; background:var(--panel); font-size:1.2rem; font-weight:600;
-   display:flex; align-items:center; gap:.7rem; }
+.clubgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.9rem; }
+.club{ border:1px solid var(--line); border-left-width:6px; border-radius:15px;
+   padding:1.1rem 1.25rem; background:var(--panel); font-size:1.45rem; font-weight:600;
+   display:flex; align-items:center; gap:.8rem; }
 
-.foot{ color:var(--muted); font-size:.95rem; margin-top:.5rem; }
+.foot{ color:var(--muted); font-size:1.05rem; margin-top:.5rem; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -145,20 +139,11 @@ def dot(color):
 # Header
 # --------------------------------------------------------------------------- #
 def header(season):
-    left, right = st.columns([4, 1])
-    with left:
-        st.markdown('<p class="hero-title">St.&nbsp;Helena Premier League</p>', unsafe_allow_html=True)
-        sub = "St. Helena &amp; Ascension · South Atlantic football"
-        if season:
-            sub += f" · {season} season"
-        st.markdown(f'<p class="hero-sub">{sub}</p>', unsafe_allow_html=True)
-    with right:
-        st.write("")
-        if st.button("🔄 Refresh", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-        now = datetime.now(LOCAL_TZ).strftime("%d %b · %H:%M")
-        st.caption(f"Updated {now}")
+    st.markdown('<p class="hero-title">St.&nbsp;Helena Premier League</p>', unsafe_allow_html=True)
+    sub = "St. Helena &amp; Ascension · South Atlantic football"
+    if season:
+        sub += f" · {season} season"
+    st.markdown(f'<p class="hero-sub">{sub}</p>', unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -208,7 +193,7 @@ def _standings_html(rows):
 # --------------------------------------------------------------------------- #
 # Matches page
 # --------------------------------------------------------------------------- #
-def render_matches(matches):
+def render_matches(matches, feed):
     live = [m for m in matches if m["state"] == "in"]
     upcoming = [m for m in matches if m["state"] == "pre"]
     past = [m for m in matches if m["state"] == "post"]
@@ -221,17 +206,17 @@ def render_matches(matches):
         if not live:
             st.info("No matches are being played right now — check the Upcoming tab for what's next.")
         for m in live:
-            match_card(m, show_prob=False)
+            match_card(m, show_prob=False, feed=feed)
     with tab_up:
         if not upcoming:
             st.info("No upcoming fixtures in the current window.")
         for m in upcoming:
-            match_card(m, show_prob=True)
+            match_card(m, show_prob=True, feed=feed)
     with tab_past:
         if not past:
             st.info("No recent results in the current window.")
         for m in past:
-            match_card(m, show_prob=False)
+            match_card(m, show_prob=False, feed=feed)
 
 
 def _fmt_kickoff(dt):
@@ -240,7 +225,7 @@ def _fmt_kickoff(dt):
     return dt.astimezone(LOCAL_TZ).strftime("%a %d %b · %H:%M")
 
 
-def match_card(m, show_prob):
+def match_card(m, show_prob, feed):
     live = m["state"] == "in"
     home, away = m["home"], m["away"]
     show_score = m["state"] in ("in", "post")
@@ -267,7 +252,7 @@ def match_card(m, show_prob):
     st.markdown(html, unsafe_allow_html=True)
 
     if show_prob:
-        _win_prob_block(m)
+        _win_prob_block(m, feed)
 
 
 def _is_draw(m):
@@ -275,8 +260,8 @@ def _is_draw(m):
     return hs is not None and hs == as_
 
 
-def _win_prob_block(m):
-    wp = load_win_prob(m["id"])
+def _win_prob_block(m, feed):
+    wp = datafeed.get_win_probabilities(feed, m["id"])
     if not wp:
         st.markdown(
             '<div class="wp"><div class="note">Win probability not published yet '
@@ -322,23 +307,50 @@ def render_clubs():
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
+def sidebar(feed):
+    """Navigation + status. Returns the selected page."""
+    with st.sidebar:
+        st.markdown('<div class="side-title">⚽ SHPL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-sub">St. Helena Premier League</div>', unsafe_allow_html=True)
+        st.divider()
+        page = st.radio(
+            "Go to", ["🏆 Tables", "⚽ Matches", "🛡️ Clubs"],
+            label_visibility="collapsed",
+        )
+        st.divider()
+        if st.button("🔄 Refresh data", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
+        gen = datafeed.generated_at(feed) if feed else None
+        if gen:
+            st.caption(f"Scores updated\n\n**{gen.astimezone(LOCAL_TZ).strftime('%a %d %b · %H:%M')}** (St. Helena time)")
+        else:
+            st.caption(f"Loaded {datetime.now(LOCAL_TZ).strftime('%d %b · %H:%M')}")
+    return page
+
+
 def main():
     try:
-        standings = load_standings()
-    except espn.ESPNError as e:
-        standings = {"season": "", "conferences": []}
-        st.error(f"Live data is temporarily unavailable: {e}")
+        feed = load_feed()
+    except datafeed.FeedUnavailable as e:
+        feed = None
+        st.error(f"Scores are temporarily unavailable: {e}")
 
-    header(standings.get("season", ""))
+    season = feed["season"] if feed else ""
+    page = sidebar(feed)
+
+    header(season)
     st.divider()
 
-    page = st.radio(
-        "Section", ["🏆 Tables", "⚽ Matches", "🛡️ Clubs"],
-        horizontal=True, label_visibility="collapsed",
-    )
+    if feed is None:
+        st.warning("Data could not be loaded right now. Try the Refresh button in the sidebar in a moment.")
+        return
+
+    standings = datafeed.get_standings(feed)
 
     if page == "🏆 Tables":
-        st.markdown('<div class="hint">Standings for each island, updating live as results come in.</div>',
+        st.markdown('<div class="hint">Standings for each island, updating as results come in.</div>',
                     unsafe_allow_html=True)
         if standings["conferences"]:
             render_standings(standings)
@@ -347,10 +359,7 @@ def main():
     elif page == "⚽ Matches":
         st.markdown('<div class="hint">Live, upcoming and recent fixtures — times shown in St. Helena time.</div>',
                     unsafe_allow_html=True)
-        try:
-            render_matches(load_matches())
-        except espn.ESPNError as e:
-            st.error(f"Could not load matches: {e}")
+        render_matches(datafeed.get_matches(feed), feed)
     else:
         st.markdown('<div class="hint">The fifteen clubs of each island.</div>', unsafe_allow_html=True)
         render_clubs()

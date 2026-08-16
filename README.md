@@ -30,12 +30,28 @@ streamlit run app.py
 3. No secrets or API keys needed.
 
 ## How it works
+The score feed blocks datacenter IPs (like Streamlit Cloud's), so the app never
+calls it directly. Instead:
+
+1. A **GitHub Action** (`.github/workflows/update-data.yml`) runs every ~15 min
+   on GitHub's servers, fetches everything, and publishes a `feed.json` to a
+   separate **`data` branch**.
+2. The **Streamlit app** reads that `feed.json` over `raw.githubusercontent.com`
+   (GitHub is always reachable) — no direct feed calls, no 403.
+
 | File | Purpose |
 |------|---------|
 | `teams.py` | The club map (SHPL names, islands, source IDs, colours). Edit here to change a name or colour. |
 | `espn.py`  | Data layer: fetches standings/scoreboard/odds and returns clean, re-branded data. |
-| `app.py`   | Streamlit UI: tables, match cards, win-probability bars. |
+| `build_feed.py` | Run by the Action; bundles everything into `feed.json`. |
+| `feed.py`  | App-side loader: reads the published `data` branch (with fallbacks). |
+| `app.py`   | Streamlit UI: sidebar nav, tables, match cards, win-probability bars. |
 | `.streamlit/config.toml` | Dark theme. |
+
+**One-time setup for the Action to publish:** in the repo on GitHub go to
+**Settings → Actions → General → Workflow permissions** and choose
+**"Read and write permissions"**, then Save. (If you rename the repo, update
+`GH_OWNER`/`GH_REPO` at the top of `feed.py`.)
 
 This is an unofficial, non-commercial fan project.
 
