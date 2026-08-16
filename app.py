@@ -1,15 +1,17 @@
 """
 St. Helena Premier League — Streamlit app.
 
-A fan site for a fictional island league (St. Helena + Ascension) that mirrors
-the real MLS 2026 season in real time. Standings, fixtures, scores and win
-probabilities are pulled live from ESPN and re-branded via teams.py, so the
-site updates itself as matches are played and new seasons begin.
+A fan site for a South Atlantic island league (St. Helena + Ascension). Live
+standings, fixtures, scores and win probabilities update in real time.
+
+The underlying club data is fetched from a live sports feed and re-branded via
+teams.py. NOTE: the real-world source league is never surfaced anywhere in the
+UI — the site stands entirely on its own as the St. Helena Premier League.
 
 Run locally:  streamlit run app.py
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -24,12 +26,17 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Show times in a fixed island-friendly zone. St. Helena is UTC+0 year round.
+# St. Helena is UTC+0 all year.
 LOCAL_TZ = ZoneInfo("Atlantic/St_Helena")
+
+ISLAND_META = {
+    teams.ST_HELENA: {"flag": "🇸🇭", "accent": "#e4572e"},
+    teams.ASCENSION: {"flag": "🇦🇨", "accent": "#3d9be0"},
+}
 
 
 # --------------------------------------------------------------------------- #
-# Cached data fetchers (TTL keeps live scores fresh without hammering ESPN)
+# Cached data fetchers
 # --------------------------------------------------------------------------- #
 @st.cache_data(ttl=300, show_spinner=False)
 def load_standings():
@@ -51,28 +58,80 @@ def load_win_prob(event_id):
 # --------------------------------------------------------------------------- #
 CSS = """
 <style>
-:root { --card-bg: rgba(255,255,255,0.03); --line: rgba(255,255,255,0.10); }
-.shpl-title { font-size: 2.5rem; font-weight: 800; letter-spacing:-.5px; margin:0; }
-.shpl-sub { opacity:.7; margin:.2rem 0 0; font-size:1rem; }
+:root{
+  --bg:#0e1117; --panel:#161b26; --line:rgba(255,255,255,.09);
+  --ink:#eef1f6; --muted:rgba(238,241,246,.55); --accent:#e4572e;
+  --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+html, body, [class*="st-"], .stMarkdown, p, span, div { font-family: var(--font); }
 
-.chip { display:inline-flex; align-items:center; gap:.55rem; }
-.dot { width:14px; height:14px; border-radius:50%; flex:0 0 auto;
-       box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
-.mls { opacity:.5; font-size:.8rem; }
+/* nudge Streamlit's native controls up in size */
+.stRadio label p { font-size: 1.08rem !important; }
+button[data-baseweb="tab"]{ font-size:1.06rem !important; font-weight:600 !important; }
+.block-container{ padding-top:2.2rem; max-width:1150px; }
 
-/* match cards */
-.match { border:1px solid var(--line); border-radius:14px; padding:.9rem 1.1rem;
-         margin-bottom:.7rem; background:var(--card-bg); }
-.match.live { border-color:#e4572e; box-shadow:0 0 0 1px #e4572e33; }
-.mrow { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
-.team-line { display:flex; align-items:center; gap:.55rem; font-size:1.08rem; font-weight:600; }
-.score { font-size:1.35rem; font-weight:800; min-width:1.6rem; text-align:center; }
-.meta { font-size:.8rem; opacity:.65; }
-.livebadge { color:#fff; background:#e4572e; padding:.12rem .5rem; border-radius:999px;
-             font-size:.72rem; font-weight:700; letter-spacing:.4px; }
-.winbar { height:8px; border-radius:999px; overflow:hidden; display:flex; margin-top:.5rem; }
-.winbar > div { height:100%; }
-.winlabels { display:flex; justify-content:space-between; font-size:.74rem; opacity:.8; margin-top:.25rem; }
+/* Header */
+.hero-title{ font-size:3rem; font-weight:800; letter-spacing:-1px; line-height:1.05; margin:0; }
+.hero-sub{ font-size:1.15rem; color:var(--muted); margin:.45rem 0 0; }
+
+/* Section eyebrow */
+.eyebrow{ font-size:1.5rem; font-weight:800; letter-spacing:.2px; margin:.2rem 0 1rem;
+          display:flex; align-items:center; gap:.6rem; }
+.eyebrow .bar{ width:34px; height:4px; border-radius:99px; display:inline-block; }
+.hint{ font-size:1rem; color:var(--muted); margin:-.4rem 0 1.2rem; }
+
+.dot{ width:15px; height:15px; border-radius:50%; display:inline-block; flex:0 0 auto;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); vertical-align:middle; }
+
+/* Standings table */
+.tbl{ width:100%; border-collapse:collapse; font-size:1.08rem; }
+.tbl thead th{ text-transform:uppercase; font-size:.78rem; letter-spacing:.6px;
+   color:var(--muted); font-weight:700; padding:.5rem .5rem; border-bottom:1px solid var(--line);
+   text-align:center; }
+.tbl thead th.l{ text-align:left; }
+.tbl td{ padding:.72rem .5rem; border-bottom:1px solid rgba(255,255,255,.05); text-align:center; }
+.tbl td.club{ text-align:left; font-weight:600; }
+.tbl td.club .dot{ margin-right:.6rem; }
+.tbl td.rank{ color:var(--muted); font-variant-numeric:tabular-nums; width:2.4rem; }
+.tbl td.pts{ font-weight:800; font-size:1.15rem; }
+.tbl tr:hover td{ background:rgba(255,255,255,.03); }
+.tbl tr.cutoff td{ border-bottom:2px solid rgba(255,255,255,.22); }
+.tbl tr.qual td.rank{ color:#57c66a; font-weight:700; }
+.legend{ font-size:.92rem; color:var(--muted); margin-top:.7rem; }
+.legend b{ color:#57c66a; }
+
+/* Match cards */
+.match{ border:1px solid var(--line); border-left-width:5px; border-radius:16px;
+   padding:1.05rem 1.25rem; margin-bottom:.9rem; background:var(--panel); }
+.match .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.55rem; }
+.mrow{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.18rem 0; }
+.tname{ display:flex; align-items:center; gap:.7rem; font-size:1.35rem; font-weight:600; }
+.tname .dot{ width:17px; height:17px; }
+.tname.win{ font-weight:800; }
+.tname.lose{ color:var(--muted); }
+.score{ font-size:1.7rem; font-weight:800; min-width:1.8rem; text-align:center;
+        font-variant-numeric:tabular-nums; }
+.status{ font-size:.98rem; color:var(--muted); }
+.kick{ font-size:1rem; color:var(--muted); margin-top:.5rem; }
+.live{ color:#fff; background:var(--accent); padding:.18rem .6rem; border-radius:99px;
+       font-size:.82rem; font-weight:800; letter-spacing:.4px; }
+.match.islive{ border-color:var(--accent); }
+
+/* Win probability bar */
+.wp{ margin:.7rem 0 .2rem; }
+.wp .bar{ height:12px; border-radius:99px; overflow:hidden; display:flex; }
+.wp .bar > div{ height:100%; }
+.wp .labels{ display:flex; justify-content:space-between; font-size:.95rem; margin-top:.45rem; color:var(--ink); }
+.wp .labels .mid{ color:var(--muted); }
+.wp .note{ font-size:.9rem; color:var(--muted); margin-top:.35rem; }
+
+/* Club cards */
+.clubgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:.8rem; }
+.club{ border:1px solid var(--line); border-left-width:5px; border-radius:14px;
+   padding:.95rem 1.1rem; background:var(--panel); font-size:1.2rem; font-weight:600;
+   display:flex; align-items:center; gap:.7rem; }
+
+.foot{ color:var(--muted); font-size:.95rem; margin-top:.5rem; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -82,102 +141,92 @@ def dot(color):
     return f'<span class="dot" style="background:{color}"></span>'
 
 
-def team_chip(side_or_row, show_mls=True):
-    name = side_or_row["shpl_name"]
-    mls = side_or_row.get("mls_name", "")
-    html = f'<span class="chip">{dot(side_or_row["primary"])}<span>{name}</span>'
-    if show_mls and mls:
-        html += f' <span class="mls">· {mls}</span>'
-    html += "</span>"
-    return html
-
-
 # --------------------------------------------------------------------------- #
 # Header
 # --------------------------------------------------------------------------- #
 def header(season):
     left, right = st.columns([4, 1])
     with left:
-        st.markdown('<p class="shpl-title">⚽ St. Helena Premier League</p>', unsafe_allow_html=True)
-        sub = "St. Helena & Ascension · a South Atlantic league mirroring the MLS"
+        st.markdown('<p class="hero-title">St.&nbsp;Helena Premier League</p>', unsafe_allow_html=True)
+        sub = "St. Helena &amp; Ascension · South Atlantic football"
         if season:
             sub += f" · {season} season"
-        st.markdown(f'<p class="shpl-sub">{sub}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="hero-sub">{sub}</p>', unsafe_allow_html=True)
     with right:
         st.write("")
-        if st.button("🔄 Refresh data", use_container_width=True):
+        if st.button("🔄 Refresh", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-        now = datetime.now(LOCAL_TZ).strftime("%d %b %H:%M")
-        st.caption(f"Updated {now} (St. Helena time)")
+        now = datetime.now(LOCAL_TZ).strftime("%d %b · %H:%M")
+        st.caption(f"Updated {now}")
 
 
 # --------------------------------------------------------------------------- #
 # Tables page
 # --------------------------------------------------------------------------- #
 def render_standings(standings):
-    st.markdown("#### League Tables")
-    st.caption(
-        "St. Helena clubs play in the MLS Eastern Conference; Ascension clubs in "
-        "the Western Conference. Points, results and goal difference update live."
-    )
-    cols = st.columns(len(standings["conferences"]))
+    cols = st.columns(len(standings["conferences"]), gap="large")
     for col, conf in zip(cols, standings["conferences"]):
         with col:
-            flag = "🇸🇭" if conf["island"] == teams.ST_HELENA else "🌋"
-            st.markdown(f"##### {flag} {conf['island']}")
-            _standings_table(conf["table"])
+            meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
+            st.markdown(
+                f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
+                f'{meta["flag"]} {conf["island"]}</div>',
+                unsafe_allow_html=True,
+            )
+            st.markdown(_standings_html(conf["table"]), unsafe_allow_html=True)
 
 
-def _standings_table(rows):
-    header_cols = st.columns([0.6, 4, 0.7, 0.7, 0.7, 0.7, 0.9, 0.9])
-    labels = ["#", "Club", "P", "W", "D", "L", "GD", "Pts"]
-    for c, lab in zip(header_cols, labels):
-        c.markdown(f"**{lab}**")
-    # A simple playoff line: top 9 of each conference qualify in MLS.
+def _standings_html(rows):
+    head = (
+        '<table class="tbl"><thead><tr>'
+        '<th class="l">#</th><th class="l">Club</th>'
+        '<th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>'
+        '</tr></thead><tbody>'
+    )
+    body = []
     for r in rows:
-        cs = st.columns([0.6, 4, 0.7, 0.7, 0.7, 0.7, 0.9, 0.9])
-        rank_badge = f"{r['rank']}"
+        classes = []
         if r["rank"] <= 9:
-            rank_badge = f"<span style='color:#4caf50;font-weight:700'>{r['rank']}</span>"
-        cs[0].markdown(rank_badge, unsafe_allow_html=True)
-        cs[1].markdown(team_chip(r), unsafe_allow_html=True)
-        cs[2].write(r["played"])
-        cs[3].write(r["wins"])
-        cs[4].write(r["draws"])
-        cs[5].write(r["losses"])
-        cs[6].write(f"{r['gd']:+d}")
-        cs[7].markdown(f"**{r['points']}**")
-    st.caption("🟢 Top 9 = playoff places")
+            classes.append("qual")
+        if r["rank"] == 9:
+            classes.append("cutoff")  # divider line under the last playoff spot
+        cls = f' class="{" ".join(classes)}"' if classes else ""
+        body.append(
+            f'<tr{cls}>'
+            f'<td class="rank">{r["rank"]}</td>'
+            f'<td class="club">{dot(r["primary"])}{r["shpl_name"]}</td>'
+            f'<td>{r["played"]}</td><td>{r["wins"]}</td><td>{r["draws"]}</td>'
+            f'<td>{r["losses"]}</td><td>{r["gd"]:+d}</td>'
+            f'<td class="pts">{r["points"]}</td>'
+            f'</tr>'
+        )
+    legend = '<div class="legend"><b>Green</b> = top 9 qualify for the playoffs</div>'
+    return head + "".join(body) + "</tbody></table>" + legend
 
 
 # --------------------------------------------------------------------------- #
 # Matches page
 # --------------------------------------------------------------------------- #
 def render_matches(matches):
-    st.markdown("#### Matches")
-
     live = [m for m in matches if m["state"] == "in"]
     upcoming = [m for m in matches if m["state"] == "pre"]
     past = [m for m in matches if m["state"] == "post"]
-    past.reverse()  # most recent first
+    past.reverse()
 
     tab_live, tab_up, tab_past = st.tabs(
         [f"🔴 Live ({len(live)})", f"📅 Upcoming ({len(upcoming)})", f"✅ Results ({len(past)})"]
     )
-
     with tab_live:
         if not live:
-            st.info("No matches are being played right now. Check the Upcoming tab for the next fixtures.")
+            st.info("No matches are being played right now — check the Upcoming tab for what's next.")
         for m in live:
             match_card(m, show_prob=False)
-
     with tab_up:
         if not upcoming:
             st.info("No upcoming fixtures in the current window.")
         for m in upcoming:
             match_card(m, show_prob=True)
-
     with tab_past:
         if not past:
             st.info("No recent results in the current window.")
@@ -194,73 +243,80 @@ def _fmt_kickoff(dt):
 def match_card(m, show_prob):
     live = m["state"] == "in"
     home, away = m["home"], m["away"]
-    css_class = "match live" if live else "match"
-
-    status_html = f'<span class="livebadge">● LIVE · {m["status_detail"]}</span>' if live \
-        else f'<span class="meta">{m["status_detail"] or _fmt_kickoff(m["start"])}</span>'
-
-    def score_or_dash(side):
-        return side["score"] if side["score"] is not None else "–"
-
     show_score = m["state"] in ("in", "post")
 
-    def line(side):
-        score = f'<span class="score">{score_or_dash(side)}</span>' if show_score else '<span class="score"></span>'
-        win = "font-weight:800" if side.get("winner") else ""
-        return (f'<div class="mrow"><span class="team-line" style="{win}">'
-                f'{dot(side["primary"])}{side["shpl_name"]} '
-                f'<span class="mls">· {side["mls_name"]}</span></span>{score}</div>')
+    top_left = (f'<span class="live">● LIVE · {m["status_detail"]}</span>' if live
+                else f'<span class="status">{m["status_detail"] or _fmt_kickoff(m["start"])}</span>')
+    venue = f'<span class="status">📍 {m["venue"]}</span>' if m["venue"] else "<span></span>"
 
-    kickoff = "" if show_score else f'<div class="meta">🕓 {_fmt_kickoff(m["start"])}</div>'
-    venue = f'<div class="meta">📍 {m["venue"]}</div>' if m["venue"] else ""
+    def row(side):
+        s = side["score"] if side["score"] is not None else "–"
+        score = f'<span class="score">{s}</span>' if show_score else '<span class="score"></span>'
+        cls = "tname"
+        if show_score and m["completed"]:
+            cls += " win" if side.get("winner") else (" lose" if not _is_draw(m) else "")
+        return f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["shpl_name"]}</span>{score}</div>'
 
-    html = (f'<div class="{css_class}">'
-            f'<div class="mrow"><div>{status_html}</div>{venue}</div>'
-            f'{line(home)}{line(away)}{kickoff}'
-            f'</div>')
+    kick = "" if show_score else f'<div class="kick">🕓 {_fmt_kickoff(m["start"])}</div>'
+    border = f'border-left-color:{home["primary"]};'
+    card_cls = "match islive" if live else "match"
+
+    html = (f'<div class="{card_cls}" style="{border}">'
+            f'<div class="top">{top_left}{venue}</div>'
+            f'{row(home)}{row(away)}{kick}</div>')
     st.markdown(html, unsafe_allow_html=True)
 
     if show_prob:
         _win_prob_block(m)
 
 
+def _is_draw(m):
+    hs, as_ = m["home"]["score"], m["away"]["score"]
+    return hs is not None and hs == as_
+
+
 def _win_prob_block(m):
     wp = load_win_prob(m["id"])
     if not wp:
-        st.caption("Win probability not published yet (odds usually appear a few days before kick-off).")
+        st.markdown(
+            '<div class="wp"><div class="note">Win probability not published yet '
+            '(usually appears a few days before kick-off).</div></div>',
+            unsafe_allow_html=True,
+        )
         return
     h, d, a = wp["home_pct"], wp["draw_pct"], wp["away_pct"]
     hc, ac = m["home"]["primary"], m["away"]["primary"]
-    bar = (f'<div class="winbar">'
-           f'<div style="width:{h}%;background:{hc}"></div>'
-           f'<div style="width:{d}%;background:#9e9e9e"></div>'
-           f'<div style="width:{a}%;background:{ac}"></div></div>'
-           f'<div class="winlabels">'
-           f'<span>{m["home"]["shpl_name"]} {h}%</span>'
-           f'<span>Draw {d}%</span>'
-           f'<span>{a}% {m["away"]["shpl_name"]}</span></div>')
-    st.markdown(bar, unsafe_allow_html=True)
-    st.caption(f"Win % from {wp['source']} match preview odds (de-vigged).")
+    html = (
+        '<div class="wp"><div class="bar">'
+        f'<div style="width:{h}%;background:{hc}"></div>'
+        f'<div style="width:{d}%;background:#7c8595"></div>'
+        f'<div style="width:{a}%;background:{ac}"></div></div>'
+        '<div class="labels">'
+        f'<span>{m["home"]["shpl_name"]} · {h}%</span>'
+        f'<span class="mid">Draw {d}%</span>'
+        f'<span>{a}% · {m["away"]["shpl_name"]}</span></div>'
+        '<div class="note">Pre-match win probability</div></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #
-# Teams page
+# Clubs page
 # --------------------------------------------------------------------------- #
-def render_teams():
-    st.markdown("#### Clubs")
-    st.caption("Every SHPL club and the MLS side it mirrors.")
+def render_clubs():
     for island in teams.ISLANDS:
-        flag = "🇸🇭" if island == teams.ST_HELENA else "🌋"
-        st.markdown(f"##### {flag} {island}")
-        club_rows = [t for t in teams.TEAMS if t.island == island]
-        cols = st.columns(3)
-        for i, t in enumerate(club_rows):
-            with cols[i % 3]:
-                st.markdown(
-                    f'<div class="match"><div class="team-line">{dot(t.primary)}{t.shpl_name}</div>'
-                    f'<div class="mls">mirrors {t.mls_name}</div></div>',
-                    unsafe_allow_html=True,
-                )
+        meta = ISLAND_META.get(island, {"flag": "", "accent": "#888"})
+        st.markdown(
+            f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
+            f'{meta["flag"]} {island}</div>',
+            unsafe_allow_html=True,
+        )
+        cards = "".join(
+            f'<div class="club" style="border-left-color:{t.primary}">{dot(t.primary)}{t.shpl_name}</div>'
+            for t in teams.TEAMS if t.island == island
+        )
+        st.markdown(f'<div class="clubgrid">{cards}</div>', unsafe_allow_html=True)
+        st.write("")
 
 
 # --------------------------------------------------------------------------- #
@@ -282,23 +338,27 @@ def main():
     )
 
     if page == "🏆 Tables":
+        st.markdown('<div class="hint">Standings for each island, updating live as results come in.</div>',
+                    unsafe_allow_html=True)
         if standings["conferences"]:
             render_standings(standings)
         else:
             st.warning("Standings could not be loaded. Try the Refresh button.")
     elif page == "⚽ Matches":
+        st.markdown('<div class="hint">Live, upcoming and recent fixtures — times shown in St. Helena time.</div>',
+                    unsafe_allow_html=True)
         try:
-            matches = load_matches()
-            render_matches(matches)
+            render_matches(load_matches())
         except espn.ESPNError as e:
             st.error(f"Could not load matches: {e}")
     else:
-        render_teams()
+        st.markdown('<div class="hint">The fifteen clubs of each island.</div>', unsafe_allow_html=True)
+        render_clubs()
 
     st.divider()
-    st.caption(
-        "Unofficial fan project. Live data via ESPN's public MLS feed. "
-        "SHPL is a fictional re-brand of MLS clubs for St. Helena & Ascension."
+    st.markdown(
+        '<div class="foot">St. Helena Premier League · an unofficial fan project · scores update automatically.</div>',
+        unsafe_allow_html=True,
     )
 
 
