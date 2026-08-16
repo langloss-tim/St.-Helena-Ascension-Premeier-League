@@ -94,6 +94,13 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .legend{ font-size:1.05rem; color:var(--muted); margin-top:.9rem; }
 .legend b{ color:#57c66a; }
 
+/* Match-day grouping */
+.daygroup{ margin-bottom:1.6rem; }
+.dayhdr{ display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+   margin:1.4rem 0 .7rem; padding-bottom:.4rem; border-bottom:1px solid var(--line); }
+.dayhdr > span:first-child{ font-size:1.35rem; font-weight:700; }
+.dayhdr .daycount{ font-size:1rem; color:var(--muted); white-space:nowrap; }
+
 /* Match cards */
 .match{ border:1px solid var(--line); border-left-width:6px; border-radius:18px;
    padding:1.2rem 1.5rem; margin-bottom:1rem; background:var(--panel); }
@@ -197,7 +204,6 @@ def render_matches(matches, feed):
     live = [m for m in matches if m["state"] == "in"]
     upcoming = [m for m in matches if m["state"] == "pre"]
     past = [m for m in matches if m["state"] == "post"]
-    past.reverse()
 
     tab_live, tab_up, tab_past = st.tabs(
         [f"🔴 Live ({len(live)})", f"📅 Upcoming ({len(upcoming)})", f"✅ Results ({len(past)})"]
@@ -205,18 +211,50 @@ def render_matches(matches, feed):
     with tab_live:
         if not live:
             st.info("No matches are being played right now — check the Upcoming tab for what's next.")
-        for m in live:
-            match_card(m, show_prob=False, feed=feed)
+        else:
+            _render_day_groups(live, feed, show_prob=False, newest_first=False)
     with tab_up:
         if not upcoming:
-            st.info("No upcoming fixtures in the current window.")
-        for m in upcoming:
-            match_card(m, show_prob=True, feed=feed)
+            st.info("No upcoming fixtures.")
+        else:
+            st.caption(f"{len(upcoming)} fixtures remaining this season")
+            _render_day_groups(upcoming, feed, show_prob=True, newest_first=False)
     with tab_past:
         if not past:
-            st.info("No recent results in the current window.")
-        for m in past:
-            match_card(m, show_prob=False, feed=feed)
+            st.info("No results yet this season.")
+        else:
+            days = len({_day_key(m) for m in past})
+            st.caption(f"{len(past)} matches played across {days} match days this season")
+            _render_day_groups(past, feed, show_prob=False, newest_first=True)
+
+
+def _day_key(m):
+    return m["start"].astimezone(LOCAL_TZ).date() if m["start"] else None
+
+
+def _day_label(d):
+    if d is None:
+        return "Date to be confirmed"
+    return f"{d.strftime('%A')} · {d.day} {d.strftime('%B %Y')}"
+
+
+def _render_day_groups(matches, feed, show_prob, newest_first):
+    """Group matches by calendar day and render each day in a single call."""
+    groups = {}
+    for m in matches:
+        groups.setdefault(_day_key(m), []).append(m)
+
+    days = sorted((d for d in groups if d is not None), reverse=newest_first)
+    if None in groups:  # undated fixtures go last
+        days = days + [None]
+
+    for d in days:
+        day_matches = groups[d]
+        n = len(day_matches)
+        header = (f'<div class="dayhdr"><span>{_day_label(d)}</span>'
+                  f'<span class="daycount">{n} {"match" if n == 1 else "matches"}</span></div>')
+        cards = "".join(_match_html(m, feed, show_prob) for m in day_matches)
+        st.markdown(f'<div class="daygroup">{header}{cards}</div>', unsafe_allow_html=True)
 
 
 def _fmt_kickoff(dt):
@@ -225,7 +263,12 @@ def _fmt_kickoff(dt):
     return dt.astimezone(LOCAL_TZ).strftime("%a %d %b · %H:%M")
 
 
-def match_card(m, show_prob, feed):
+def _is_draw(m):
+    hs, as_ = m["home"]["score"], m["away"]["score"]
+    return hs is not None and hs == as_
+
+
+def _match_html(m, feed, show_prob):
     live = m["state"] == "in"
     home, away = m["home"], m["away"]
     show_score = m["state"] in ("in", "post")
@@ -243,35 +286,22 @@ def match_card(m, show_prob, feed):
         return f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["shpl_name"]}</span>{score}</div>'
 
     kick = "" if show_score else f'<div class="kick">🕓 {_fmt_kickoff(m["start"])}</div>'
+    winbar = _winbar_html(m, feed) if show_prob else ""
     border = f'border-left-color:{home["primary"]};'
     card_cls = "match islive" if live else "match"
 
-    html = (f'<div class="{card_cls}" style="{border}">'
+    return (f'<div class="{card_cls}" style="{border}">'
             f'<div class="top">{top_left}{venue}</div>'
-            f'{row(home)}{row(away)}{kick}</div>')
-    st.markdown(html, unsafe_allow_html=True)
-
-    if show_prob:
-        _win_prob_block(m, feed)
+            f'{row(home)}{row(away)}{kick}{winbar}</div>')
 
 
-def _is_draw(m):
-    hs, as_ = m["home"]["score"], m["away"]["score"]
-    return hs is not None and hs == as_
-
-
-def _win_prob_block(m, feed):
+def _winbar_html(m, feed):
     wp = datafeed.get_win_probabilities(feed, m["id"])
     if not wp:
-        st.markdown(
-            '<div class="wp"><div class="note">Win probability not published yet '
-            '(usually appears a few days before kick-off).</div></div>',
-            unsafe_allow_html=True,
-        )
-        return
+        return ""
     h, d, a = wp["home_pct"], wp["draw_pct"], wp["away_pct"]
     hc, ac = m["home"]["primary"], m["away"]["primary"]
-    html = (
+    return (
         '<div class="wp"><div class="bar">'
         f'<div style="width:{h}%;background:{hc}"></div>'
         f'<div style="width:{d}%;background:#7c8595"></div>'
@@ -282,7 +312,6 @@ def _win_prob_block(m, feed):
         f'<span>{a}% · {m["away"]["shpl_name"]}</span></div>'
         '<div class="note">Pre-match win probability</div></div>'
     )
-    st.markdown(html, unsafe_allow_html=True)
 
 
 # --------------------------------------------------------------------------- #

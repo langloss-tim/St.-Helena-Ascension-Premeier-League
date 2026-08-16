@@ -12,14 +12,16 @@ Output: ./feed.json
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import espn
 
 
 def build():
     standings = espn.get_standings()
-    matches = espn.get_matches(days_back=10, days_ahead=21)
+    # Whole season, so the app can show every match day played this year.
+    year = datetime.now(timezone.utc).year
+    matches = espn.get_matches(start=date(year, 1, 1), end=date(year, 12, 31))
 
     # Win probabilities only for fixtures that haven't started yet.
     winprobs = {}

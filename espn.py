@@ -147,19 +147,21 @@ def _ymd(d):
     return d.strftime("%Y%m%d")
 
 
-def get_matches(days_back=7, days_ahead=14):
-    """Return a list of match dicts across a date window, newest-first grouped
-    later by the UI. Each match:
+def get_matches(days_back=7, days_ahead=14, start=None, end=None):
+    """Return a list of match dicts across a date window. Each match:
 
       id, state ('pre'|'in'|'post'), status_detail, start (datetime, UTC),
       home/away: {espn_id, shpl_name, mls_name, score, winner, primary, secondary},
       completed (bool), venue (str)
+
+    By default covers a window around today. Pass explicit `start`/`end` dates
+    (e.g. Jan 1 – Dec 31) to pull the whole season.
     """
     today = datetime.now(timezone.utc).date()
-    start = today - timedelta(days=days_back)
-    end = today + timedelta(days=days_ahead)
+    start = start or (today - timedelta(days=days_back))
+    end = end or (today + timedelta(days=days_ahead))
     rng = f"{_ymd(start)}-{_ymd(end)}"
-    data = _get(SCOREBOARD_PATH, params={"dates": rng, "limit": 300})
+    data = _get(SCOREBOARD_PATH, params={"dates": rng, "limit": 1000})
 
     matches = []
     for ev in data.get("events", []):
