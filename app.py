@@ -512,6 +512,89 @@ def live_component():
     components.html(html, height=760, scrolling=True)
 
 
+STANDINGS_HTML = r"""
+<style>
+  :root{ color-scheme: dark; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#eef1f6; background:transparent; }
+  .stamp{ font-size:.85rem; color:#8b93a1; margin:0 0 1rem; }
+  .grid{ display:grid; grid-template-columns:__COLS__; gap:2rem; }
+  .ch{ font-size:1.7rem; font-weight:800; margin-bottom:.7rem; }
+  table{ width:100%; border-collapse:collapse; font-size:1.15rem; }
+  thead th{ text-transform:uppercase; font-size:.78rem; letter-spacing:.5px; color:#8b93a1; font-weight:700;
+            padding:.5rem .4rem; border-bottom:1px solid rgba(255,255,255,.12); text-align:center; }
+  thead th.l{ text-align:left; }
+  td{ padding:.6rem .4rem; border-bottom:1px solid rgba(255,255,255,.05); text-align:center; font-variant-numeric:tabular-nums; }
+  td.cl{ text-align:left; font-weight:600; }
+  td.cl i{ width:14px; height:14px; border-radius:50%; display:inline-block; margin-right:.55rem;
+           box-shadow:inset 0 0 0 2px rgba(255,255,255,.22); vertical-align:middle; }
+  td.rk{ color:#8b93a1; width:2.2rem; }
+  td.pt{ font-weight:800; font-size:1.25rem; }
+  tr:hover td{ background:rgba(255,255,255,.03); }
+  tr.qual td.rk{ color:#57c66a; font-weight:700; }
+  tr.cutoff td{ border-bottom:2px solid rgba(255,255,255,.22); }
+  .lg{ font-size:.95rem; color:#8b93a1; margin-top:.7rem; }
+  .empty{ color:#aab2bf; padding:2rem; text-align:center; }
+</style>
+<div class="stamp" id="stamp">Loading table…</div>
+<div class="grid" id="tbls"></div>
+<script>
+  const T = __TEAMS__;
+  const URL = "https://site.api.espn.com/apis/v2/sports/soccer/usa.1/standings";
+  const val = (s,n) => { for(const x of s){ if(x.name===n) return x.value; } return 0; };
+  const gd = v => { v = Number(v)||0; return (v>0?"+":"")+v; };
+  function tbl(c){
+    const flag = c.island==="St. Helena" ? "🇸🇭" : (c.island==="Ascension" ? "🇦🇨" : "");
+    const rows = c.rows.map(r => '<tr class="'+(r.rank<=9?"qual":"")+' '+(r.rank===9?"cutoff":"")+'">'
+      + '<td class="rk">'+r.rank+'</td>'
+      + '<td class="cl"><i style="background:'+r.color+'"></i>'+r.name+'</td>'
+      + '<td>'+r.P+'</td><td>'+r.W+'</td><td>'+r.D+'</td><td>'+r.L+'</td><td>'+gd(r.GD)+'</td>'
+      + '<td class="pt">'+r.PTS+'</td></tr>').join("");
+    return '<div class="conf"><div class="ch">'+flag+' '+c.island+'</div>'
+      + '<table><thead><tr><th class="l">#</th><th class="l">Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>'
+      + '<tbody>'+rows+'</tbody></table><div class="lg">🟢 Top 9 qualify for the playoffs</div></div>';
+  }
+  async function render(){
+    const el = document.getElementById("tbls");
+    try{
+      const d = await (await fetch(URL)).json();
+      const confs = (d.children||[]).map(ch => {
+        const entries = (ch.standings && ch.standings.entries) || [];
+        const votes = {};
+        const rows = entries.map(e => {
+          const id = String(e.team.id), s = e.stats||[], info = T[id]||{};
+          if(info.island) votes[info.island] = (votes[info.island]||0)+1;
+          return { name: info.name||e.team.displayName, color: info.color||"#888",
+                   P: val(s,"gamesPlayed"), W: val(s,"wins"), D: val(s,"ties"), L: val(s,"losses"),
+                   GD: val(s,"pointDifferential"), GF: val(s,"pointsFor"), PTS: val(s,"points") };
+        });
+        rows.sort((a,b) => b.PTS-a.PTS || b.GD-a.GD || b.GF-a.GF);
+        rows.forEach((r,i) => r.rank = i+1);
+        const island = Object.keys(votes).sort((a,b)=>votes[b]-votes[a])[0] || ch.name;
+        return { island, rows };
+      });
+      confs.sort((a,b) => (a.island==="St. Helena"?0:1) - (b.island==="St. Helena"?0:1));
+      el.innerHTML = confs.map(tbl).join("");
+      document.getElementById("stamp").textContent = "🔴 Live table · updates every 15s · " + new Date().toLocaleTimeString();
+    }catch(e){
+      document.getElementById("stamp").textContent = "Could not load the table — retrying…";
+    }
+  }
+  render();
+  setInterval(render, 15000);
+</script>
+"""
+
+
+def standings_component(ncols):
+    tmap = {t.espn_id: {"name": t.shpl_name, "color": t.primary, "island": t.island}
+            for t in teams.TEAMS}
+    html = (STANDINGS_HTML
+            .replace("__TEAMS__", json.dumps(tmap))
+            .replace("__COLS__", "1fr 1fr" if ncols == 2 else "1fr"))
+    components.html(html, height=(1120 if ncols == 2 else 2050), scrolling=True)
+
+
 def render_matches(matches, feed):
     focus = st.session_state.get("focus_day")
     if focus:
@@ -1133,13 +1216,10 @@ def main():
     gen = datafeed.generated_at(feed) if feed else None
     if season is not None and feed:
         st.sidebar.caption(f"📚 Viewing the {feed.get('season', '')} season (archived)")
-    elif gen:
-        st.sidebar.caption(
-            "🔴 **Live scores are real-time** (Live tab).\n\n"
-            f"Tables & results last synced {gen.astimezone(LOCAL_TZ).strftime('%H:%M')} "
-            "(St. Helena) — refreshes roughly every 10 min.")
     else:
-        st.sidebar.caption("🔴 Live scores are real-time (Live tab).")
+        st.sidebar.caption(
+            "🔴 **Live tab & league Table update in real time** (from your browser).\n\n"
+            "Match results in the Matches tab settle within a few minutes of full time.")
 
     header(feed["season"] if feed else "")
 
@@ -1163,12 +1243,17 @@ def main():
     if page == "🏠 Home":
         render_home(feed, ncols)
     elif page == "🏆 Tables":
-        st.markdown('<div class="hint">Standings for each island, updating as results come in.</div>',
-                    unsafe_allow_html=True)
-        if standings["conferences"]:
-            render_standings(standings, ncols)
+        if season is None:
+            st.markdown('<div class="hint">Live league tables — they update in real time as goals go in.</div>',
+                        unsafe_allow_html=True)
+            standings_component(ncols)
         else:
-            st.warning("Standings could not be loaded. Try the Refresh button.")
+            st.markdown('<div class="hint">Final standings for this archived season.</div>',
+                        unsafe_allow_html=True)
+            if standings["conferences"]:
+                render_standings(standings, ncols)
+            else:
+                st.warning("Standings could not be loaded.")
     elif page == "⚽ Matches":
         st.markdown('<div class="hint">Live, upcoming and recent fixtures — times shown in St. Helena time.</div>',
                     unsafe_allow_html=True)
