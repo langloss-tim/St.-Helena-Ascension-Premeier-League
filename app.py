@@ -85,6 +85,7 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
       box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); vertical-align:middle; }
 
 /* Standings table */
+.tblwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .tbl{ width:100%; border-collapse:collapse; font-size:1.28rem; }
 .tbl thead th{ text-transform:uppercase; font-size:.9rem; letter-spacing:.6px;
    color:var(--muted); font-weight:700; padding:.55rem .5rem; border-bottom:1px solid var(--line);
@@ -222,6 +223,37 @@ div[data-testid="stButton"] > button{ font-size:1.25rem !important; font-weight:
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
+# --------------------------------------------------------------------------- #
+# Device sizing — the user picks their device and everything scales to fit.
+# --------------------------------------------------------------------------- #
+DEVICES = ["🖥️ Desktop", "💻 Laptop", "📟 iPad", "📱 Phone"]
+# base font size (px) that all rem-based sizes scale from, and how many columns
+# the side-by-side sections (tables, leaders) use.
+DEVICE_CFG = {
+    "🖥️ Desktop": {"px": 19, "cols": 2},
+    "💻 Laptop":  {"px": 15, "cols": 2},
+    "📟 iPad":    {"px": 15, "cols": 1},
+    "📱 Phone":   {"px": 12, "cols": 1},
+}
+
+
+def apply_device_css(device):
+    cfg = DEVICE_CFG.get(device, DEVICE_CFG["💻 Laptop"])
+    px = cfg["px"]
+    extra = f"<style>html{{font-size:{px}px !important;}}"
+    if device in ("📱 Phone", "📟 iPad"):
+        extra += ".factrow{grid-template-columns:1fr;}"
+        extra += ".block-container{padding-left:.6rem;padding-right:.6rem;}"
+    if device == "📱 Phone":
+        extra += ".hero-title{font-size:2.3rem;letter-spacing:-.5px;}"
+        extra += ".brk-col{min-width:200px;}"
+    extra += "</style>"
+    st.markdown(extra, unsafe_allow_html=True)
+
+
+def device_cols(device):
+    return DEVICE_CFG.get(device, DEVICE_CFG["💻 Laptop"])["cols"]
+
 
 def dot(color):
     return f'<span class="dot" style="background:{color}"></span>'
@@ -241,17 +273,25 @@ def header(season):
 # --------------------------------------------------------------------------- #
 # Tables page
 # --------------------------------------------------------------------------- #
-def render_standings(standings):
-    cols = st.columns(len(standings["conferences"]), gap="large")
-    for col, conf in zip(cols, standings["conferences"]):
-        with col:
-            meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
-            st.markdown(
-                f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-                f'{meta["flag"]} {conf["island"]}</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(_standings_html(conf["table"]), unsafe_allow_html=True)
+def render_standings(standings, ncols=2):
+    def one(conf):
+        meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
+        st.markdown(
+            f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
+            f'{meta["flag"]} {conf["island"]}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(_standings_html(conf["table"]), unsafe_allow_html=True)
+
+    confs = standings["conferences"]
+    if ncols == 1:
+        for conf in confs:
+            one(conf)
+    else:
+        cols = st.columns(len(confs), gap="large")
+        for col, conf in zip(cols, confs):
+            with col:
+                one(conf)
 
 
 def _standings_html(rows):
@@ -279,7 +319,7 @@ def _standings_html(rows):
             f'</tr>'
         )
     legend = '<div class="legend"><b>Green</b> = top 9 qualify for the playoffs</div>'
-    return head + "".join(body) + "</tbody></table>" + legend
+    return '<div class="tblwrap">' + head + "".join(body) + "</tbody></table></div>" + legend
 
 
 # --------------------------------------------------------------------------- #
@@ -404,7 +444,7 @@ def _winbar_html(m, feed):
 # --------------------------------------------------------------------------- #
 # Home page
 # --------------------------------------------------------------------------- #
-def render_home(feed):
+def render_home(feed, ncols=2):
     day = datetime.now(LOCAL_TZ).timetuple().tm_yday
     st.markdown(
         '<div class="factrow">'
@@ -420,18 +460,26 @@ def render_home(feed):
     if standings["conferences"]:
         st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
                     'Island leaders</div>', unsafe_allow_html=True)
-        cols = st.columns(len(standings["conferences"]), gap="large")
-        for col, conf in zip(cols, standings["conferences"]):
+
+        def leader(conf):
             meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
             top = conf["table"][0] if conf["table"] else None
-            with col:
-                if top:
-                    col.markdown(
-                        f'<div class="leader" style="border-left-color:{top["primary"]}">'
-                        f'<div class="leader-isl">{meta["flag"]} {conf["island"]}</div>'
-                        f'<div class="leader-name">{dot(top["primary"])}{top["shpl_name"]}</div>'
-                        f'<div class="leader-pts">{top["points"]} pts · {top["wins"]}-{top["draws"]}-{top["losses"]}</div>'
-                        f'</div>', unsafe_allow_html=True)
+            if top:
+                st.markdown(
+                    f'<div class="leader" style="border-left-color:{top["primary"]}">'
+                    f'<div class="leader-isl">{meta["flag"]} {conf["island"]}</div>'
+                    f'<div class="leader-name">{dot(top["primary"])}{top["shpl_name"]}</div>'
+                    f'<div class="leader-pts">{top["points"]} pts · {top["wins"]}-{top["draws"]}-{top["losses"]}</div>'
+                    f'</div>', unsafe_allow_html=True)
+
+        if ncols == 1:
+            for conf in standings["conferences"]:
+                leader(conf)
+        else:
+            cols = st.columns(len(standings["conferences"]), gap="large")
+            for col, conf in zip(cols, standings["conferences"]):
+                with col:
+                    leader(conf)
 
     # Next few fixtures
     matches = datafeed.get_matches(feed)
@@ -680,7 +728,12 @@ def _playoff_gate(feed):
 
 
 def sidebar_nav(seasons, playoffs_open, unlock_date):
-    """Render the sidebar navigation (button menu). Returns (page, season)."""
+    """Render the sidebar navigation (button menu). Returns (page, season).
+
+    Device and season live in plain session keys ('device' / 'season_year') that
+    survive across reruns; the selectboxes just read/write them. (Widget-keyed
+    state gets cleared when a nav-button rerun aborts before the widget renders.)
+    """
     st.session_state.setdefault("page", "🏠 Home")
     season = None
     with st.sidebar:
@@ -698,27 +751,59 @@ def sidebar_nav(seasons, playoffs_open, unlock_date):
         if not playoffs_open and unlock_date:
             st.caption(f"🥇 Playoffs open ~{unlock_date.strftime('%d %b')}")
 
+        st.divider()
+        dev_default = st.session_state.get("device", "💻 Laptop")
+        if dev_default not in DEVICES:
+            dev_default = "💻 Laptop"
+        st.session_state["device"] = st.selectbox(
+            "Device", DEVICES, index=DEVICES.index(dev_default), key="device_widget")
+
         if len(seasons) > 1:
-            st.divider()
             current = max(seasons)
             opts = [str(y) for y in sorted(seasons, reverse=True)]
             labels = {str(y): (f"{y}  ·  current" if y == current else str(y)) for y in seasons}
-            choice = st.selectbox("Season", opts, format_func=lambda y: labels[y], key="season")
+            sea_default = st.session_state.get("season_year", str(current))
+            if sea_default not in opts:
+                sea_default = str(current)
+            choice = st.selectbox("Season", opts, index=opts.index(sea_default),
+                                  format_func=lambda y: labels[y], key="season_widget")
+            st.session_state["season_year"] = choice
             yr = int(choice)
             season = None if yr == current else yr
-        st.divider()
+
         if st.button("🔄 Refresh data", use_container_width=True, key="refresh"):
             st.cache_data.clear()
             st.rerun()
     return st.session_state.page, season
 
 
+def device_prompt():
+    st.markdown('<p class="hero-title">⚽ St.&nbsp;Helena Premier League</p>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-sub">First — what are you viewing this on? '
+                'This sizes everything to fit your screen.</p>', unsafe_allow_html=True)
+    st.write("")
+    cols = st.columns(len(DEVICES))
+    for c, dev in zip(cols, DEVICES):
+        if c.button(dev, use_container_width=True, key=f"pick_{dev}"):
+            st.session_state.device = dev
+            st.rerun()
+    st.caption("You can change this any time in the sidebar.")
+
+
 def main():
+    # First visit each session: ask what device they're on, then size to fit.
+    if "device" not in st.session_state:
+        device_prompt()
+        return
+    device = st.session_state.device
+    apply_device_css(device)
+    ncols = device_cols(device)
+
     seasons = load_seasons()
     current_year = max(seasons) if seasons else None
 
-    # Which season is selected (persisted by the selectbox key)?
-    sel = st.session_state.get("season")
+    # Which season is selected (persisted in a plain session key)?
+    sel = st.session_state.get("season_year")
     selected_year = int(sel) if sel is not None else None
     viewing_archive = (selected_year is not None and current_year is not None
                        and selected_year != current_year)
@@ -779,12 +864,12 @@ def main():
         st.session_state.selected_club = None
 
     if page == "🏠 Home":
-        render_home(feed)
+        render_home(feed, ncols)
     elif page == "🏆 Tables":
         st.markdown('<div class="hint">Standings for each island, updating as results come in.</div>',
                     unsafe_allow_html=True)
         if standings["conferences"]:
-            render_standings(standings)
+            render_standings(standings, ncols)
         else:
             st.warning("Standings could not be loaded. Try the Refresh button.")
     elif page == "⚽ Matches":
