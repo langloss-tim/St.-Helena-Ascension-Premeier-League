@@ -11,7 +11,7 @@ UI — the site stands entirely on its own as the St. Helena Premier League.
 Run locally:  streamlit run app.py
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import streamlit as st
@@ -650,19 +650,54 @@ def _series_html(s, big=False):
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-def sidebar_nav(seasons):
-    """Render the sidebar navigation. Returns (page, season) where season is None
-    for the current/live season or a year for an archived one."""
+NAV_ITEMS = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs"]
+
+
+def _playoff_gate(feed):
+    """When should the Playoffs tab open? Returns (is_open, unlock_date, start_date).
+
+    Opens ~21 days before the playoffs start. The start is the first postseason
+    game once ESPN schedules them, otherwise estimated a few days after the last
+    regular-season game (Decision Day)."""
+    if not feed:
+        return (False, None, None)
+    matches = datafeed.get_matches(feed)
+    today = datetime.now(LOCAL_TZ).date()
+
+    post = [m["start"] for m in matches
+            if (m.get("season_slug") or "regular-season") not in
+            ("regular-season", "", "pre-season", "preseason") and m["start"]]
+    if post:
+        start = min(post).astimezone(LOCAL_TZ).date()
+    else:
+        reg = [m["start"] for m in matches if m["start"]]
+        if not reg:
+            return (False, None, None)
+        start = max(reg).astimezone(LOCAL_TZ).date() + timedelta(days=5)
+
+    unlock = start - timedelta(days=21)
+    return (today >= unlock, unlock, start)
+
+
+def sidebar_nav(seasons, playoffs_open, unlock_date):
+    """Render the sidebar navigation (button menu). Returns (page, season)."""
+    st.session_state.setdefault("page", "🏠 Home")
     season = None
     with st.sidebar:
         st.markdown('<div class="side-title">⚽ SHPL</div>', unsafe_allow_html=True)
         st.markdown('<div class="side-sub">St. Helena Premier League</div>', unsafe_allow_html=True)
         st.divider()
-        page = st.radio(
-            "Go to", ["🏠 Home", "🏆 Tables", "⚽ Matches", "🥇 Playoffs", "🛡️ Clubs"],
-            label_visibility="collapsed",
-            key="nav",
-        )
+        for item in NAV_ITEMS:
+            locked = (item == "🥇 Playoffs" and not playoffs_open)
+            label = "🔒 Playoffs" if locked else item
+            active = (st.session_state.page == item)
+            if st.button(label, key=f"nav_{item}", use_container_width=True,
+                         disabled=locked, type=("primary" if active else "secondary")):
+                st.session_state.page = item
+                st.rerun()
+        if not playoffs_open and unlock_date:
+            st.caption(f"🥇 Playoffs open ~{unlock_date.strftime('%d %b')}")
+
         if len(seasons) > 1:
             st.divider()
             current = max(seasons)
@@ -672,21 +707,50 @@ def sidebar_nav(seasons):
             yr = int(choice)
             season = None if yr == current else yr
         st.divider()
-        if st.button("🔄 Refresh data", use_container_width=True):
+        if st.button("🔄 Refresh data", use_container_width=True, key="refresh"):
             st.cache_data.clear()
             st.rerun()
-    return page, season
+    return st.session_state.page, season
 
 
 def main():
     seasons = load_seasons()
-    page, season = sidebar_nav(seasons)
+    current_year = max(seasons) if seasons else None
 
+    # Which season is selected (persisted by the selectbox key)?
+    sel = st.session_state.get("season")
+    selected_year = int(sel) if sel is not None else None
+    viewing_archive = (selected_year is not None and current_year is not None
+                       and selected_year != current_year)
+
+    # Playoff gate is based on the current/live season; archived seasons are
+    # always viewable (their playoffs already happened).
     try:
-        feed = load_feed(season)
-    except datafeed.FeedUnavailable as e:
-        feed = None
-        st.error(f"Scores are temporarily unavailable: {e}")
+        current_feed = load_feed(None)
+    except datafeed.FeedUnavailable:
+        current_feed = None
+    gate_open, unlock, _start = _playoff_gate(current_feed)
+    playoffs_open = gate_open or viewing_archive
+
+    page, season = sidebar_nav(seasons, playoffs_open, unlock)
+
+    # Safety: never land on a locked Playoffs page.
+    if page == "🥇 Playoffs" and not playoffs_open:
+        page = st.session_state.page = "🏠 Home"
+
+    if season is None:
+        feed = current_feed
+        if feed is None:
+            try:
+                feed = load_feed(None)
+            except datafeed.FeedUnavailable as e:
+                st.error(f"Scores are temporarily unavailable: {e}")
+    else:
+        try:
+            feed = load_feed(season)
+        except datafeed.FeedUnavailable as e:
+            feed = None
+            st.error(f"Scores are temporarily unavailable: {e}")
 
     # Status line in the sidebar (needs the loaded feed).
     gen = datafeed.generated_at(feed) if feed else None
