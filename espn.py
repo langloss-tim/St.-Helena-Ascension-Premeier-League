@@ -23,7 +23,21 @@ import teams
 SITE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1"
 CORE = "https://site.api.espn.com/apis/v2/sports/soccer/usa.1"
 TIMEOUT = 12
-HEADERS = {"User-Agent": "SHPL/1.0 (+streamlit)"}
+
+# ESPN's CDN blocks requests from datacenter IPs (e.g. Streamlit Cloud) unless
+# they look like a real browser. These headers mimic Chrome so the public feed
+# answers us from the cloud the same way it does from a home connection.
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.espn.com/soccer/",
+    "Origin": "https://www.espn.com",
+    "Connection": "keep-alive",
+}
 
 
 class ESPNError(RuntimeError):
