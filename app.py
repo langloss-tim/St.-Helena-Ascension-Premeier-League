@@ -11,10 +11,12 @@ UI — the site stands entirely on its own as the St. Helena Premier League.
 Run locally:  streamlit run app.py
 """
 
+import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import bracket
 import facts
@@ -325,19 +327,129 @@ def _standings_html(rows):
 # --------------------------------------------------------------------------- #
 # Matches page
 # --------------------------------------------------------------------------- #
+LIVE_HTML = r"""
+<style>
+  :root{ color-scheme: dark; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+        color:#eef1f6; background:transparent; }
+  .stamp{ font-size:.85rem; color:#8b93a1; margin:0 0 .8rem; }
+  .empty{ border:1px dashed rgba(255,255,255,.15); border-radius:16px; padding:2rem 1.2rem;
+          text-align:center; color:#aab2bf; font-size:1.15rem; }
+  .empty span{ display:block; margin-top:.5rem; font-size:.95rem; color:#7d8593; }
+  .lg{ border:1px solid rgba(228,87,46,.5); border-left:6px solid #e4572e; border-radius:16px;
+       background:#161b26; padding:1rem 1.2rem; margin-bottom:1rem; }
+  .min{ color:#fff; background:#e4572e; display:inline-block; padding:.15rem .6rem; border-radius:99px;
+        font-size:.8rem; font-weight:800; letter-spacing:.4px; margin-bottom:.6rem; }
+  .row{ display:flex; align-items:center; justify-content:space-between; padding:.2rem 0; }
+  .tm{ display:flex; align-items:center; gap:.55rem; font-size:1.35rem; font-weight:700; }
+  .tm i{ width:16px; height:16px; border-radius:50%; display:inline-block;
+         box-shadow:inset 0 0 0 2px rgba(255,255,255,.25); }
+  .tm em{ font-style:normal; font-size:.65rem; font-weight:800; letter-spacing:.5px; color:#8b93a1;
+          background:rgba(255,255,255,.06); padding:.1rem .4rem; border-radius:99px; }
+  .row b{ font-size:1.8rem; font-variant-numeric:tabular-nums; }
+  .poss{ display:flex; height:9px; border-radius:99px; overflow:hidden; margin:.7rem 0 .3rem; }
+  .plabel{ display:flex; justify-content:space-between; font-size:.8rem; color:#aab2bf; }
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.8rem; }
+  .s{ display:flex; align-items:center; justify-content:space-between; background:#10141d;
+      border-radius:10px; padding:.45rem .7rem; }
+  .s span{ font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; }
+  .s small{ color:#8b93a1; font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; }
+</style>
+<div class="stamp" id="stamp">Loading live matches…</div>
+<div id="app"></div>
+<script>
+  const TEAMS = __TEAMS__;
+  const SB = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard";
+  const SUM = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/summary?event=";
+  const nm = id => (TEAMS[id]||{}).name || null;
+  const col = id => (TEAMS[id]||{}).color || "#888";
+  const val = (s,id,k) => (s[id] && s[id][k] != null) ? s[id][k] : "0";
+
+  async function statsFor(id){
+    try{
+      const d = await (await fetch(SUM+id)).json();
+      const out = {};
+      ((d.boxscore && d.boxscore.teams) || []).forEach(t => {
+        const tid = t.team && t.team.id; const m = {};
+        (t.statistics || []).forEach(s => { m[s.name] = s.displayValue; });
+        if(tid) out[tid] = m;
+      });
+      return out;
+    }catch(e){ return {}; }
+  }
+  function statCell(label,h,a){ return '<div class="s"><span>'+h+'</span><small>'+label+'</small><span>'+a+'</span></div>'; }
+  function card(home, away, status, s){
+    const hi = home.team.id, ai = away.team.id;
+    let hp = parseFloat(val(s,hi,"possessionPct")); if(isNaN(hp)) hp = 50;
+    let ap = parseFloat(val(s,ai,"possessionPct")); if(isNaN(ap)) ap = 100 - hp;
+    return '<div class="lg">'
+      + '<div class="min">● ' + status + '</div>'
+      + '<div class="row"><span class="tm"><i style="background:'+col(hi)+'"></i>'+nm(hi)+' <em>HOME</em></span><b>'+home.score+'</b></div>'
+      + '<div class="row"><span class="tm"><i style="background:'+col(ai)+'"></i>'+nm(ai)+' <em>AWAY</em></span><b>'+away.score+'</b></div>'
+      + '<div class="poss"><div style="width:'+hp+'%;background:'+col(hi)+'"></div><div style="width:'+ap+'%;background:'+col(ai)+'"></div></div>'
+      + '<div class="plabel"><span>Possession '+Math.round(hp)+'%</span><span>'+Math.round(ap)+'%</span></div>'
+      + '<div class="grid">'
+      + statCell("Shots", val(s,hi,"totalShots"), val(s,ai,"totalShots"))
+      + statCell("On target", val(s,hi,"shotsOnTarget"), val(s,ai,"shotsOnTarget"))
+      + statCell("Corners", val(s,hi,"wonCorners"), val(s,ai,"wonCorners"))
+      + statCell("Fouls", val(s,hi,"foulsCommitted"), val(s,ai,"foulsCommitted"))
+      + statCell("Yellow", val(s,hi,"yellowCards"), val(s,ai,"yellowCards"))
+      + statCell("Saves", val(s,hi,"saves"), val(s,ai,"saves"))
+      + '</div></div>';
+  }
+  async function render(){
+    const el = document.getElementById("app");
+    try{
+      const d = await (await fetch(SB)).json();
+      const evs = (d.events||[]).filter(e => e.status.type.state === "in");
+      const live = evs.filter(e => {
+        const c = e.competitions[0].competitors;
+        return nm(c[0].team.id) && nm(c[1].team.id);
+      });
+      if(!live.length){
+        el.innerHTML = '<div class="empty">No matches are live right now.'
+          + '<span>Live scores and in-game stats appear here automatically the moment a game kicks off.</span></div>';
+      } else {
+        let html = "";
+        for(const e of live){
+          const c = e.competitions[0].competitors;
+          const home = c.find(x=>x.homeAway==="home"), away = c.find(x=>x.homeAway==="away");
+          const status = e.status.type.detail || e.status.type.shortDetail || "LIVE";
+          const s = await statsFor(e.id);
+          html += card(home, away, status, s);
+        }
+        el.innerHTML = html;
+      }
+      document.getElementById("stamp").textContent = "Live · updates every 30s · " + new Date().toLocaleTimeString();
+    }catch(err){
+      document.getElementById("stamp").textContent = "Could not reach the live feed — retrying…";
+    }
+  }
+  render();
+  setInterval(render, 30000);
+</script>
+"""
+
+
+def live_component():
+    tmap = {t.espn_id: {"name": t.shpl_name, "color": t.primary} for t in teams.TEAMS}
+    html = LIVE_HTML.replace("__TEAMS__", json.dumps(tmap))
+    components.html(html, height=760, scrolling=True)
+
+
 def render_matches(matches, feed):
     live = [m for m in matches if m["state"] == "in"]
     upcoming = [m for m in matches if m["state"] == "pre"]
     past = [m for m in matches if m["state"] == "post"]
 
     tab_live, tab_up, tab_past = st.tabs(
-        [f"🔴 Live ({len(live)})", f"📅 Upcoming ({len(upcoming)})", f"✅ Results ({len(past)})"]
+        ["🔴 Live", f"📅 Upcoming ({len(upcoming)})", f"✅ Results ({len(past)})"]
     )
     with tab_live:
-        if not live:
-            st.info("No matches are being played right now — check the Upcoming tab for what's next.")
-        else:
-            _render_day_groups(live, feed, show_prob=False, newest_first=False)
+        st.markdown('<div class="hint">Real-time scores and in-game stats, straight from the pitch.</div>',
+                    unsafe_allow_html=True)
+        live_component()
     with tab_up:
         if not upcoming:
             st.info("No upcoming fixtures.")
