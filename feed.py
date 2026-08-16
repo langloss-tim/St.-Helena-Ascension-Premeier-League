@@ -24,7 +24,14 @@ import espn
 GH_OWNER = "langloss-tim"
 GH_REPO = "St.-Helena-Ascension-Premeier-League"
 GH_BRANCH = "data"
-FEED_URL = f"https://raw.githubusercontent.com/{GH_OWNER}/{GH_REPO}/{GH_BRANCH}/feed.json"
+_RAW = f"https://raw.githubusercontent.com/{GH_OWNER}/{GH_REPO}/{GH_BRANCH}"
+FEED_URL = f"{_RAW}/feed.json"
+SEASONS_URL = f"{_RAW}/seasons.json"
+
+
+def _archive_url(season):
+    return f"{_RAW}/feed-{season}.json"
+
 
 _TIMEOUT = 12
 
@@ -51,18 +58,34 @@ def _hydrate_matches(raw_matches):
     return out
 
 
-def load_feed():
-    """Return the whole snapshot dict, or raise FeedUnavailable.
+def load_seasons():
+    """Return a sorted list of season years that have an archived feed, or []."""
+    try:
+        r = requests.get(SEASONS_URL, timeout=_TIMEOUT)
+        if r.status_code == 200:
+            data = r.json()
+            if isinstance(data, list):
+                return sorted({int(x) for x in data})
+    except (requests.RequestException, ValueError, TypeError):
+        pass
+    return []
 
+
+def load_feed(season=None):
+    """Return a season snapshot dict, or raise FeedUnavailable.
+
+    season=None loads the current/live feed. A specific year loads that season's
+    archive (falling back to the current feed if the archive is missing).
     Order: published data branch -> local feed.json -> live fetch.
     """
-    # 1) published feed on the data branch
-    try:
-        r = requests.get(FEED_URL, timeout=_TIMEOUT)
-        if r.status_code == 200:
-            return r.json()
-    except (requests.RequestException, ValueError):
-        pass
+    urls = [FEED_URL] if season is None else [_archive_url(season), FEED_URL]
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=_TIMEOUT)
+            if r.status_code == 200:
+                return r.json()
+        except (requests.RequestException, ValueError):
+            continue
 
     # 2) local snapshot (handy for local dev / offline)
     if os.path.exists("feed.json"):

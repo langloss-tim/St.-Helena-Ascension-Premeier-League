@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
+import bracket
 import facts
 import feed as datafeed
 import teams
@@ -40,8 +41,13 @@ ISLAND_META = {
 # Cached data (one snapshot powers every page)
 # --------------------------------------------------------------------------- #
 @st.cache_data(ttl=120, show_spinner=False)
-def load_feed():
-    return datafeed.load_feed()
+def load_feed(season=None):
+    return datafeed.load_feed(season)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_seasons():
+    return datafeed.load_seasons()
 
 
 # --------------------------------------------------------------------------- #
@@ -141,12 +147,16 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .ha.home{ background:rgba(87,198,106,.18); color:#7fe08f; }
 .ha.away{ background:rgba(255,255,255,.08); color:var(--muted); }
 
-/* Fact of the day */
-.factcard{ border:1px solid var(--line); border-left:6px solid var(--accent); border-radius:18px;
-   padding:1.4rem 1.6rem; background:var(--panel); margin:.4rem 0 1.6rem; }
-.factlabel{ font-size:1.05rem; font-weight:800; color:var(--accent); letter-spacing:.3px;
-   text-transform:uppercase; margin-bottom:.5rem; }
-.facttext{ font-size:1.6rem; font-weight:600; line-height:1.35; }
+/* Fact of the day (two compact cards side by side) */
+.factrow{ display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin:.3rem 0 1.5rem; }
+@media (max-width:800px){ .factrow{ grid-template-columns:1fr; } }
+.factcard{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:14px;
+   padding:.9rem 1.1rem; background:var(--panel); }
+.factcard.sh{ border-left-color:#3d9be0; }
+.factlabel{ font-size:.82rem; font-weight:800; color:var(--accent); letter-spacing:.4px;
+   text-transform:uppercase; margin-bottom:.35rem; }
+.factlabel.sh{ color:#3d9be0; }
+.facttext{ font-size:1.1rem; font-weight:500; line-height:1.4; }
 
 /* Leaders */
 .leader{ border:1px solid var(--line); border-left-width:6px; border-radius:16px;
@@ -190,6 +200,24 @@ div[data-testid="stButton"] > button{ font-size:1.25rem !important; font-weight:
 .cm-score{ font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; }
 .cm-pred{ font-size:1.2rem; font-weight:700; color:var(--accent); }
 .cm-pred.muted{ color:var(--muted); font-weight:600; }
+
+/* Playoff bracket */
+.brk-cols{ display:flex; gap:1rem; overflow-x:auto; padding-bottom:.8rem; margin-bottom:1.4rem; }
+.brk-col{ flex:0 0 auto; min-width:230px; display:flex; flex-direction:column; gap:.7rem; }
+.brk-h{ font-size:1rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
+   color:var(--muted); padding-bottom:.3rem; border-bottom:1px solid var(--line); }
+.series{ border:1px solid var(--line); border-radius:13px; background:var(--panel); padding:.7rem .85rem; }
+.series.big{ max-width:420px; margin:0 auto; border-color:#f4c800; }
+.steam{ display:flex; align-items:center; gap:.5rem; font-size:1.2rem; font-weight:600; padding:.18rem 0; }
+.steam .seed{ font-size:.85rem; color:var(--muted); min-width:1.8rem; font-weight:700; }
+.steam .swins{ margin-left:auto; font-weight:800; font-variant-numeric:tabular-nums; }
+.steam .tbd{ color:var(--muted); font-weight:500; }
+.steam.win{ font-weight:800; }
+.steam.out{ opacity:.5; }
+.smeta{ font-size:.85rem; color:var(--muted); margin-top:.4rem; border-top:1px solid rgba(255,255,255,.05);
+   padding-top:.35rem; }
+.brk-final{ margin-bottom:1rem; }
+.brk-final .steam{ font-size:1.5rem; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -378,10 +406,13 @@ def _winbar_html(m, feed):
 # --------------------------------------------------------------------------- #
 def render_home(feed):
     day = datetime.now(LOCAL_TZ).timetuple().tm_yday
-    fact = facts.fact_for_day(day)
     st.markdown(
+        '<div class="factrow">'
         f'<div class="factcard"><div class="factlabel">⚽ Soccer fact of the day</div>'
-        f'<div class="facttext">{fact}</div></div>',
+        f'<div class="facttext">{facts.soccer_fact(day)}</div></div>'
+        f'<div class="factcard sh"><div class="factlabel sh">🇸🇭 St. Helena fact of the day</div>'
+        f'<div class="facttext">{facts.sthelena_fact(day)}</div></div>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
@@ -546,43 +577,131 @@ def _club_match_html(m, espn_id, feed):
 
 
 # --------------------------------------------------------------------------- #
+# Playoffs bracket
+# --------------------------------------------------------------------------- #
+def render_playoffs(feed):
+    standings = datafeed.get_standings(feed)
+    matches = datafeed.get_matches(feed)
+    brk = bracket.build_bracket(standings, matches)
+
+    if brk["has_postseason"]:
+        st.markdown('<div class="hint">The bracket updates automatically as playoff games are played — '
+                    'winners advance to the next round.</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="hint">🔮 Projected bracket. Seeding is provisional until the end of the '
+                    'regular season, then fills in game-by-game once the playoffs begin.</div>',
+                    unsafe_allow_html=True)
+
+    for conf in brk["conferences"]:
+        meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
+        st.markdown(
+            f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
+            f'{meta["flag"]} {conf["island"]}</div>', unsafe_allow_html=True)
+        cols = (
+            ('Wild Card', [conf["wc"]]),
+            ('Round One', conf["r1"]),
+            ('Semifinals', conf["sf"]),
+            ('Conference Final', [conf["cf"]]),
+        )
+        col_html = "".join(
+            f'<div class="brk-col"><div class="brk-h">{title}</div>'
+            + "".join(_series_html(s) for s in series) + '</div>'
+            for title, series in cols
+        )
+        st.markdown(f'<div class="brk-cols">{col_html}</div>', unsafe_allow_html=True)
+
+    if brk["final"]:
+        st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
+                    '🏆 Cup Final</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="brk-final">{_series_html(brk["final"], big=True)}</div>',
+                    unsafe_allow_html=True)
+
+
+def _series_html(s, big=False):
+    def team_row(slot, is_winner, wins):
+        cls = "steam"
+        if s["winner"]:
+            cls += " win" if is_winner else " out"
+        seed = f'<span class="seed">#{slot["seed"]}</span>' if slot.get("seed") else ""
+        if slot["team"]:
+            name = f'{dot(slot["team"]["primary"])}{slot["label"]}'
+        else:
+            name = f'<span class="tbd">{slot["label"]}</span>'
+        w = f'<span class="swins">{wins}</span>' if (s["best_of"] == 3 and s["games"]) else ""
+        chk = ' ✓' if (s["winner"] and is_winner) else ""
+        return f'<div class="{cls}">{seed}{name}{chk}{w}</div>'
+
+    if s["best_of"] == 3:
+        meta = f'Best of 3 · {s["awins"]}–{s["bwins"]}' if s["games"] else 'Best of 3'
+    else:
+        if s["games"]:
+            g = s["games"][-1]
+            meta = f'{g["home"]["score"]}–{g["away"]["score"]}'
+        else:
+            meta = 'Single game'
+
+    cls = "series big" if big else "series"
+    return (f'<div class="{cls}">'
+            f'{team_row(s["a"], s["winner"] == "A", s["awins"])}'
+            f'{team_row(s["b"], s["winner"] == "B", s["bwins"])}'
+            f'<div class="smeta">{meta}</div></div>')
+
+
+# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-def sidebar(feed):
-    """Navigation + status. Returns the selected page."""
+def sidebar_nav(seasons):
+    """Render the sidebar navigation. Returns (page, season) where season is None
+    for the current/live season or a year for an archived one."""
+    season = None
     with st.sidebar:
         st.markdown('<div class="side-title">⚽ SHPL</div>', unsafe_allow_html=True)
         st.markdown('<div class="side-sub">St. Helena Premier League</div>', unsafe_allow_html=True)
         st.divider()
         page = st.radio(
-            "Go to", ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs"],
+            "Go to", ["🏠 Home", "🏆 Tables", "⚽ Matches", "🥇 Playoffs", "🛡️ Clubs"],
             label_visibility="collapsed",
             key="nav",
         )
+        if len(seasons) > 1:
+            st.divider()
+            current = max(seasons)
+            opts = [str(y) for y in sorted(seasons, reverse=True)]
+            labels = {str(y): (f"{y}  ·  current" if y == current else str(y)) for y in seasons}
+            choice = st.selectbox("Season", opts, format_func=lambda y: labels[y], key="season")
+            yr = int(choice)
+            season = None if yr == current else yr
         st.divider()
         if st.button("🔄 Refresh data", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-
-        gen = datafeed.generated_at(feed) if feed else None
-        if gen:
-            st.caption(f"Scores updated\n\n**{gen.astimezone(LOCAL_TZ).strftime('%a %d %b · %H:%M')}** (St. Helena time)")
-        else:
-            st.caption(f"Loaded {datetime.now(LOCAL_TZ).strftime('%d %b · %H:%M')}")
-    return page
+    return page, season
 
 
 def main():
+    seasons = load_seasons()
+    page, season = sidebar_nav(seasons)
+
     try:
-        feed = load_feed()
+        feed = load_feed(season)
     except datafeed.FeedUnavailable as e:
         feed = None
         st.error(f"Scores are temporarily unavailable: {e}")
 
-    season = feed["season"] if feed else ""
-    page = sidebar(feed)
+    # Status line in the sidebar (needs the loaded feed).
+    gen = datafeed.generated_at(feed) if feed else None
+    if season is not None and feed:
+        st.sidebar.caption(f"📚 Viewing the {feed.get('season', '')} season (archived)")
+    elif gen:
+        st.sidebar.caption(f"Scores updated\n\n**{gen.astimezone(LOCAL_TZ).strftime('%a %d %b · %H:%M')}** (St. Helena time)")
+    else:
+        st.sidebar.caption(f"Loaded {datetime.now(LOCAL_TZ).strftime('%d %b · %H:%M')}")
 
-    header(season)
+    header(feed["season"] if feed else "")
+
+    if season is not None and feed:
+        st.info(f"📚 You're viewing the **{feed.get('season', '')}** season (archived). "
+                "Switch back to the current season in the sidebar.")
     st.divider()
 
     if feed is None:
@@ -608,6 +727,8 @@ def main():
         st.markdown('<div class="hint">Live, upcoming and recent fixtures — times shown in St. Helena time.</div>',
                     unsafe_allow_html=True)
         render_matches(datafeed.get_matches(feed), feed)
+    elif page == "🥇 Playoffs":
+        render_playoffs(feed)
     else:  # Clubs
         if st.session_state.get("selected_club"):
             render_club_detail(feed, st.session_state.selected_club)

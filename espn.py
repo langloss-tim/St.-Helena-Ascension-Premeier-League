@@ -189,7 +189,14 @@ def get_matches(days_back=7, days_ahead=14, start=None, end=None):
                 away = side
         if not home or not away:
             continue
+        # Only league fixtures: both sides must be SHPL clubs. This drops
+        # All-Star games, friendlies and cross-league cup ties (and with them
+        # any non-league team names).
+        if not (teams.team_by_espn_id(home["espn_id"]) and teams.team_by_espn_id(away["espn_id"])):
+            continue
 
+        season = ev.get("season") or {}
+        notes = comp.get("notes") or []
         matches.append({
             "id": str(ev.get("id", "")),
             "state": status.get("state", "pre"),
@@ -197,6 +204,8 @@ def get_matches(days_back=7, days_ahead=14, start=None, end=None):
             "start": _parse_dt(ev.get("date")),
             "completed": bool(status.get("completed", False)),
             "venue": (comp.get("venue") or {}).get("fullName", ""),
+            "season_slug": season.get("slug", "regular-season"),
+            "note": (notes[0].get("headline", "") if notes else ""),
             "home": home,
             "away": away,
         })
