@@ -12,9 +12,10 @@ Run locally:  streamlit run app.py
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -50,6 +51,45 @@ def load_feed(season=None):
 @st.cache_data(ttl=600, show_spinner=False)
 def load_seasons():
     return datafeed.load_seasons()
+
+
+# Weather ------------------------------------------------------------------- #
+WMO = {
+    0: ("☀️", "Clear"), 1: ("🌤️", "Mainly clear"), 2: ("⛅", "Partly cloudy"),
+    3: ("☁️", "Overcast"), 45: ("🌫️", "Fog"), 48: ("🌫️", "Fog"),
+    51: ("🌦️", "Light drizzle"), 53: ("🌦️", "Drizzle"), 55: ("🌦️", "Drizzle"),
+    56: ("🌦️", "Freezing drizzle"), 57: ("🌦️", "Freezing drizzle"),
+    61: ("🌧️", "Light rain"), 63: ("🌧️", "Rain"), 65: ("🌧️", "Heavy rain"),
+    66: ("🌧️", "Freezing rain"), 67: ("🌧️", "Freezing rain"),
+    71: ("🌨️", "Light snow"), 73: ("🌨️", "Snow"), 75: ("🌨️", "Heavy snow"),
+    80: ("🌦️", "Showers"), 81: ("🌦️", "Showers"), 82: ("⛈️", "Heavy showers"),
+    95: ("⛈️", "Thunderstorm"), 96: ("⛈️", "Thunderstorm"), 99: ("⛈️", "Thunderstorm"),
+}
+WEATHER_LOCATIONS = [
+    ("St. Helena", "🇸🇭", -15.93, -5.72),
+    ("Ascension", "🇦🇨", -7.93, -14.42),
+]
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def load_weather():
+    out = []
+    for name, flag, lat, lon in WEATHER_LOCATIONS:
+        entry = {"name": name, "flag": flag, "temp": None, "code": None, "wind": None, "hum": None}
+        try:
+            r = requests.get(
+                "https://api.open-meteo.com/v1/forecast",
+                params={"latitude": lat, "longitude": lon,
+                        "current": "temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m"},
+                timeout=8,
+            )
+            c = r.json()["current"]
+            entry.update(temp=round(c["temperature_2m"]), code=int(c["weather_code"]),
+                         wind=round(c["wind_speed_10m"]), hum=c.get("relative_humidity_2m"))
+        except Exception:
+            pass
+        out.append(entry)
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -160,6 +200,25 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
    text-transform:uppercase; margin-bottom:.35rem; }
 .factlabel.sh{ color:#3d9be0; }
 .facttext{ font-size:1.1rem; font-weight:500; line-height:1.4; }
+
+/* Weather */
+.wxrow{ display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin:.2rem 0 1.4rem; }
+@media (max-width:800px){ .wxrow{ grid-template-columns:1fr; } }
+.wx{ display:flex; align-items:center; gap:1rem; border:1px solid var(--line); border-radius:14px;
+   padding:.9rem 1.2rem; background:var(--panel); }
+.wx-emoji{ font-size:2.6rem; line-height:1; }
+.wx-loc{ font-size:1.05rem; color:var(--muted); }
+.wx-temp{ font-size:2rem; font-weight:800; line-height:1.1; }
+.wx-sub{ font-size:.95rem; color:var(--muted); margin-top:.15rem; }
+
+/* Match of the Day */
+.motd{ border:1px solid var(--line); border-left:6px solid #f4c800; border-radius:18px;
+   padding:1.3rem 1.6rem; background:var(--panel); margin-bottom:1.6rem; }
+.motd-label{ font-size:1rem; font-weight:800; color:#f4c800; text-transform:uppercase;
+   letter-spacing:.4px; margin-bottom:.6rem; }
+.motd-teams{ display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; font-size:2rem; font-weight:800; }
+.motd-v{ color:var(--muted); font-weight:600; font-size:1.4rem; margin:0 .3rem; }
+.motd-when{ font-size:1.1rem; color:var(--muted); margin:.5rem 0 .2rem; }
 
 /* Leaders */
 .leader{ border:1px solid var(--line); border-left-width:6px; border-radius:16px;
@@ -355,6 +414,16 @@ LIVE_HTML = r"""
       border-radius:10px; padding:.45rem .7rem; }
   .s span{ font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; }
   .s small{ color:#8b93a1; font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; }
+  .forms{ text-align:center; color:#aab2bf; font-size:.95rem; margin:.55rem 0; letter-spacing:.3px; font-weight:600; }
+  .forms span{ color:#6c7482; font-weight:400; }
+  details.lu{ margin-top:.8rem; border-top:1px solid rgba(255,255,255,.07); padding-top:.55rem; }
+  details.lu summary{ cursor:pointer; color:#e4572e; font-weight:700; font-size:.95rem; }
+  .lu-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:.6rem; }
+  .lu-h{ font-weight:800; margin-bottom:.35rem; }
+  .pl{ font-size:.95rem; padding:.15rem 0; color:#dfe4ea; }
+  .pl .num{ display:inline-block; min-width:1.7rem; color:#8b93a1; font-variant-numeric:tabular-nums; }
+  .pl em{ font-style:normal; color:#8b93a1; font-size:.8rem; }
+  .noxi{ color:#8b93a1; font-size:.9rem; }
 </style>
 <div class="stamp" id="stamp">Loading live matches…</div>
 <div id="app"></div>
@@ -366,27 +435,52 @@ LIVE_HTML = r"""
   const col = id => (TEAMS[id]||{}).color || "#888";
   const val = (s,id,k) => (s[id] && s[id][k] != null) ? s[id][k] : "0";
 
-  async function statsFor(id){
+  async function summaryFor(id){
     try{
       const d = await (await fetch(SUM+id)).json();
-      const out = {};
+      const stats = {};
       ((d.boxscore && d.boxscore.teams) || []).forEach(t => {
         const tid = t.team && t.team.id; const m = {};
         (t.statistics || []).forEach(s => { m[s.name] = s.displayValue; });
-        if(tid) out[tid] = m;
+        if(tid) stats[tid] = m;
       });
-      return out;
-    }catch(e){ return {}; }
+      const lineups = {};
+      (d.rosters || []).forEach(t => {
+        const tid = t.team && t.team.id;
+        const starters = (t.roster || []).filter(a => a.starter).map(a => ({
+          name: (a.athlete && (a.athlete.displayName || a.athlete.shortName)) || "",
+          pos: (a.position && a.position.abbreviation) || "",
+          num: a.jersey || ""
+        }));
+        if(tid) lineups[tid] = { formation: t.formation || "", starters: starters };
+      });
+      return { stats: stats, lineups: lineups };
+    }catch(e){ return { stats:{}, lineups:{} }; }
   }
   function statCell(label,h,a){ return '<div class="s"><span>'+h+'</span><small>'+label+'</small><span>'+a+'</span></div>'; }
-  function card(home, away, status, s){
+  function xi(lu, id){
+    const st = ((lu[id] || {}).starters) || [];
+    if(!st.length) return '<div class="noxi">Line-up not posted yet.</div>';
+    return st.map(p => '<div class="pl"><span class="num">'+(p.num||'')+'</span>'+p.name+' <em>'+p.pos+'</em></div>').join("");
+  }
+  function card(home, away, status, sum){
+    const s = sum.stats, lu = sum.lineups;
     const hi = home.team.id, ai = away.team.id;
     let hp = parseFloat(val(s,hi,"possessionPct")); if(isNaN(hp)) hp = 50;
     let ap = parseFloat(val(s,ai,"possessionPct")); if(isNaN(ap)) ap = 100 - hp;
+    const hf = (lu[hi]||{}).formation || "", af = (lu[ai]||{}).formation || "";
+    const formLine = (hf || af) ? '<div class="forms">'+(hf||'—')+' <span>vs</span> '+(af||'—')+'</div>' : "";
+    const hasLu = lu[hi] || lu[ai];
+    const details = hasLu
+      ? '<details class="lu"><summary>Line-ups'+((hf||af)?' ('+(hf||'—')+' vs '+(af||'—')+')':'')+'</summary>'
+        + '<div class="lu-grid"><div><div class="lu-h">'+nm(hi)+'</div>'+xi(lu,hi)+'</div>'
+        + '<div><div class="lu-h">'+nm(ai)+'</div>'+xi(lu,ai)+'</div></div></details>'
+      : "";
     return '<div class="lg">'
       + '<div class="min">● ' + status + '</div>'
       + '<div class="row"><span class="tm"><i style="background:'+col(hi)+'"></i>'+nm(hi)+' <em>HOME</em></span><b>'+home.score+'</b></div>'
       + '<div class="row"><span class="tm"><i style="background:'+col(ai)+'"></i>'+nm(ai)+' <em>AWAY</em></span><b>'+away.score+'</b></div>'
+      + formLine
       + '<div class="poss"><div style="width:'+hp+'%;background:'+col(hi)+'"></div><div style="width:'+ap+'%;background:'+col(ai)+'"></div></div>'
       + '<div class="plabel"><span>Possession '+Math.round(hp)+'%</span><span>'+Math.round(ap)+'%</span></div>'
       + '<div class="grid">'
@@ -396,7 +490,7 @@ LIVE_HTML = r"""
       + statCell("Fouls", val(s,hi,"foulsCommitted"), val(s,ai,"foulsCommitted"))
       + statCell("Yellow", val(s,hi,"yellowCards"), val(s,ai,"yellowCards"))
       + statCell("Saves", val(s,hi,"saves"), val(s,ai,"saves"))
-      + '</div></div>';
+      + '</div>' + details + '</div>';
   }
   async function render(){
     const el = document.getElementById("app");
@@ -416,8 +510,8 @@ LIVE_HTML = r"""
           const c = e.competitions[0].competitors;
           const home = c.find(x=>x.homeAway==="home"), away = c.find(x=>x.homeAway==="away");
           const status = e.status.type.detail || e.status.type.shortDetail || "LIVE";
-          const s = await statsFor(e.id);
-          html += card(home, away, status, s);
+          const sum = await summaryFor(e.id);
+          html += card(home, away, status, sum);
         }
         el.innerHTML = html;
       }
@@ -439,6 +533,26 @@ def live_component():
 
 
 def render_matches(matches, feed):
+    focus = st.session_state.get("focus_day")
+    if focus:
+        try:
+            fd = date.fromisoformat(focus)
+        except ValueError:
+            fd = None
+        if fd:
+            if st.button("← Show all matches"):
+                st.session_state.focus_day = None
+                st.rerun()
+            st.markdown(f'<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
+                        f'{_day_label(fd)}</div>', unsafe_allow_html=True)
+            day_matches = [m for m in matches
+                           if m["start"] and m["start"].astimezone(LOCAL_TZ).date() == fd]
+            if day_matches:
+                _render_day_groups(day_matches, feed, show_prob=True, newest_first=False)
+            else:
+                st.info("No matches on that day.")
+            return
+
     live = [m for m in matches if m["state"] == "in"]
     upcoming = [m for m in matches if m["state"] == "pre"]
     past = [m for m in matches if m["state"] == "post"]
@@ -556,7 +670,40 @@ def _winbar_html(m, feed):
 # --------------------------------------------------------------------------- #
 # Home page
 # --------------------------------------------------------------------------- #
+def match_of_the_day(feed):
+    """Pick a featured upcoming fixture: the most evenly-matched one with odds,
+    else the next fixture. Returns (match, winprob_or_None) or None."""
+    up = [m for m in datafeed.get_matches(feed) if m["state"] == "pre"]
+    if not up:
+        return None
+    scored = []
+    for m in up[:40]:
+        wp = datafeed.get_win_probabilities(feed, m["id"])
+        if wp:
+            scored.append((abs(wp["home_pct"] - wp["away_pct"]), m, wp))
+    if scored:
+        scored.sort(key=lambda x: x[0])
+        return scored[0][1], scored[0][2]
+    return up[0], None
+
+
+def render_weather():
+    cards = ""
+    for w in load_weather():
+        emoji, desc = WMO.get(w["code"], ("🌡️", "—")) if w["code"] is not None else ("🌡️", "Unavailable")
+        temp = f'{w["temp"]}°C' if w["temp"] is not None else "—"
+        extra = ""
+        if w["temp"] is not None:
+            extra = f'<div class="wx-sub">{desc} · 💨 {w["wind"]} km/h · 💧 {w["hum"]}%</div>'
+        cards += (f'<div class="wx"><div class="wx-emoji">{emoji}</div>'
+                  f'<div><div class="wx-loc">{w["flag"]} {w["name"]}</div>'
+                  f'<div class="wx-temp">{temp}</div>{extra}</div></div>')
+    st.markdown(f'<div class="wxrow">{cards}</div>', unsafe_allow_html=True)
+
+
 def render_home(feed, ncols=2):
+    render_weather()
+
     day = datetime.now(LOCAL_TZ).timetuple().tm_yday
     st.markdown(
         '<div class="factrow">'
@@ -567,6 +714,29 @@ def render_home(feed, ncols=2):
         '</div>',
         unsafe_allow_html=True,
     )
+
+    motd = match_of_the_day(feed)
+    if motd:
+        m, wp = motd
+        h, a = m["home"], m["away"]
+        bar = ""
+        if wp:
+            bar = ('<div class="wp"><div class="bar">'
+                   f'<div style="width:{wp["home_pct"]}%;background:{h["primary"]}"></div>'
+                   f'<div style="width:{wp["draw_pct"]}%;background:#7c8595"></div>'
+                   f'<div style="width:{wp["away_pct"]}%;background:{a["primary"]}"></div></div>'
+                   '<div class="labels">'
+                   f'<span>{h["shpl_name"]} · {wp["home_pct"]}%</span>'
+                   f'<span class="mid">Draw {wp["draw_pct"]}%</span>'
+                   f'<span>{wp["away_pct"]}% · {a["shpl_name"]}</span></div></div>')
+        st.markdown(
+            '<div class="motd"><div class="motd-label">⭐ Match of the Day</div>'
+            f'<div class="motd-teams">{dot(h["primary"])}{h["shpl_name"]}'
+            f'<span class="motd-v">v</span>{dot(a["primary"])}{a["shpl_name"]}</div>'
+            f'<div class="motd-when">🕓 {_fmt_kickoff(m["start"])} · {h["shpl_name"]} hosting</div>'
+            f'{bar}</div>',
+            unsafe_allow_html=True,
+        )
 
     standings = datafeed.get_standings(feed)
     if standings["conferences"]:
@@ -839,7 +1009,35 @@ def _playoff_gate(feed):
     return (today >= unlock, unlock, start)
 
 
-def sidebar_nav(seasons, playoffs_open, unlock_date):
+def _search_box(search_feed):
+    """A club / match-day finder. Shows jump buttons for matches."""
+    q = st.text_input("🔎 Find a club or match day", key="q_widget",
+                      placeholder="e.g. Bellboys or 16 Aug", label_visibility="collapsed")
+    ql = (q or "").strip().lower()
+    if not ql:
+        return
+    club_hits = [t for t in teams.TEAMS if ql in t.shpl_name.lower()][:6]
+    for t in club_hits:
+        if st.button(f"🛡️ {t.shpl_name}", key=f"s_{t.espn_id}", use_container_width=True):
+            st.session_state.selected_club = t.espn_id
+            st.session_state.page = "🛡️ Clubs"
+            st.rerun()
+    day_hits, seen = [], set()
+    for m in (datafeed.get_matches(search_feed) if search_feed else []):
+        d = m["start"].astimezone(LOCAL_TZ).date() if m["start"] else None
+        if d and d not in seen and ql in _day_label(d).lower():
+            day_hits.append(d)
+            seen.add(d)
+    for d in day_hits[:5]:
+        if st.button(f"📅 {_day_label(d)}", key=f"sd_{d.isoformat()}", use_container_width=True):
+            st.session_state.focus_day = d.isoformat()
+            st.session_state.page = "⚽ Matches"
+            st.rerun()
+    if not club_hits and not day_hits:
+        st.caption("No clubs or match days match that.")
+
+
+def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
     """Render the sidebar navigation (button menu). Returns (page, season).
 
     Device and season live in plain session keys ('device' / 'season_year') that
@@ -851,6 +1049,8 @@ def sidebar_nav(seasons, playoffs_open, unlock_date):
     with st.sidebar:
         st.markdown('<div class="side-title">⚽ SHPL</div>', unsafe_allow_html=True)
         st.markdown('<div class="side-sub">St. Helena Premier League</div>', unsafe_allow_html=True)
+        st.divider()
+        _search_box(search_feed)
         st.divider()
         for item in NAV_ITEMS:
             locked = (item == "🥇 Playoffs" and not playoffs_open)
@@ -929,7 +1129,7 @@ def main():
     gate_open, unlock, _start = _playoff_gate(current_feed)
     playoffs_open = gate_open or viewing_archive
 
-    page, season = sidebar_nav(seasons, playoffs_open, unlock)
+    page, season = sidebar_nav(seasons, playoffs_open, unlock, current_feed)
 
     # Safety: never land on a locked Playoffs page.
     if page == "🥇 Playoffs" and not playoffs_open:
@@ -971,9 +1171,11 @@ def main():
 
     standings = datafeed.get_standings(feed)
 
-    # Leaving the Clubs section clears any drilled-in club.
+    # Leaving a section clears its drill-in state.
     if page != "🛡️ Clubs":
         st.session_state.selected_club = None
+    if page != "⚽ Matches":
+        st.session_state.focus_day = None
 
     if page == "🏠 Home":
         render_home(feed, ncols)
