@@ -414,16 +414,8 @@ LIVE_HTML = r"""
       border-radius:10px; padding:.45rem .7rem; }
   .s span{ font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; }
   .s small{ color:#8b93a1; font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; }
-  .forms{ text-align:center; color:#aab2bf; font-size:.95rem; margin:.55rem 0; letter-spacing:.3px; font-weight:600; }
+  .forms{ text-align:center; color:#aab2bf; font-size:1rem; margin:.6rem 0; letter-spacing:.3px; font-weight:700; }
   .forms span{ color:#6c7482; font-weight:400; }
-  details.lu{ margin-top:.8rem; border-top:1px solid rgba(255,255,255,.07); padding-top:.55rem; }
-  details.lu summary{ cursor:pointer; color:#e4572e; font-weight:700; font-size:.95rem; }
-  .lu-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:.6rem; }
-  .lu-h{ font-weight:800; margin-bottom:.35rem; }
-  .pl{ font-size:.95rem; padding:.15rem 0; color:#dfe4ea; }
-  .pl .num{ display:inline-block; min-width:1.7rem; color:#8b93a1; font-variant-numeric:tabular-nums; }
-  .pl em{ font-style:normal; color:#8b93a1; font-size:.8rem; }
-  .noxi{ color:#8b93a1; font-size:.9rem; }
 </style>
 <div class="stamp" id="stamp">Loading live matches…</div>
 <div id="app"></div>
@@ -445,36 +437,24 @@ LIVE_HTML = r"""
         if(tid) stats[tid] = m;
       });
       const lineups = {};
+      // Only the formation shape (e.g. "4-3-2-1") — never player names.
       (d.rosters || []).forEach(t => {
         const tid = t.team && t.team.id;
-        const starters = (t.roster || []).filter(a => a.starter).map(a => ({
-          name: (a.athlete && (a.athlete.displayName || a.athlete.shortName)) || "",
-          pos: (a.position && a.position.abbreviation) || "",
-          num: a.jersey || ""
-        }));
-        if(tid) lineups[tid] = { formation: t.formation || "", starters: starters };
+        if(tid) lineups[tid] = { formation: t.formation || "" };
       });
       return { stats: stats, lineups: lineups };
     }catch(e){ return { stats:{}, lineups:{} }; }
   }
   function statCell(label,h,a){ return '<div class="s"><span>'+h+'</span><small>'+label+'</small><span>'+a+'</span></div>'; }
-  function xi(lu, id){
-    const st = ((lu[id] || {}).starters) || [];
-    if(!st.length) return '<div class="noxi">Line-up not posted yet.</div>';
-    return st.map(p => '<div class="pl"><span class="num">'+(p.num||'')+'</span>'+p.name+' <em>'+p.pos+'</em></div>').join("");
-  }
   function card(home, away, status, sum){
     const s = sum.stats, lu = sum.lineups;
     const hi = home.team.id, ai = away.team.id;
     let hp = parseFloat(val(s,hi,"possessionPct")); if(isNaN(hp)) hp = 50;
     let ap = parseFloat(val(s,ai,"possessionPct")); if(isNaN(ap)) ap = 100 - hp;
     const hf = (lu[hi]||{}).formation || "", af = (lu[ai]||{}).formation || "";
-    const formLine = (hf || af) ? '<div class="forms">'+(hf||'—')+' <span>vs</span> '+(af||'—')+'</div>' : "";
-    const hasLu = lu[hi] || lu[ai];
-    const details = hasLu
-      ? '<details class="lu"><summary>Line-ups'+((hf||af)?' ('+(hf||'—')+' vs '+(af||'—')+')':'')+'</summary>'
-        + '<div class="lu-grid"><div><div class="lu-h">'+nm(hi)+'</div>'+xi(lu,hi)+'</div>'
-        + '<div><div class="lu-h">'+nm(ai)+'</div>'+xi(lu,ai)+'</div></div></details>'
+    // Formation shapes only — never player names (would give the source league away).
+    const formLine = (hf || af)
+      ? '<div class="forms">Formations &nbsp; '+(hf||'—')+' <span>vs</span> '+(af||'—')+'</div>'
       : "";
     return '<div class="lg">'
       + '<div class="min">● ' + status + '</div>'
@@ -490,7 +470,7 @@ LIVE_HTML = r"""
       + statCell("Fouls", val(s,hi,"foulsCommitted"), val(s,ai,"foulsCommitted"))
       + statCell("Yellow", val(s,hi,"yellowCards"), val(s,ai,"yellowCards"))
       + statCell("Saves", val(s,hi,"saves"), val(s,ai,"saves"))
-      + '</div>' + details + '</div>';
+      + '</div></div>';
   }
   async function render(){
     const el = document.getElementById("app");
