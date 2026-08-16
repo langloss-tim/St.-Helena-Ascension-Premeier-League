@@ -47,7 +47,7 @@ _TEAMS = [
     ("Inbetweeners",      "185",   "FC Dallas",               ASCENSION, "#E81F3E", "#0C2340"),
     ("Saints Club",       "184",   "Colorado Rapids",         ASCENSION, "#960A2C", "#8BB8E8"),
     ("Hearts Ascension",  "17362", "Minnesota United FC",     ASCENSION, "#8CD2F4", "#231F20"),
-    ("77 Angles",         "9723",  "Portland Timbers",        ASCENSION, "#00482B", "#D69A00"),
+    ("77 Angels",         "9723",  "Portland Timbers",        ASCENSION, "#00482B", "#D69A00"),
     ("Baked Bean Streamers","9726","Seattle Sounders FC",     ASCENSION, "#5D9741", "#236192"),
     ("MCR",               "22529", "San Diego FC",            ASCENSION, "#00AEEF", "#101820"),
     ("Encompass United",  "187",   "LA Galaxy",               ASCENSION, "#00245D", "#FBB515"),

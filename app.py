@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
+import facts
 import feed as datafeed
 import teams
 
@@ -133,6 +134,62 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
    display:flex; align-items:center; gap:.8rem; }
 
 .foot{ color:var(--muted); font-size:1.05rem; margin-top:.5rem; }
+
+/* Home / away tags */
+.ha{ font-size:.72rem; font-weight:800; letter-spacing:.5px; padding:.12rem .5rem;
+     border-radius:99px; margin-left:.2rem; vertical-align:middle; }
+.ha.home{ background:rgba(87,198,106,.18); color:#7fe08f; }
+.ha.away{ background:rgba(255,255,255,.08); color:var(--muted); }
+
+/* Fact of the day */
+.factcard{ border:1px solid var(--line); border-left:6px solid var(--accent); border-radius:18px;
+   padding:1.4rem 1.6rem; background:var(--panel); margin:.4rem 0 1.6rem; }
+.factlabel{ font-size:1.05rem; font-weight:800; color:var(--accent); letter-spacing:.3px;
+   text-transform:uppercase; margin-bottom:.5rem; }
+.facttext{ font-size:1.6rem; font-weight:600; line-height:1.35; }
+
+/* Leaders */
+.leader{ border:1px solid var(--line); border-left-width:6px; border-radius:16px;
+   padding:1.1rem 1.3rem; background:var(--panel); }
+.leader-isl{ font-size:1.05rem; color:var(--muted); margin-bottom:.4rem; }
+.leader-name{ font-size:1.9rem; font-weight:800; display:flex; align-items:center; gap:.6rem; }
+.leader-pts{ font-size:1.15rem; color:var(--muted); margin-top:.35rem; }
+
+/* Club buttons */
+div[data-testid="stButton"] > button{ font-size:1.25rem !important; font-weight:600 !important;
+   padding:.75rem 1rem !important; border-radius:13px !important; }
+
+/* Club detail */
+.club-hero{ border:1px solid var(--line); border-left-width:8px; border-radius:18px;
+   padding:1.3rem 1.6rem; background:var(--panel); margin:.6rem 0 1.2rem; }
+.club-hero-name{ font-size:2.6rem; font-weight:800; display:flex; align-items:center; gap:.7rem; }
+.club-hero-isl{ font-size:1.2rem; color:var(--muted); margin-top:.3rem; }
+
+.statrow{ display:flex; flex-wrap:wrap; gap:.7rem; margin-bottom:1.4rem; }
+.stat{ flex:1 1 auto; min-width:92px; border:1px solid var(--line); border-radius:14px;
+   padding:.85rem 1rem; background:var(--panel); text-align:center; }
+.stat .v{ font-size:1.8rem; font-weight:800; line-height:1; }
+.stat .k{ font-size:.9rem; color:var(--muted); margin-top:.35rem; }
+
+.formline{ display:flex; align-items:center; gap:.5rem; margin:.2rem 0 1.4rem; }
+.formlabel{ font-size:1.1rem; color:var(--muted); margin-right:.3rem; }
+.formchip{ display:inline-flex; align-items:center; justify-content:center; width:2rem; height:2rem;
+   border-radius:8px; font-weight:800; font-size:1rem; }
+.formchip.w{ background:rgba(87,198,106,.22); color:#7fe08f; }
+.formchip.d{ background:rgba(255,255,255,.10); color:var(--muted); }
+.formchip.l{ background:rgba(228,87,46,.20); color:#ff9273; }
+
+/* Club-perspective match rows */
+.cmatch{ display:flex; align-items:center; justify-content:space-between; gap:1rem;
+   border:1px solid var(--line); border-left-width:6px; border-radius:14px;
+   padding:.9rem 1.2rem; margin-bottom:.7rem; background:var(--panel); }
+.cm-left{ display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; }
+.cm-when{ font-size:1rem; color:var(--muted); min-width:5.5rem; }
+.cm-opp{ font-size:1.4rem; font-weight:600; display:flex; align-items:center; gap:.5rem; }
+.cm-right{ display:flex; align-items:center; gap:.7rem; }
+.cm-score{ font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; }
+.cm-pred{ font-size:1.2rem; font-weight:700; color:var(--accent); }
+.cm-pred.muted{ color:var(--muted); font-weight:600; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -275,15 +332,17 @@ def _match_html(m, feed, show_prob):
 
     top_left = (f'<span class="live">● LIVE · {m["status_detail"]}</span>' if live
                 else f'<span class="status">{m["status_detail"] or _fmt_kickoff(m["start"])}</span>')
-    venue = f'<span class="status">📍 {m["venue"]}</span>' if m["venue"] else "<span></span>"
+    hosting = f'<span class="status">{home["shpl_name"]} hosting</span>'
 
-    def row(side):
+    def row(side, is_home):
         s = side["score"] if side["score"] is not None else "–"
         score = f'<span class="score">{s}</span>' if show_score else '<span class="score"></span>'
         cls = "tname"
         if show_score and m["completed"]:
             cls += " win" if side.get("winner") else (" lose" if not _is_draw(m) else "")
-        return f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["shpl_name"]}</span>{score}</div>'
+        tag = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
+        return (f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["shpl_name"]}'
+                f'{tag}</span>{score}</div>')
 
     kick = "" if show_score else f'<div class="kick">🕓 {_fmt_kickoff(m["start"])}</div>'
     winbar = _winbar_html(m, feed) if show_prob else ""
@@ -291,8 +350,8 @@ def _match_html(m, feed, show_prob):
     card_cls = "match islive" if live else "match"
 
     return (f'<div class="{card_cls}" style="{border}">'
-            f'<div class="top">{top_left}{venue}</div>'
-            f'{row(home)}{row(away)}{kick}{winbar}</div>')
+            f'<div class="top">{top_left}{hosting}</div>'
+            f'{row(home, True)}{row(away, False)}{kick}{winbar}</div>')
 
 
 def _winbar_html(m, feed):
@@ -315,9 +374,50 @@ def _winbar_html(m, feed):
 
 
 # --------------------------------------------------------------------------- #
-# Clubs page
+# Home page
 # --------------------------------------------------------------------------- #
-def render_clubs():
+def render_home(feed):
+    day = datetime.now(LOCAL_TZ).timetuple().tm_yday
+    fact = facts.fact_for_day(day)
+    st.markdown(
+        f'<div class="factcard"><div class="factlabel">⚽ Soccer fact of the day</div>'
+        f'<div class="facttext">{fact}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    standings = datafeed.get_standings(feed)
+    if standings["conferences"]:
+        st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
+                    'Island leaders</div>', unsafe_allow_html=True)
+        cols = st.columns(len(standings["conferences"]), gap="large")
+        for col, conf in zip(cols, standings["conferences"]):
+            meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
+            top = conf["table"][0] if conf["table"] else None
+            with col:
+                if top:
+                    col.markdown(
+                        f'<div class="leader" style="border-left-color:{top["primary"]}">'
+                        f'<div class="leader-isl">{meta["flag"]} {conf["island"]}</div>'
+                        f'<div class="leader-name">{dot(top["primary"])}{top["shpl_name"]}</div>'
+                        f'<div class="leader-pts">{top["points"]} pts · {top["wins"]}-{top["draws"]}-{top["losses"]}</div>'
+                        f'</div>', unsafe_allow_html=True)
+
+    # Next few fixtures
+    matches = datafeed.get_matches(feed)
+    upcoming = [m for m in matches if m["state"] == "pre"][:5]
+    if upcoming:
+        st.markdown('<div class="eyebrow"><span class="bar" style="background:#3d9be0"></span>'
+                    'Next up</div>', unsafe_allow_html=True)
+        html = "".join(_match_html(m, feed, show_prob=False) for m in upcoming)
+        st.markdown(html, unsafe_allow_html=True)
+
+
+# --------------------------------------------------------------------------- #
+# Clubs page (grid -> click a club -> detail)
+# --------------------------------------------------------------------------- #
+def render_clubs(feed):
+    st.markdown('<div class="hint">Tap a club to see its season — results, fixtures and predictions.</div>',
+                unsafe_allow_html=True)
     for island in teams.ISLANDS:
         meta = ISLAND_META.get(island, {"flag": "", "accent": "#888"})
         st.markdown(
@@ -325,12 +425,124 @@ def render_clubs():
             f'{meta["flag"]} {island}</div>',
             unsafe_allow_html=True,
         )
-        cards = "".join(
-            f'<div class="club" style="border-left-color:{t.primary}">{dot(t.primary)}{t.shpl_name}</div>'
-            for t in teams.TEAMS if t.island == island
-        )
-        st.markdown(f'<div class="clubgrid">{cards}</div>', unsafe_allow_html=True)
+        club_list = [t for t in teams.TEAMS if t.island == island]
+        cols = st.columns(3)
+        for i, t in enumerate(club_list):
+            if cols[i % 3].button(t.shpl_name, key=f"club_{t.espn_id}", use_container_width=True):
+                st.session_state.selected_club = t.espn_id
+                st.rerun()
         st.write("")
+
+
+def render_club_detail(feed, espn_id):
+    team = teams.BY_ESPN_ID.get(str(espn_id))
+    if not team:
+        st.session_state.selected_club = None
+        st.rerun()
+        return
+
+    if st.button("← Back to all clubs"):
+        st.session_state.selected_club = None
+        st.rerun()
+
+    meta = ISLAND_META.get(team.island, {"flag": "", "accent": "#888"})
+    st.markdown(
+        f'<div class="club-hero" style="border-left-color:{team.primary}">'
+        f'<div class="club-hero-name">{dot(team.primary)}{team.shpl_name}</div>'
+        f'<div class="club-hero-isl">{meta["flag"]} {team.island}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # Standings summary
+    standings = datafeed.get_standings(feed)
+    row = None
+    for conf in standings["conferences"]:
+        for r in conf["table"]:
+            if r["espn_id"] == str(espn_id):
+                row = r
+                break
+    if row:
+        stats = [
+            (f"#{row['rank']}", f"in {team.island}"), (row["points"], "Points"),
+            (row["played"], "Played"), (row["wins"], "Won"),
+            (row["draws"], "Drawn"), (row["losses"], "Lost"),
+            (f"{row['gd']:+d}", "Goal diff"),
+        ]
+        cells = "".join(f'<div class="stat"><div class="v">{v}</div><div class="k">{k}</div></div>'
+                        for v, k in stats)
+        st.markdown(f'<div class="statrow">{cells}</div>', unsafe_allow_html=True)
+
+    # This club's matches
+    matches = [m for m in datafeed.get_matches(feed)
+               if m["home"]["espn_id"] == str(espn_id) or m["away"]["espn_id"] == str(espn_id)]
+    played = [m for m in matches if m["state"] in ("in", "post")]
+    upcoming = [m for m in matches if m["state"] == "pre"]
+
+    # Form (last 5 completed)
+    last5 = [m for m in played if m["state"] == "post"][-5:]
+    if last5:
+        chips = "".join(_form_chip(m, espn_id) for m in last5)
+        st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>{chips}</div>',
+                    unsafe_allow_html=True)
+
+    tab_res, tab_fix = st.tabs([f"✅ Results ({len(played)})", f"📅 Fixtures ({len(upcoming)})"])
+    with tab_res:
+        if not played:
+            st.info("No matches played yet.")
+        else:
+            html = "".join(_club_match_html(m, espn_id, feed) for m in reversed(played))
+            st.markdown(html, unsafe_allow_html=True)
+    with tab_fix:
+        if not upcoming:
+            st.info("No upcoming fixtures.")
+        else:
+            html = "".join(_club_match_html(m, espn_id, feed) for m in upcoming)
+            st.markdown(html, unsafe_allow_html=True)
+
+
+def _outcome(m, espn_id):
+    """Return 'W'/'D'/'L' for the given club, or None if not decided."""
+    if m["home"]["score"] is None or m["away"]["score"] is None:
+        return None
+    is_home = m["home"]["espn_id"] == str(espn_id)
+    mine = m["home"]["score"] if is_home else m["away"]["score"]
+    theirs = m["away"]["score"] if is_home else m["home"]["score"]
+    return "W" if mine > theirs else ("L" if mine < theirs else "D")
+
+
+def _form_chip(m, espn_id):
+    o = _outcome(m, espn_id) or "–"
+    cls = {"W": "w", "D": "d", "L": "l"}.get(o, "")
+    return f'<span class="formchip {cls}">{o}</span>'
+
+
+def _club_match_html(m, espn_id, feed):
+    is_home = m["home"]["espn_id"] == str(espn_id)
+    opp = m["away"] if is_home else m["home"]
+    ha = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
+    played = m["state"] in ("in", "post")
+
+    if played:
+        mine = m["home"]["score"] if is_home else m["away"]["score"]
+        theirs = m["away"]["score"] if is_home else m["home"]["score"]
+        o = _outcome(m, espn_id)
+        ocls = {"W": "w", "D": "d", "L": "l"}.get(o, "")
+        right = f'<span class="cm-score">{mine} – {theirs}</span><span class="formchip {ocls}">{o or "–"}</span>'
+        when = _fmt_kickoff(m["start"]).split(" · ")[0]
+    else:
+        wp = datafeed.get_win_probabilities(feed, m["id"])
+        if wp:
+            pct = wp["home_pct"] if is_home else wp["away_pct"]
+            right = f'<span class="cm-pred">Win chance {pct:.0f}%</span>'
+        else:
+            right = '<span class="cm-pred muted">Prediction soon</span>'
+        when = _fmt_kickoff(m["start"])
+
+    prep = "vs" if is_home else "at"
+    return (f'<div class="cmatch" style="border-left-color:{opp["primary"]}">'
+            f'<div class="cm-left"><span class="cm-when">{when}</span>{ha}'
+            f'<span class="cm-opp">{prep} {dot(opp["primary"])}{opp["shpl_name"]}</span></div>'
+            f'<div class="cm-right">{right}</div></div>')
 
 
 # --------------------------------------------------------------------------- #
@@ -343,8 +555,9 @@ def sidebar(feed):
         st.markdown('<div class="side-sub">St. Helena Premier League</div>', unsafe_allow_html=True)
         st.divider()
         page = st.radio(
-            "Go to", ["🏆 Tables", "⚽ Matches", "🛡️ Clubs"],
+            "Go to", ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs"],
             label_visibility="collapsed",
+            key="nav",
         )
         st.divider()
         if st.button("🔄 Refresh data", use_container_width=True):
@@ -378,7 +591,13 @@ def main():
 
     standings = datafeed.get_standings(feed)
 
-    if page == "🏆 Tables":
+    # Leaving the Clubs section clears any drilled-in club.
+    if page != "🛡️ Clubs":
+        st.session_state.selected_club = None
+
+    if page == "🏠 Home":
+        render_home(feed)
+    elif page == "🏆 Tables":
         st.markdown('<div class="hint">Standings for each island, updating as results come in.</div>',
                     unsafe_allow_html=True)
         if standings["conferences"]:
@@ -389,9 +608,11 @@ def main():
         st.markdown('<div class="hint">Live, upcoming and recent fixtures — times shown in St. Helena time.</div>',
                     unsafe_allow_html=True)
         render_matches(datafeed.get_matches(feed), feed)
-    else:
-        st.markdown('<div class="hint">The fifteen clubs of each island.</div>', unsafe_allow_html=True)
-        render_clubs()
+    else:  # Clubs
+        if st.session_state.get("selected_club"):
+            render_club_detail(feed, st.session_state.selected_club)
+        else:
+            render_clubs(feed)
 
     st.divider()
     st.markdown(
