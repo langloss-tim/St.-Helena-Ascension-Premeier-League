@@ -673,6 +673,14 @@ MATCHES_HTML = r"""
   .wp .bar > div{ height:100%; }
   .wp .labels{ display:flex; justify-content:space-between; font-size:1rem; margin-top:.4rem; }
   .wp .labels .mid{ color:#8b93a1; }
+  .forms{ text-align:center; color:#aab2bf; font-size:1rem; margin:.6rem 0; font-weight:700; }
+  .forms span{ color:#6c7482; font-weight:400; }
+  .poss{ display:flex; height:11px; border-radius:99px; overflow:hidden; margin:.7rem 0 .3rem; }
+  .plabel{ display:flex; justify-content:space-between; font-size:.9rem; color:#aab2bf; }
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.8rem; }
+  .s{ display:flex; align-items:center; justify-content:space-between; background:#10141d; border-radius:10px; padding:.45rem .7rem; }
+  .s span{ font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; }
+  .s small{ color:#8b93a1; font-size:.72rem; text-transform:uppercase; letter-spacing:.4px; }
 </style>
 <div class="stamp" id="stamp">Loading matches…</div>
 <div class="tabs" id="tabs"></div>
@@ -710,6 +718,50 @@ MATCHES_HTML = r"""
     if(!todo.length) return;
     await Promise.all(todo.map(m => fetchOdds(m.id)));
     render();
+  }
+
+  // Live in-game stats + formation (fetched fresh each cycle for live games).
+  const sval = (s,id,k) => (s[id] && s[id][k]!=null) ? s[id][k] : "0";
+  const statCell = (label,h,a) => '<div class="s"><span>'+h+'</span><small>'+label+'</small><span>'+a+'</span></div>';
+  async function summaryFor(id){
+    try{
+      const d = await (await fetch(SUM+id)).json();
+      const stats = {};
+      ((d.boxscore && d.boxscore.teams) || []).forEach(t => {
+        const tid = t.team && t.team.id; const m = {};
+        (t.statistics || []).forEach(x => { m[x.name] = x.displayValue; });
+        if(tid) stats[tid] = m;
+      });
+      const lineups = {};
+      (d.rosters || []).forEach(t => { const tid = t.team && t.team.id; if(tid) lineups[tid] = { formation: t.formation || "" }; });
+      return { stats: stats, lineups: lineups };
+    }catch(e){ return { stats:{}, lineups:{} }; }
+  }
+  function liveCard(m, sum){
+    const s = sum.stats, lu = sum.lineups, hi = m.home.id, ai = m.away.id;
+    let hp = parseFloat(sval(s,hi,"possessionPct")); if(isNaN(hp)) hp = 50;
+    let ap = parseFloat(sval(s,ai,"possessionPct")); if(isNaN(ap)) ap = 100 - hp;
+    const hf = (lu[hi]||{}).formation || "", af = (lu[ai]||{}).formation || "";
+    const forms = (hf || af) ? '<div class="forms">Formations &nbsp; '+(hf||'—')+' <span>vs</span> '+(af||'—')+'</div>' : "";
+    return '<div class="match islive" style="border-left-color:'+col(hi)+'">'
+      + '<div class="top"><span class="live">● '+m.detail+'</span><span class="status">'+nm(hi)+' hosting</span></div>'
+      + teamRow(m, m.home, true, true) + teamRow(m, m.away, false, true) + forms
+      + '<div class="poss"><div style="width:'+hp+'%;background:'+col(hi)+'"></div><div style="width:'+ap+'%;background:'+col(ai)+'"></div></div>'
+      + '<div class="plabel"><span>Possession '+Math.round(hp)+'%</span><span>'+Math.round(ap)+'%</span></div>'
+      + '<div class="grid">'
+      + statCell("Shots", sval(s,hi,"totalShots"), sval(s,ai,"totalShots"))
+      + statCell("On target", sval(s,hi,"shotsOnTarget"), sval(s,ai,"shotsOnTarget"))
+      + statCell("Corners", sval(s,hi,"wonCorners"), sval(s,ai,"wonCorners"))
+      + statCell("Fouls", sval(s,hi,"foulsCommitted"), sval(s,ai,"foulsCommitted"))
+      + statCell("Yellow", sval(s,hi,"yellowCards"), sval(s,ai,"yellowCards"))
+      + statCell("Saves", sval(s,hi,"saves"), sval(s,ai,"saves"))
+      + '</div></div>';
+  }
+  async function renderLive(list){
+    const wrap = document.getElementById("wrap");
+    let html = "";
+    for(const m of list){ html += liveCard(m, await summaryFor(m.id)); }
+    if(document.getElementById("wrap")) document.getElementById("wrap").innerHTML = html;
   }
 
   const isDraw = m => m.home.score!=null && m.home.score===m.away.score;
@@ -761,7 +813,7 @@ MATCHES_HTML = r"""
       wrap.innerHTML = '<div class="focusbar"><span>'+(day[0]?dlabel(day[0].iso):FOCUS)+'</span><button onclick="setTab(\'results\')">Show all ✕</button></div>'
         + (day.length ? day.map(m => card(m, true)).join("") : empty('No matches on that day.'));
     } else if(TAB==='live'){
-      wrap.innerHTML = live.length ? groupHTML(live, false, false) : empty('No matches are live right now — check Upcoming.');
+      if(live.length){ renderLive(live); } else { wrap.innerHTML = empty('No matches are live right now — check Upcoming.'); }
     } else if(TAB==='upcoming'){
       ensureOdds(up.slice(0, 24));
       wrap.innerHTML = up.length ? groupHTML(up, true, false) : empty('No upcoming fixtures.');
