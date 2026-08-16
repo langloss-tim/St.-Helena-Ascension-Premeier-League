@@ -515,13 +515,13 @@ LIVE_HTML = r"""
         }
         el.innerHTML = html;
       }
-      document.getElementById("stamp").textContent = "Live · updates every 30s · " + new Date().toLocaleTimeString();
+      document.getElementById("stamp").textContent = "🔴 Live · refreshes every 5s · " + new Date().toLocaleTimeString();
     }catch(err){
       document.getElementById("stamp").textContent = "Could not reach the live feed — retrying…";
     }
   }
   render();
-  setInterval(render, 30000);
+  setInterval(render, 5000);
 </script>
 """
 
@@ -1154,9 +1154,12 @@ def main():
     if season is not None and feed:
         st.sidebar.caption(f"📚 Viewing the {feed.get('season', '')} season (archived)")
     elif gen:
-        st.sidebar.caption(f"Scores updated\n\n**{gen.astimezone(LOCAL_TZ).strftime('%a %d %b · %H:%M')}** (St. Helena time)")
+        st.sidebar.caption(
+            "🔴 **Live scores are real-time** (Live tab).\n\n"
+            f"Tables & results last synced {gen.astimezone(LOCAL_TZ).strftime('%H:%M')} "
+            "(St. Helena) — refreshes roughly every 10 min.")
     else:
-        st.sidebar.caption(f"Loaded {datetime.now(LOCAL_TZ).strftime('%d %b · %H:%M')}")
+        st.sidebar.caption("🔴 Live scores are real-time (Live tab).")
 
     header(feed["season"] if feed else "")
 
