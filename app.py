@@ -1378,9 +1378,6 @@ def render_ask(feed):
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    asked = sum(1 for m in thread if m["role"] == "user")
-    at_limit = asked >= ask.MAX_QUESTIONS
-
     if not thread:
         st.caption("Not sure where to start?")
         cols = st.columns(2)
@@ -1389,13 +1386,10 @@ def render_ask(feed):
                 st.session_state.ask_pending = s
                 st.rerun()
 
-    typed = st.chat_input("Ask about the SHPL…", disabled=at_limit)
+    # No question cap and no turn cap — the conversation runs as long as the
+    # fan wants it to, and every earlier exchange is replayed for context.
+    typed = st.chat_input("Ask about the SHPL…")
     question = st.session_state.pop("ask_pending", None) or typed
-
-    if at_limit:
-        st.caption(f"That's {ask.MAX_QUESTIONS} questions this visit — "
-                   "reload the page to start a fresh set.")
-        question = None
 
     if thread and st.button("🧹 Start a new conversation", key="ask_clear"):
         st.session_state.ask_thread = []
@@ -1433,7 +1427,17 @@ def render_ask(feed):
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-NAV_ITEMS = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs", "💬 Ask"]
+PAGES = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs", "💬 Ask"]
+
+
+def nav_items(playoffs_open):
+    """Menu order. Playoffs sits at the bottom while it's still locked, and
+    jumps to second — right under Home — the day it opens, because that's what
+    everyone is there for once the postseason is in sight."""
+    rest = [p for p in PAGES if p != "🥇 Playoffs"]
+    if playoffs_open:
+        return [rest[0], "🥇 Playoffs"] + rest[1:]
+    return rest + ["🥇 Playoffs"]
 
 
 def _playoff_gate(feed):
@@ -1526,7 +1530,7 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
         st.divider()
         _search_box(search_feed)
         st.divider()
-        for item in NAV_ITEMS:
+        for item in nav_items(playoffs_open):
             locked = (item == "🥇 Playoffs" and not playoffs_open)
             label = "🔒 Playoffs" if locked else item
             active = (st.session_state.page == item)

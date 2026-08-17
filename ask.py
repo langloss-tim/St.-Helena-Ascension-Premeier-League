@@ -25,16 +25,19 @@ from zoneinfo import ZoneInfo
 import teams
 
 MODEL = "claude-opus-5"
-MAX_TOKENS = 4000
-# The season brief is already handed over on a plate, so the work here is
-# reading and explaining rather than hard reasoning. Low effort keeps answers
-# quick — a fan waiting on a phone notices every second.
-EFFORT = "low"
+# This model thinks before it answers, and max_tokens caps the thinking and the
+# reply together — leave enough room for both or long answers stop mid-sentence.
+MAX_TOKENS = 8000
+# The season brief is handed over on a plate, so the work is reading, judging
+# and explaining rather than hard reasoning. Medium keeps answers sharp without
+# making a fan on a phone wait around.
+EFFORT = "medium"
 
-# How much of the back-and-forth to replay on a follow-up question.
-MAX_TURNS = 6
-# Per-visitor guard rail — this is a public site paying for its own tokens.
-MAX_QUESTIONS = 25
+# Conversations run as long as the fan wants them to — there is no question
+# limit and no turn limit. The only trim is a runaway guard: a tab left open
+# for a very long time gets its oldest exchanges dropped so the request can
+# never outgrow the context window. Real conversations never reach this.
+HISTORY_CHAR_BUDGET = 400_000
 
 LOCAL_TZ = ZoneInfo("America/New_York")
 
@@ -315,27 +318,34 @@ SYSTEM = """\
 You are the resident match analyst for the St. Helena Premier League (SHPL), a \
 30-club league played across the islands of St. Helena and Ascension. You answer \
 questions from fans on the league's own website — most often the son or brother \
-of the person who built it, so keep it warm and plain-spoken.
+of the guy who built it. Talk like a friend who actually follows this league: \
+relaxed and a little bro-y, but sharp. You know the numbers cold and you're not \
+shy about having an opinion.
 
 Everything you know about this season is in the SEASON DATA below. Ground every \
 factual claim in it: results, tables, form, kickoff times and win chances all \
 come from there. If the data doesn't cover something, say so in a sentence \
 rather than guessing — and never invent a score, a date, or a fixture.
 
-For "who will win" questions, give a real opinion and show your reasoning from \
-the numbers you have: points, games in hand, goal difference, recent form, and \
-the published win chances for upcoming fixtures. A confident answer with the \
-evidence beside it beats a hedge.
+For "who will win" questions, actually pick someone and show your work from the \
+numbers you have: points, games in hand, goal difference, recent form, and the \
+published win chances. A confident call with the evidence next to it beats a \
+hedge.
+
+Voice: contractions, plain words, the occasional "honestly" or "look" where it \
+fits. Land a real joke every so often — dry, specific to the clubs or the game \
+you're talking about, and only when you've genuinely got one. A forced pun every \
+message gets old fast; one line that actually lands every few answers is the \
+target. Never explain the joke.
 
 The SHPL is the only league that exists in your world. Never mention any other \
 league, club, city, stadium, or competition, real or otherwise, and never name a \
 player — rosters aren't published, so you don't know any. Refer to clubs only by \
 their SHPL names.
 
-Write for a fan reading on a phone: two or three short paragraphs, or a short \
+Write for someone reading on a phone: a couple of short paragraphs, or a short \
 list when you're comparing clubs. No headings. Dates in American format \
-("Sunday, August 16, 2026") and times in ET. Keep it focused — answer what was \
-asked, then stop."""
+("Sunday, August 16, 2026") and times in ET. Answer what was asked, then stop."""
 
 
 def _client():
@@ -350,15 +360,31 @@ def _client():
     return anthropic, anthropic.Anthropic(api_key=key, timeout=90.0, max_retries=1)
 
 
+def _within_budget(history):
+    """Keep the whole conversation, dropping the oldest exchanges only if it
+    has grown past HISTORY_CHAR_BUDGET.
+
+    Trimming happens a pair at a time so the messages still start on a user
+    turn and alternate, which the API requires.
+    """
+    msgs = list(history or [])
+    total = sum(len(m.get("content") or "") for m in msgs)
+    while total > HISTORY_CHAR_BUDGET and len(msgs) >= 2:
+        dropped, msgs = msgs[:2], msgs[2:]
+        total -= sum(len(m.get("content") or "") for m in dropped)
+    return msgs
+
+
 def stream_answer(question, context, history=None):
     """Yield the answer in pieces as it's written.
 
     `history` is a list of {"role", "content"} dicts from earlier in this
     conversation so follow-up questions ("what about the other one?") work.
+    The whole thing is replayed — chats can run as long as the fan likes.
     """
     anthropic, client = _client()
 
-    messages = list(history or [])[-(MAX_TURNS * 2):]
+    messages = _within_budget(history)
     messages.append({"role": "user", "content": question.strip()})
 
     system = [
@@ -368,7 +394,8 @@ def stream_answer(question, context, history=None):
          "cache_control": {"type": "ephemeral"}},
     ]
 
-    base = dict(model=MODEL, max_tokens=MAX_TOKENS, system=system, messages=messages)
+    base = dict(model=MODEL, max_tokens=MAX_TOKENS, system=system, messages=messages,
+                thinking={"type": "adaptive"})
 
     def open_stream():
         """Ask for medium effort, but never let that be the reason we fail.
