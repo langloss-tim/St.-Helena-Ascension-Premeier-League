@@ -1485,7 +1485,7 @@ def _search_box(search_feed):
     thing, where a choice can't be skipped.
     """
     q = st.text_input("🔎 Search or ask", key="q_widget",
-                      placeholder="e.g. Bellboys, 16 Aug, or who wins the title?",
+                      placeholder="e.g. Bellboys, Aug 16, or who wins the title?",
                       label_visibility="collapsed")
     ql = (q or "").strip()
     if not ql:
@@ -1495,8 +1495,9 @@ def _search_box(search_feed):
     low = ql.lower()
 
     club_hits = [t for t in teams.TEAMS if low in t.shpl_name.lower()][:6]
-    # Day matching is token-based, so "16 aug", "aug 16" and "august 16" all
-    # find Sunday, August 16.
+    # Day matching is token-based, so "aug 16", "august 16" — and "16 aug", for
+    # anyone who writes it that way — all find Sunday, August 16. Everything
+    # this site *shows* is American: month first, always.
     words = low.replace(",", " ").split()
     day_hits, seen = [], set()
     for m in (datafeed.get_matches(search_feed) if search_feed else []):
