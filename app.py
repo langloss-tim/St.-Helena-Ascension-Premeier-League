@@ -1333,6 +1333,29 @@ SUGGESTED = [
 ]
 
 
+def _connection_test(expanded=False):
+    """A button that actually calls the API and reports what came back.
+
+    Every setup failure used to print the same sentence, which made a missing
+    key and a rejected key indistinguishable. This says which one it is.
+    """
+    with st.expander("🔌 Test the connection", expanded=expanded):
+        st.caption("Makes one tiny real call and reports exactly what happened. "
+                   "Never shows the key itself.")
+        if st.button("Run the test", key="ask_diag", use_container_width=True):
+            with st.spinner("Calling the API…"):
+                ok, headline, detail = ask.diagnose()
+            (st.success if ok else st.error)(headline)
+            st.code(detail)
+            if ok:
+                st.caption("Reload the page and the assistant will answer.")
+        st.caption("Set the key under **Manage app → Settings → Secrets**:")
+        st.code('ANTHROPIC_API_KEY = "sk-ant-..."', language="toml")
+        st.caption("Quotes and the = sign matter, and it has to be saved on "
+                   "this app — a key added to a different Streamlit app "
+                   "doesn't carry over.")
+
+
 def render_ask(feed):
     st.markdown('<div class="hint">Ask anything about the season — results, form, '
                 'the tables, or who&rsquo;s likely to win. Every answer is written '
@@ -1344,33 +1367,16 @@ def render_ask(feed):
         if waiting:
             with st.chat_message("user"):
                 st.markdown(waiting)
-        st.info("💬 The assistant isn't switched on right now. Everything else "
-                "on the site works as usual.")
-        # Say exactly what's missing — no secret values, just which piece.
-        with st.expander("Setup — what's missing?"):
-            if ask is None:
-                st.write("The assistant module didn't load on the server:")
-                st.code(ASK_IMPORT_ERROR or "unknown import error")
-                st.write("Check that `anthropic` is listed in `requirements.txt` "
-                         "and that the app has finished redeploying.")
-            else:
-                st.write("No API key found. Add this under **Manage app → "
-                         "Settings → Secrets**, then save — the app restarts "
-                         "itself and picks it up:")
-                st.code('ANTHROPIC_API_KEY = "sk-ant-..."', language="toml")
-                st.caption("It's also accepted lower-case, as CLAUDE_API_KEY, "
-                           "under an [anthropic] section, or as an environment "
-                           "variable. Secrets are per-app, so a key added to a "
-                           "different Streamlit app doesn't carry over.")
-                names = ask.secret_names()
-                if names:
-                    st.write("Secrets this app can currently see (names only, "
-                             "never values):")
-                    st.code("\n".join(names))
-                else:
-                    st.write("This app can see **no secrets at all** — nothing "
-                             "has been saved in Settings → Secrets yet, or it "
-                             "was saved on a different app.")
+        if ask is None:
+            st.error("💬 The assistant module didn't load on this server. "
+                     "Everything else on the site works as usual.")
+            st.code(ASK_IMPORT_ERROR or "unknown import error")
+            st.write("Check that `anthropic` is listed in `requirements.txt`, "
+                     "then reboot the app so it reinstalls.")
+            return
+        st.warning("💬 No API key is reaching this app yet, so the assistant "
+                   "can't start. Everything else on the site works as usual.")
+        _connection_test(expanded=True)
         return
 
     thread = st.session_state.setdefault("ask_thread", [])
@@ -1395,6 +1401,10 @@ def render_ask(feed):
         st.session_state.ask_thread = []
         st.session_state.ask_seen = None
         st.rerun()
+
+    # Available even when a key IS loaded — a key that's present but rejected
+    # is a different problem from no key at all, and needs the same button.
+    _connection_test()
 
     if not question:
         return
@@ -1467,52 +1477,26 @@ def _playoff_gate(feed):
 
 
 def _search_box(search_feed):
-    """Search. Club and match-day lookups answer instantly here; anything else
-    is a question, and goes to the Ask tab to be answered properly."""
-    q = st.text_input("🔎 Search or ask a question", key="q_widget",
-                      placeholder="e.g. Bellboys, 16 Aug, or who wins the title?",
+    """One-way express route to the Ask tab.
+
+    Whatever gets typed here — a club name, a date, a full question — goes
+    straight to the assistant. No intermediate buttons to pick from: type,
+    press Enter, land on an answer.
+    """
+    q = st.text_input("🔎 Ask anything", key="q_widget",
+                      placeholder="e.g. how are the Bellboys doing?",
                       label_visibility="collapsed")
-    ql = (q or "").strip().lower()
+    ql = (q or "").strip()
     if not ql:
         return
-    club_hits = [t for t in teams.TEAMS if ql in t.shpl_name.lower()][:6]
-    for t in club_hits:
-        if st.button(f"🛡️ {t.shpl_name}", key=f"s_{t.espn_id}", use_container_width=True):
-            st.session_state.selected_club = t.espn_id
-            st.session_state.page = "🛡️ Clubs"
-            st.rerun()
-    # Day matching is token-based, so "16 aug", "aug 16" and "august 16" all
-    # find Sunday, August 16 — and don't get mistaken for a question.
-    words = ql.replace(",", " ").split()
-    day_hits, seen = [], set()
-    for m in (datafeed.get_matches(search_feed) if search_feed else []):
-        d = m["start"].astimezone(LOCAL_TZ).date() if m["start"] else None
-        if not d or d in seen:
-            continue
-        label = _day_label(d).lower()
-        if all(w in label for w in words):
-            day_hits.append(d)
-            seen.add(d)
-    for d in day_hits[:5]:
-        if st.button(f"📅 {_day_label(d)}", key=f"sd_{d.isoformat()}", use_container_width=True):
-            st.session_state.focus_day = d.isoformat()
-            st.session_state.page = "⚽ Matches"
-            st.rerun()
-    if club_hits or day_hits:
-        return
-
-    # Not a club, not a match day — treat it as a question and open the Ask tab.
-    # It goes there even when the assistant is switched off, so the tab can
-    # explain itself instead of the search bar silently doing nothing.
-    if ask is not None and ask.looks_like_question(ql):
-        if st.session_state.get("ask_seen") != ql:
-            st.session_state.ask_seen = ql
-            st.session_state.ask_pending = q.strip()
-            st.session_state.page = "💬 Ask"
-            st.rerun()
-        st.caption("💬 See the Ask tab.")
-    else:
-        st.caption("No clubs or match days match that.")
+    # `ask_seen` stops the same text re-firing on every later rerun; without it
+    # the box would keep dragging the user back to Ask as they browse.
+    if st.session_state.get("ask_seen") != ql.lower():
+        st.session_state.ask_seen = ql.lower()
+        st.session_state.ask_pending = ql
+        st.session_state.page = "💬 Ask"
+        st.rerun()
+    st.caption("💬 Answered on the Ask tab.")
 
 
 def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):

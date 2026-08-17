@@ -53,7 +53,6 @@ class AskError(RuntimeError):
 # section, or in the environment. Getting this wrong is the single easiest way
 # to end up staring at "the assistant isn't switched on".
 KEY_NAMES = ("ANTHROPIC_API_KEY", "anthropic_api_key", "CLAUDE_API_KEY", "api_key", "key")
-KEY_SECTIONS = ("anthropic", "ANTHROPIC", "claude", "general")
 
 
 def _secret(name):
@@ -65,26 +64,60 @@ def _secret(name):
         return None
 
 
+def _sections():
+    """Every top-level secrets entry that is itself a block of settings.
+
+    Scanned by name rather than from a fixed list, so a key pasted under
+    [secrets], [general], [anthropic] — or any other heading someone invents —
+    is still found. Guessing the heading wrong used to look identical to having
+    no key at all.
+    """
+    try:
+        import streamlit as st
+        out = {}
+        for name in st.secrets.keys():
+            try:
+                block = st.secrets[name]
+                if hasattr(block, "keys"):
+                    out[name] = block
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return {}
+
+
+def _looks_like_key(val):
+    """A usable key is a non-empty string that isn't an obvious placeholder."""
+    if not isinstance(val, str):
+        return False
+    val = val.strip()
+    if not val:
+        return False
+    lowered = val.lower()
+    return not any(bad in lowered for bad in
+                   ("paste", "your-key", "your_key", "sk-ant-...", "xxx", "todo"))
+
+
 def find_key():
     """Return (key, where_it_came_from). Both None if there's no key."""
     for name in KEY_NAMES[:3]:
         val = _secret(name)
-        if isinstance(val, str) and val.strip():
+        if _looks_like_key(val):
             return val.strip(), f"secrets: {name}"
 
-    for section in KEY_SECTIONS:
-        block = _secret(section)
+    for section, block in _sections().items():
         for name in KEY_NAMES:
             try:
                 val = block.get(name)
             except Exception:
                 continue
-            if isinstance(val, str) and val.strip():
+            if _looks_like_key(val):
                 return val.strip(), f"secrets: [{section}] {name}"
 
     for name in KEY_NAMES[:3]:
         val = (os.getenv(name) or "").strip()
-        if val:
+        if _looks_like_key(val):
             return val, f"environment: {name}"
 
     return None, None
@@ -125,16 +158,9 @@ def available():
     return api_key() is not None
 
 
-def looks_like_question(text):
-    """Is this search worth sending to the assistant?
-
-    Deliberately loose — it only runs after the club and match-day lookups have
-    both come up empty, so anything with a bit of substance qualifies.
-    """
-    t = (text or "").strip()
-    if len(t) < 4:
-        return False
-    return t.endswith("?") or len(t.split()) >= 2 or len(t) >= 6
+# (There used to be a looks_like_question() gate here. The search box is now a
+# one-way route to the assistant — everything typed is a question, so nothing
+# needs to decide.)
 
 
 # --------------------------------------------------------------------------- #
@@ -351,13 +377,91 @@ list when you're comparing clubs. No headings. Dates in American format \
 def _client():
     key = api_key()
     if not key:
-        raise AskError("The assistant isn't switched on right now.")
+        raise AskError("No API key is reaching this app, so the assistant "
+                       "can't start. See 'Test the connection' below.")
     try:
         import anthropic
     except ImportError:
-        raise AskError("The assistant isn't installed on this server yet.")
+        raise AskError("The `anthropic` package isn't installed on this "
+                       "server yet. See 'Test the connection' below.")
     # Bounded so a stalled call fails visibly instead of spinning for minutes.
     return anthropic, anthropic.Anthropic(api_key=key, timeout=90.0, max_retries=1)
+
+
+def fingerprint():
+    """A safe way to look at the key that's loaded: enough to spot a truncated
+    or half-pasted value, never enough to use it."""
+    key, _ = find_key()
+    if not key:
+        return None
+    if len(key) < 16:
+        return f"{len(key)} characters — far too short to be a real key"
+    return f"{key[:11]}…{key[-4:]}  ({len(key)} characters)"
+
+
+def diagnose():
+    """Make the smallest possible real call and report exactly what happened.
+
+    This exists because every previous failure said the same unhelpful thing.
+    Returns (ok, headline, detail) — headline is one line for the user, detail
+    is the specific thing to go and change.
+    """
+    key, where = find_key()
+    if not key:
+        seen = secret_names()
+        return (False, "No API key is reaching this app.",
+                ("This app can see no secrets at all."
+                 if not seen else
+                 "Secrets this app can see (names only): " + ", ".join(seen))
+                + "\n\nAdd it under Manage app → Settings → Secrets as:\n"
+                  'ANTHROPIC_API_KEY = "sk-ant-..."\n\n'
+                  "It must be that exact spelling, with quotes and an = sign, "
+                  "saved on THIS app — a key added to a different Streamlit "
+                  "app doesn't carry over.")
+
+    try:
+        import anthropic
+    except ImportError:
+        return (False, "The `anthropic` package isn't installed here.",
+                "Check that `anthropic` is listed in requirements.txt, then "
+                "reboot the app so it reinstalls.")
+
+    try:
+        client = anthropic.Anthropic(api_key=key, timeout=30.0, max_retries=0)
+        # Smallest call that still proves this key can reach this model.
+        client.messages.create(
+            model=MODEL, max_tokens=1,
+            thinking={"type": "disabled"},
+            messages=[{"role": "user", "content": "hi"}],
+        )
+    except anthropic.AuthenticationError:
+        return (False, "The key was found, but the API rejected it.",
+                f"Loaded from {where}: {fingerprint()}\n\n"
+                "That usually means it was mistyped, only partly pasted, has "
+                "been revoked, or belongs to a different account. Generate a "
+                "fresh one at console.anthropic.com → Settings → API keys and "
+                "paste the whole thing.")
+    except anthropic.PermissionDeniedError as e:
+        return (False, "The key works, but isn't allowed to do this.",
+                f"Loaded from {where}: {fingerprint()}\n\n{e}")
+    except anthropic.NotFoundError:
+        return (False, f"The key works, but can't reach the {MODEL} model.",
+                f"Loaded from {where}: {fingerprint()}\n\n"
+                "The account may not have access to that model yet.")
+    except anthropic.RateLimitError:
+        return (False, "The key works, but the account is rate limited or out "
+                       "of credit.",
+                f"Loaded from {where}: {fingerprint()}\n\n"
+                "Check the billing/credits page on console.anthropic.com.")
+    except anthropic.APIConnectionError as e:
+        return (False, "Couldn't reach the API from this server.",
+                f"Network problem, not a key problem.\n\n{e}")
+    except Exception as e:  # noqa: BLE001 - the point is to name the unknown
+        return (False, "Something else went wrong.",
+                f"{type(e).__name__}: {e}")
+
+    return (True, "Working — the assistant is connected.",
+            f"Key loaded from {where}: {fingerprint()}\nModel: {MODEL}")
 
 
 def _within_budget(history):
@@ -430,7 +534,10 @@ def stream_answer(question, context, history=None):
     except anthropic.RateLimitError:
         raise AskError("The assistant is busy right now. Give it a minute and ask again.")
     except anthropic.AuthenticationError:
-        raise AskError("The assistant isn't switched on right now.")
+        # Deliberately NOT the same wording as a missing key — telling those two
+        # apart is the whole difference between "add a key" and "fix the key".
+        raise AskError("The API key was rejected. Run 'Test the connection' "
+                       "below for the specifics.")
     except anthropic.APIConnectionError:
         raise AskError("Couldn't reach the assistant. Check the connection and try again.")
     except anthropic.APIStatusError as e:
