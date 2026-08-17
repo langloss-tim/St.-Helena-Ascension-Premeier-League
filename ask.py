@@ -87,40 +87,73 @@ def _sections():
         return {}
 
 
-def _looks_like_key(val):
-    """A usable key is a non-empty string that isn't an obvious placeholder."""
+PLACEHOLDERS = ("paste", "your-key", "your_key", "yourkey", "...", "xxx",
+                "todo", "here", "example")
+
+
+def key_problem(val):
+    """Why this value can't be used as a key, or None if it can.
+
+    A value that really looks like a key wins outright — no keyword check gets
+    to veto it, so a genuine key containing an unlucky run of letters is never
+    thrown out. Anything rejected must be *reportable*: silently discarding a
+    value the user can plainly see they saved is what made this so maddening.
+    """
+    if val is None:
+        return "nothing is saved under that name"
     if not isinstance(val, str):
-        return False
-    val = val.strip()
-    if not val:
-        return False
-    lowered = val.lower()
-    return not any(bad in lowered for bad in
-                   ("paste", "your-key", "your_key", "sk-ant-...", "xxx", "todo"))
+        return f"the saved value is a {type(val).__name__}, not text"
+    v = val.strip()
+    if not v:
+        return "the saved value is empty"
+    if v.startswith("sk-ant-") and len(v) >= 40 and "..." not in v:
+        return None
+    lowered = v.lower()
+    if any(b in lowered for b in PLACEHOLDERS):
+        return ("it's still the example text, not a real key — the literal "
+                'placeholder got saved instead of the key itself')
+    if len(v) < 40:
+        return (f"it's only {len(v)} characters — a real key is far longer, "
+                "so this looks like a partial paste")
+    return None
 
 
-def find_key():
-    """Return (key, where_it_came_from). Both None if there's no key."""
+def _candidates():
+    """Every place a key could be hiding, in priority order: (where, value)."""
     for name in KEY_NAMES[:3]:
-        val = _secret(name)
-        if _looks_like_key(val):
-            return val.strip(), f"secrets: {name}"
-
+        yield f"secrets: {name}", _secret(name)
     for section, block in _sections().items():
         for name in KEY_NAMES:
             try:
-                val = block.get(name)
+                yield f"secrets: [{section}] {name}", block.get(name)
             except Exception:
                 continue
-            if _looks_like_key(val):
-                return val.strip(), f"secrets: [{section}] {name}"
-
     for name in KEY_NAMES[:3]:
-        val = (os.getenv(name) or "").strip()
-        if _looks_like_key(val):
-            return val, f"environment: {name}"
+        yield f"environment: {name}", os.getenv(name)
 
+
+def find_key():
+    """Return (key, where_it_came_from). Both None if there's no usable key."""
+    for where, val in _candidates():
+        if key_problem(val) is None:
+            return val.strip(), where
     return None, None
+
+
+def rejected():
+    """Values that were found but couldn't be used, with the reason.
+
+    This is the difference between "you never saved a key" and "you saved
+    something, and here is what's wrong with it".
+    """
+    out = []
+    for where, val in _candidates():
+        if val is None:
+            continue
+        problem = key_problem(val)
+        if problem and problem != "nothing is saved under that name":
+            out.append((where, val, problem))
+    return out
 
 
 def secret_names():
@@ -388,15 +421,25 @@ def _client():
     return anthropic, anthropic.Anthropic(api_key=key, timeout=90.0, max_retries=1)
 
 
+def _mask(val):
+    """Show enough of a value to recognise it, never enough to use it.
+
+    Short values are shown whole — if someone saved the literal example text,
+    seeing it spelled out is the fastest possible explanation.
+    """
+    if not isinstance(val, str):
+        return f"<a {type(val).__name__}, not text>"
+    v = val.strip()
+    if len(v) <= 24:
+        return f'"{v}"  ({len(v)} characters)'
+    return f"{v[:11]}…{v[-4:]}  ({len(v)} characters)"
+
+
 def fingerprint():
     """A safe way to look at the key that's loaded: enough to spot a truncated
     or half-pasted value, never enough to use it."""
     key, _ = find_key()
-    if not key:
-        return None
-    if len(key) < 16:
-        return f"{len(key)} characters — far too short to be a real key"
-    return f"{key[:11]}…{key[-4:]}  ({len(key)} characters)"
+    return _mask(key) if key else None
 
 
 def diagnose():
@@ -408,6 +451,20 @@ def diagnose():
     """
     key, where = find_key()
     if not key:
+        bad = rejected()
+        if bad:
+            # A value IS saved — say what's wrong with it rather than claiming
+            # there's nothing there, which is plainly contradicted by the
+            # secret the user can see in the dashboard.
+            lines = [f"{w}\n    {_mask(v)}\n    → {why}" for w, v, why in bad]
+            return (False, "A key is saved, but it can't be used.",
+                    "\n\n".join(lines)
+                    + "\n\nOpen console.anthropic.com → Settings → API keys, "
+                      "copy the WHOLE key (it starts with sk-ant- and runs to "
+                      "about a hundred characters), and paste it in place of "
+                      "what's there now — replacing the example text, quotes "
+                      "included:\n"
+                      'ANTHROPIC_API_KEY = "sk-ant-api03-…"')
         seen = secret_names()
         return (False, "No API key is reaching this app.",
                 ("This app can see no secrets at all."
