@@ -1368,6 +1368,9 @@ def render_ask(feed):
     context = league_context(feed.get("generated_at") or "", feed)
     with st.chat_message("assistant"):
         holder = st.empty()
+        # Say something immediately — the first words take a few seconds to
+        # arrive, and an empty bubble reads as a broken page.
+        holder.markdown("_Reading the season data…_")
         text = ""
         try:
             for piece in ask.stream_answer(question, context, thread):

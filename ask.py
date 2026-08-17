@@ -25,8 +25,11 @@ from zoneinfo import ZoneInfo
 import teams
 
 MODEL = "claude-opus-5"
-MAX_TOKENS = 8000
-EFFORT = "medium"
+MAX_TOKENS = 4000
+# The season brief is already handed over on a plate, so the work here is
+# reading and explaining rather than hard reasoning. Low effort keeps answers
+# quick — a fan waiting on a phone notices every second.
+EFFORT = "low"
 
 # How much of the back-and-forth to replay on a follow-up question.
 MAX_TURNS = 6
@@ -127,6 +130,12 @@ def _amtime(dt):
     return dt.astimezone(LOCAL_TZ).strftime("%I:%M %p ET").lstrip("0")
 
 
+def _shortdate(dt):
+    """'Sat Feb 21' — the fixture list is long, so every character counts."""
+    d = dt.astimezone(LOCAL_TZ)
+    return f"{d.strftime('%a')} {d.strftime('%b')} {d.day}"
+
+
 def _parse(s):
     from datetime import datetime
     if not s:
@@ -216,20 +225,20 @@ def build_context(feed):
 
     played = sorted((m for m in matches if m["done"]), key=lambda m: m["when"])
     L.append(f"=== COMPLETED MATCHES ({len(played)}, oldest first) ===")
-    L.append("Format: date — home team score-score away team")
+    L.append(f"All dates are in {season}. Format: date — home team score-score away team")
     for m in played:
         tag = " [playoff]" if m["playoff"] else ""
-        L.append(f"{_amdate(m['when'])} — {m['home']['name']} "
+        L.append(f"{_shortdate(m['when'])} — {m['home']['name']} "
                  f"{m['home']['score']}-{m['away']['score']} {m['away']['name']}{tag}")
     L.append("")
 
     upcoming = sorted((m for m in matches if m["state"] == "pre"), key=lambda m: m["when"])
     L.append(f"=== UPCOMING FIXTURES ({len(upcoming)}, soonest first) ===")
     L.append("Format: date, kickoff — home team vs away team, then win chances "
-             "where a forecast exists.")
+             "where a forecast exists. The home team hosts.")
     for m in upcoming:
-        line = (f"{_amdate(m['when'])}, {_amtime(m['when'])} — {m['home']['name']} "
-                f"vs {m['away']['name']} ({m['home']['name']} hosting)")
+        line = (f"{_shortdate(m['when'])}, {_amtime(m['when'])} — "
+                f"{m['home']['name']} vs {m['away']['name']}")
         wp = winprobs.get(m["id"])
         if wp:
             line += (f" — win chance: {m['home']['name']} {wp.get('home_pct')}%, "
@@ -277,7 +286,8 @@ def _client():
         import anthropic
     except ImportError:
         raise AskError("The assistant isn't installed on this server yet.")
-    return anthropic, anthropic.Anthropic(api_key=key)
+    # Bounded so a stalled call fails visibly instead of spinning for minutes.
+    return anthropic, anthropic.Anthropic(api_key=key, timeout=90.0, max_retries=1)
 
 
 def stream_answer(question, context, history=None):
