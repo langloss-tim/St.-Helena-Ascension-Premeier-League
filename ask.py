@@ -46,16 +46,53 @@ class AskError(RuntimeError):
 # --------------------------------------------------------------------------- #
 # Key / availability
 # --------------------------------------------------------------------------- #
-def api_key():
-    """Streamlit secrets first, then the environment. Never raises."""
+# Accept the key however it was pasted in: at the top level of secrets, under a
+# section, or in the environment. Getting this wrong is the single easiest way
+# to end up staring at "the assistant isn't switched on".
+KEY_NAMES = ("ANTHROPIC_API_KEY", "anthropic_api_key", "CLAUDE_API_KEY", "api_key", "key")
+KEY_SECTIONS = ("anthropic", "ANTHROPIC", "claude", "general")
+
+
+def _secret(name):
+    """Read one Streamlit secret. Never raises, even with no secrets at all."""
     try:
         import streamlit as st
-        key = st.secrets.get("ANTHROPIC_API_KEY")
-        if key:
-            return str(key).strip()
+        return st.secrets.get(name)
     except Exception:
-        pass  # no secrets file configured — fall through to the environment
-    return (os.getenv("ANTHROPIC_API_KEY") or "").strip() or None
+        return None
+
+
+def find_key():
+    """Return (key, where_it_came_from). Both None if there's no key."""
+    for name in KEY_NAMES[:3]:
+        val = _secret(name)
+        if isinstance(val, str) and val.strip():
+            return val.strip(), f"secrets: {name}"
+
+    for section in KEY_SECTIONS:
+        block = _secret(section)
+        for name in KEY_NAMES:
+            try:
+                val = block.get(name)
+            except Exception:
+                continue
+            if isinstance(val, str) and val.strip():
+                return val.strip(), f"secrets: [{section}] {name}"
+
+    for name in KEY_NAMES[:3]:
+        val = (os.getenv(name) or "").strip()
+        if val:
+            return val, f"environment: {name}"
+
+    return None, None
+
+
+def api_key():
+    return find_key()[0]
+
+
+def key_source():
+    return find_key()[1]
 
 
 def available():

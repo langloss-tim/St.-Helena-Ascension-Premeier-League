@@ -29,8 +29,10 @@ import teams
 # off and every other page carries on exactly as before.
 try:
     import ask
-except Exception:  # noqa: BLE001 - any import failure must stay non-fatal
+    ASK_IMPORT_ERROR = None
+except Exception as _e:  # noqa: BLE001 - any import failure must stay non-fatal
     ask = None
+    ASK_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
 
 
 def ask_ready():
@@ -1337,8 +1339,29 @@ def render_ask(feed):
                 'from the league&rsquo;s own live data.</div>', unsafe_allow_html=True)
 
     if not ask_ready():
+        # Show the question anyway, so it doesn't feel like it vanished.
+        waiting = st.session_state.get("ask_pending")
+        if waiting:
+            with st.chat_message("user"):
+                st.markdown(waiting)
         st.info("💬 The assistant isn't switched on right now. Everything else "
                 "on the site works as usual.")
+        # Say exactly what's missing — no secret values, just which piece.
+        with st.expander("Setup — what's missing?"):
+            if ask is None:
+                st.write("The assistant module didn't load on the server:")
+                st.code(ASK_IMPORT_ERROR or "unknown import error")
+                st.write("Check that `anthropic` is listed in `requirements.txt` "
+                         "and that the app has finished redeploying.")
+            else:
+                st.write("No API key found. Add this under **Manage app → "
+                         "Settings → Secrets**, then save — the app restarts "
+                         "itself and picks it up:")
+                st.code('ANTHROPIC_API_KEY = "sk-ant-..."', language="toml")
+                st.caption("It's also accepted lower-case, as CLAUDE_API_KEY, "
+                           "under an [anthropic] section, or as an environment "
+                           "variable. Secrets are per-app, so a key added to a "
+                           "different Streamlit app doesn't carry over.")
         return
 
     thread = st.session_state.setdefault("ask_thread", [])
@@ -1465,14 +1488,16 @@ def _search_box(search_feed):
     if club_hits or day_hits:
         return
 
-    # Not a club, not a match day — treat it as a question for the assistant.
-    if ask_ready() and ask.looks_like_question(ql):
+    # Not a club, not a match day — treat it as a question and open the Ask tab.
+    # It goes there even when the assistant is switched off, so the tab can
+    # explain itself instead of the search bar silently doing nothing.
+    if ask is not None and ask.looks_like_question(ql):
         if st.session_state.get("ask_seen") != ql:
             st.session_state.ask_seen = ql
             st.session_state.ask_pending = q.strip()
             st.session_state.page = "💬 Ask"
             st.rerun()
-        st.caption("💬 Answered in the Ask tab.")
+        st.caption("💬 See the Ask tab.")
     else:
         st.caption("No clubs or match days match that.")
 
