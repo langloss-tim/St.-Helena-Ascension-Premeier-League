@@ -19,11 +19,22 @@ import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
-import ask
 import bracket
 import facts
 import feed as datafeed
 import teams
+
+# The Ask tab is a bonus, not a load-bearing part of the site. If its module or
+# its dependency is unavailable on the server, the tab politely switches itself
+# off and every other page carries on exactly as before.
+try:
+    import ask
+except Exception:  # noqa: BLE001 - any import failure must stay non-fatal
+    ask = None
+
+
+def ask_ready():
+    return ask is not None and ask.available()
 
 st.set_page_config(
     page_title="St. Helena Premier League",
@@ -1325,7 +1336,7 @@ def render_ask(feed):
                 'the tables, or who&rsquo;s likely to win. Every answer is written '
                 'from the league&rsquo;s own live data.</div>', unsafe_allow_html=True)
 
-    if not ask.available():
+    if not ask_ready():
         st.info("💬 The assistant isn't switched on right now. Everything else "
                 "on the site works as usual.")
         return
@@ -1455,7 +1466,7 @@ def _search_box(search_feed):
         return
 
     # Not a club, not a match day — treat it as a question for the assistant.
-    if ask.looks_like_question(ql) and ask.available():
+    if ask_ready() and ask.looks_like_question(ql):
         if st.session_state.get("ask_seen") != ql:
             st.session_state.ask_seen = ql
             st.session_state.ask_pending = q.strip()
