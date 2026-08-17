@@ -87,6 +87,29 @@ def find_key():
     return None, None
 
 
+def secret_names():
+    """Names (never values) of the secrets this app can see, one level deep.
+
+    Turns "no key found" into something you can act on: a typo, the wrong
+    section, or no secrets configured at all are all obvious at a glance.
+    """
+    try:
+        import streamlit as st
+        found = []
+        for name in st.secrets.keys():
+            try:
+                inner = list(st.secrets[name].keys())
+            except Exception:
+                inner = None
+            if inner:
+                found.extend(f"[{name}] {k}" for k in inner)
+            else:
+                found.append(str(name))
+        return sorted(found)
+    except Exception:
+        return []
+
+
 def api_key():
     return find_key()[0]
 

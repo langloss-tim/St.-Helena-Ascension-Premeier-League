@@ -1362,6 +1362,15 @@ def render_ask(feed):
                            "under an [anthropic] section, or as an environment "
                            "variable. Secrets are per-app, so a key added to a "
                            "different Streamlit app doesn't carry over.")
+                names = ask.secret_names()
+                if names:
+                    st.write("Secrets this app can currently see (names only, "
+                             "never values):")
+                    st.code("\n".join(names))
+                else:
+                    st.write("This app can see **no secrets at all** — nothing "
+                             "has been saved in Settings → Secrets yet, or it "
+                             "was saved on a different app.")
         return
 
     thread = st.session_state.setdefault("ask_thread", [])
