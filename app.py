@@ -1477,25 +1477,67 @@ def _playoff_gate(feed):
 
 
 def _search_box(search_feed):
-    """One-way express route to the Ask tab.
+    """Express route: no stops unless the search is genuinely ambiguous.
 
-    Whatever gets typed here — a club name, a date, a full question — goes
-    straight to the assistant. No intermediate buttons to pick from: type,
-    press Enter, land on an answer.
+    A club goes straight to that club, a match day straight to that day, and
+    anything else straight to the assistant — all without an intermediate
+    button to click. Buttons appear only when the text matches more than one
+    thing, where a choice can't be skipped.
     """
-    q = st.text_input("🔎 Ask anything", key="q_widget",
-                      placeholder="e.g. how are the Bellboys doing?",
+    q = st.text_input("🔎 Search or ask", key="q_widget",
+                      placeholder="e.g. Bellboys, 16 Aug, or who wins the title?",
                       label_visibility="collapsed")
     ql = (q or "").strip()
     if not ql:
+        # Clearing the box re-arms the search, so retyping the same thing works.
+        st.session_state.search_seen = None
         return
-    # `ask_seen` stops the same text re-firing on every later rerun; without it
-    # the box would keep dragging the user back to Ask as they browse.
-    if st.session_state.get("ask_seen") != ql.lower():
-        st.session_state.ask_seen = ql.lower()
-        st.session_state.ask_pending = ql
-        st.session_state.page = "💬 Ask"
+    low = ql.lower()
+
+    club_hits = [t for t in teams.TEAMS if low in t.shpl_name.lower()][:6]
+    # Day matching is token-based, so "16 aug", "aug 16" and "august 16" all
+    # find Sunday, August 16.
+    words = low.replace(",", " ").split()
+    day_hits, seen = [], set()
+    for m in (datafeed.get_matches(search_feed) if search_feed else []):
+        d = m["start"].astimezone(LOCAL_TZ).date() if m["start"] else None
+        if not d or d in seen:
+            continue
+        if all(w in _day_label(d).lower() for w in words):
+            day_hits.append(d)
+            seen.add(d)
+    day_hits = day_hits[:5]
+
+    # `search_seen` stops the same text re-firing on every later rerun, which
+    # would otherwise drag the user back here as they browse.
+    fresh = st.session_state.get("search_seen") != low
+
+    def _go(**state):
+        st.session_state.search_seen = low
+        for k, v in state.items():
+            st.session_state[k] = v
         st.rerun()
+
+    if len(club_hits) + len(day_hits) == 1 and fresh:
+        if club_hits:
+            _go(selected_club=club_hits[0].espn_id, page="🛡️ Clubs")
+        _go(focus_day=day_hits[0].isoformat(), page="⚽ Matches")
+
+    if club_hits or day_hits:
+        for t in club_hits:
+            if st.button(f"🛡️ {t.shpl_name}", key=f"s_{t.espn_id}",
+                         use_container_width=True):
+                _go(selected_club=t.espn_id, page="🛡️ Clubs")
+        for d in day_hits:
+            if st.button(f"📅 {_day_label(d)}", key=f"sd_{d.isoformat()}",
+                         use_container_width=True):
+                _go(focus_day=d.isoformat(), page="⚽ Matches")
+        return
+
+    # Not a club and not a match day — it's a question. Straight to the
+    # assistant, which explains itself even when it isn't connected yet.
+    if fresh:
+        _go(ask_seen=low, ask_pending=ql, page="💬 Ask")
     st.caption("💬 Answered on the Ask tab.")
 
 
