@@ -19,6 +19,7 @@ import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
+import ask
 import bracket
 import facts
 import feed as datafeed
@@ -81,7 +82,8 @@ def load_weather():
             r = requests.get(
                 "https://api.open-meteo.com/v1/forecast",
                 params={"latitude": lat, "longitude": lon,
-                        "current": "temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m"},
+                        "current": "temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m",
+                        "temperature_unit": "fahrenheit", "wind_speed_unit": "mph"},
                 timeout=8,
             )
             c = r.json()["current"]
@@ -1013,10 +1015,10 @@ def render_weather():
     cards = ""
     for w in load_weather():
         emoji, desc = WMO.get(w["code"], ("🌡️", "—")) if w["code"] is not None else ("🌡️", "Unavailable")
-        temp = f'{w["temp"]}°C' if w["temp"] is not None else "—"
+        temp = f'{w["temp"]}°F' if w["temp"] is not None else "—"
         extra = ""
         if w["temp"] is not None:
-            extra = f'<div class="wx-sub">{desc} · 💨 {w["wind"]} km/h · 💧 {w["hum"]}%</div>'
+            extra = f'<div class="wx-sub">{desc} · 💨 {w["wind"]} mph · 💧 {w["hum"]}%</div>'
         cards += (f'<div class="wx"><div class="wx-emoji">{emoji}</div>'
                   f'<div><div class="wx-loc">{w["flag"]} {w["name"]}</div>'
                   f'<div class="wx-temp">{temp}</div>{extra}</div></div>')
@@ -1301,9 +1303,91 @@ def _series_html(s, big=False):
 
 
 # --------------------------------------------------------------------------- #
+# Ask page — answers written from the same season snapshot the site renders
+# --------------------------------------------------------------------------- #
+@st.cache_data(ttl=900, show_spinner=False)
+def league_context(stamp, _feed):
+    """The season brief handed to the assistant. Keyed on the feed's own
+    timestamp, so it's rebuilt only when new data lands."""
+    return ask.build_context(_feed)
+
+
+SUGGESTED = [
+    "Who's most likely to win the league?",
+    "Which fixture this week is the closest call?",
+    "Who won the last time the Bellboys played?",
+    "Which club is in the best form right now?",
+]
+
+
+def render_ask(feed):
+    st.markdown('<div class="hint">Ask anything about the season — results, form, '
+                'the tables, or who&rsquo;s likely to win. Every answer is written '
+                'from the league&rsquo;s own live data.</div>', unsafe_allow_html=True)
+
+    if not ask.available():
+        st.info("💬 The assistant isn't switched on right now. Everything else "
+                "on the site works as usual.")
+        return
+
+    thread = st.session_state.setdefault("ask_thread", [])
+    for msg in thread:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    asked = sum(1 for m in thread if m["role"] == "user")
+    at_limit = asked >= ask.MAX_QUESTIONS
+
+    if not thread:
+        st.caption("Not sure where to start?")
+        cols = st.columns(2)
+        for i, s in enumerate(SUGGESTED):
+            if cols[i % 2].button(s, key=f"sug_{i}", use_container_width=True):
+                st.session_state.ask_pending = s
+                st.rerun()
+
+    typed = st.chat_input("Ask about the SHPL…", disabled=at_limit)
+    question = st.session_state.pop("ask_pending", None) or typed
+
+    if at_limit:
+        st.caption(f"That's {ask.MAX_QUESTIONS} questions this visit — "
+                   "reload the page to start a fresh set.")
+        question = None
+
+    if thread and st.button("🧹 Start a new conversation", key="ask_clear"):
+        st.session_state.ask_thread = []
+        st.session_state.ask_seen = None
+        st.rerun()
+
+    if not question:
+        return
+
+    with st.chat_message("user"):
+        st.markdown(question)
+
+    context = league_context(feed.get("generated_at") or "", feed)
+    with st.chat_message("assistant"):
+        holder = st.empty()
+        text = ""
+        try:
+            for piece in ask.stream_answer(question, context, thread):
+                text += piece
+                holder.markdown(ask.scrub(text) + " ▌")
+        except ask.AskError as e:
+            holder.warning(str(e))
+            return
+        answer = ask.scrub(text).strip()
+        holder.markdown(answer or "_Nothing came back — try asking that again._")
+
+    thread.extend([{"role": "user", "content": question},
+                   {"role": "assistant", "content": answer}])
+    st.session_state.ask_thread = thread
+
+
+# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-NAV_ITEMS = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs"]
+NAV_ITEMS = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs", "💬 Ask"]
 
 
 def _playoff_gate(feed):
@@ -1333,9 +1417,11 @@ def _playoff_gate(feed):
 
 
 def _search_box(search_feed):
-    """A club / match-day finder. Shows jump buttons for matches."""
-    q = st.text_input("🔎 Find a club or match day", key="q_widget",
-                      placeholder="e.g. Bellboys or 16 Aug", label_visibility="collapsed")
+    """Search. Club and match-day lookups answer instantly here; anything else
+    is a question, and goes to the Ask tab to be answered properly."""
+    q = st.text_input("🔎 Search or ask a question", key="q_widget",
+                      placeholder="e.g. Bellboys, 16 Aug, or who wins the title?",
+                      label_visibility="collapsed")
     ql = (q or "").strip().lower()
     if not ql:
         return
@@ -1345,10 +1431,16 @@ def _search_box(search_feed):
             st.session_state.selected_club = t.espn_id
             st.session_state.page = "🛡️ Clubs"
             st.rerun()
+    # Day matching is token-based, so "16 aug", "aug 16" and "august 16" all
+    # find Sunday, August 16 — and don't get mistaken for a question.
+    words = ql.replace(",", " ").split()
     day_hits, seen = [], set()
     for m in (datafeed.get_matches(search_feed) if search_feed else []):
         d = m["start"].astimezone(LOCAL_TZ).date() if m["start"] else None
-        if d and d not in seen and ql in _day_label(d).lower():
+        if not d or d in seen:
+            continue
+        label = _day_label(d).lower()
+        if all(w in label for w in words):
             day_hits.append(d)
             seen.add(d)
     for d in day_hits[:5]:
@@ -1356,7 +1448,18 @@ def _search_box(search_feed):
             st.session_state.focus_day = d.isoformat()
             st.session_state.page = "⚽ Matches"
             st.rerun()
-    if not club_hits and not day_hits:
+    if club_hits or day_hits:
+        return
+
+    # Not a club, not a match day — treat it as a question for the assistant.
+    if ask.looks_like_question(ql) and ask.available():
+        if st.session_state.get("ask_seen") != ql:
+            st.session_state.ask_seen = ql
+            st.session_state.ask_pending = q.strip()
+            st.session_state.page = "💬 Ask"
+            st.rerun()
+        st.caption("💬 Answered in the Ask tab.")
+    else:
         st.caption("No clubs or match days match that.")
 
 
@@ -1525,6 +1628,8 @@ def main():
             render_matches(datafeed.get_matches(feed), feed)
     elif page == "🥇 Playoffs":
         render_playoffs(feed)
+    elif page == "💬 Ask":
+        render_ask(feed)
     else:  # Clubs
         if st.session_state.get("selected_club"):
             render_club_detail(feed, st.session_state.selected_club)
