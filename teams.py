@@ -1,99 +1,133 @@
 """
-St. Helena Premier League — team branding layer.
+St. Helena Premier League — clubs.
 
-Every SHPL team is a rebrand of a real MLS club. All live data (standings,
-scores, fixtures, win %) comes from the real MLS club via the ESPN API; we
-just swap the name, island, and colours on display.
+The SHPL is its own competition. Nothing here mirrors another league: the
+twelve clubs below, their divisions and their colours are the whole roster,
+and every result comes from season.json (see league.py).
 
-St. Helena  -> MLS Eastern Conference
-Ascension   -> MLS Western Conference
-
-The `espn_id` values are ESPN's team IDs (verified against the live MLS teams
-endpoint). If ESPN ever changes an ID, update it here — nothing else needs to
-change.
+Two divisions of six:
+  St. Helena Division  🇸🇭
+  Ascension Division   🇦🇨
 """
 
-# island constants
+# Division constants (also used as the island label in the UI).
 ST_HELENA = "St. Helena"
 ASCENSION = "Ascension"
 
-# One row per club:
-#   shpl_name, espn_id, mls_name, island, primary_color, secondary_color
-_TEAMS = [
-    # ---------------- St. Helena (MLS Eastern Conference) ----------------
-    ("Bellboys",          "20232", "Inter Miami CF",          ST_HELENA, "#F7B5CD", "#231F20"),
-    ("Rovers",            "18986", "Nashville SC",            ST_HELENA, "#ECE83A", "#1D1D1B"),
-    ("Fugees",            "10739", "Philadelphia Union",      ST_HELENA, "#0E2B3B", "#B49759"),
-    ("Harts",             "17606", "New York City FC",        ST_HELENA, "#6CACE4", "#041E42"),
-    ("La Verde",          "189",   "New England Revolution",  ST_HELENA, "#0A2240", "#CE0E2D"),
-    ("Old Boys",          "182",   "Chicago Fire FC",         ST_HELENA, "#141B4D", "#8DC8E8"),
-    ("Wirebirds",         "18267", "FC Cincinnati",           ST_HELENA, "#FE5000", "#003087"),
-    ("STH Young Boys",    "18418", "Atlanta United FC",       ST_HELENA, "#80000B", "#221F1F"),
-    ("Spurs",             "7318",  "Toronto FC",              ST_HELENA, "#B81137", "#455560"),
-    ("Jamestown",         "190",   "Red Bull New York",       ST_HELENA, "#ED1E36", "#002D62"),
-    ("Halftree Hollow",   "193",   "D.C. United",             ST_HELENA, "#231F20", "#EF3E42"),
-    ("Crystal Rangers",   "12011", "Orlando City SC",         ST_HELENA, "#633492", "#FDE192"),
-    ("Longwood",          "183",   "Columbus Crew",           ST_HELENA, "#FEDD00", "#000000"),
-    ("Lakers",            "9720",  "CF Montréal",             ST_HELENA, "#00529B", "#000000"),
-    ("Ballez",            "21300", "Charlotte FC",            ST_HELENA, "#1A85C8", "#000000"),
+DIVISION_NAME = {
+    ST_HELENA: "St. Helena Division",
+    ASCENSION: "Ascension Division",
+}
 
-    # ---------------- Ascension (MLS Western Conference) ----------------
-    ("77 Devils",         "9727",  "Vancouver Whitecaps",     ASCENSION, "#00245E", "#95A5C6"),
-    ("Island Boyz",       "18966", "LAFC",                    ASCENSION, "#000000", "#C39E6D"),
-    ("Wanderers",         "191",   "San Jose Earthquakes",    ASCENSION, "#0051BA", "#000000"),
-    ("VC Milan",          "6077",  "Houston Dynamo FC",       ASCENSION, "#FF6B00", "#101820"),
-    ("Georgetown",        "21812", "St. Louis CITY SC",       ASCENSION, "#DC1E34", "#101820"),
-    ("Two Boats",         "4771",  "Real Salt Lake",          ASCENSION, "#B30838", "#F4C800"),
-    ("Inbetweeners",      "185",   "FC Dallas",               ASCENSION, "#E81F3E", "#0C2340"),
-    ("Saints Club",       "184",   "Colorado Rapids",         ASCENSION, "#960A2C", "#8BB8E8"),
-    ("Hearts Ascension",  "17362", "Minnesota United FC",     ASCENSION, "#8CD2F4", "#231F20"),
-    ("77 Angels",         "9723",  "Portland Timbers",        ASCENSION, "#00482B", "#D69A00"),
-    ("Baked Bean Streamers","9726","Seattle Sounders FC",     ASCENSION, "#5D9741", "#236192"),
-    ("MCR",               "22529", "San Diego FC",            ASCENSION, "#00AEEF", "#101820"),
-    ("Encompass United",  "187",   "LA Galaxy",               ASCENSION, "#00245D", "#FBB515"),
-    ("After Eights",      "20906", "Austin FC",               ASCENSION, "#00B140", "#000000"),
-    ("Interserve United", "186",   "Sporting Kansas City",    ASCENSION, "#91B0D5", "#002F65"),
+# One row per club:
+#   id, name, division, primary, secondary, aliases
+# `aliases` exist so results can be entered with the short name people
+# actually say ("Harts", "Rovers") and still land on the right club.
+_TEAMS = [
+    # ---------------------- St. Helena Division ----------------------
+    ("rovers",      "Rovers Saint Helena", ST_HELENA, "#ECE83A", "#1D1D1B",
+     ("Rovers", "Rovers St Helena", "Rovers St. Helena", "Saint Helena Rovers")),
+    ("bellboys",    "Bellboys FC",         ST_HELENA, "#F7B5CD", "#231F20",
+     ("Bellboys", "Bell Boys", "Bellboys FC")),
+    ("harts",       "Harts United",        ST_HELENA, "#6CACE4", "#041E42",
+     ("Harts", "Hearts United", "Harts Utd")),
+    ("fugees",      "Fugees FC",           ST_HELENA, "#B49759", "#0E2B3B",
+     ("Fugees",)),
+    ("laverde",     "La Verde FC",         ST_HELENA, "#17A66B", "#0A2240",
+     ("La Verde", "LaVerde")),
+    ("youngboys",   "STH Young Boys",      ST_HELENA, "#E0553B", "#221F1F",
+     ("Young Boys", "STH Young Boys FC", "Sth Young Boys")),
+
+    # ---------------------- Ascension Division -----------------------
+    ("devils",      "77 Devils FC",        ASCENSION, "#E03131", "#101820",
+     ("77 Devils", "Devils")),
+    ("georgetown",  "Georgetown United",   ASCENSION, "#0F4C81", "#F4C800",
+     ("Georgetown", "Georgetown Utd")),
+    ("twoboats",    "Two Boats United",    ASCENSION, "#F4A300", "#B30838",
+     ("Two Boats", "Two Boats Utd", "2 Boats United")),
+    ("angels",      "77 Angels",           ASCENSION, "#EFE9D8", "#B99A3C",
+     ("77 Angels FC", "Angels", "77 Angles")),
+    ("islandboyz",  "Island Boyz",         ASCENSION, "#22B8CF", "#0B3A44",
+     ("Island Boys", "Island Boyz FC")),
+    ("vcmilan",     "VC Milan",            ASCENSION, "#8E1537", "#101820",
+     ("Milan", "VC Milan FC")),
 ]
 
 
 class Team:
-    __slots__ = ("shpl_name", "espn_id", "mls_name", "island", "primary", "secondary")
+    __slots__ = ("id", "name", "division", "primary", "secondary", "aliases")
 
-    def __init__(self, shpl_name, espn_id, mls_name, island, primary, secondary):
-        self.shpl_name = shpl_name
-        self.espn_id = espn_id
-        self.mls_name = mls_name
-        self.island = island
+    def __init__(self, tid, name, division, primary, secondary, aliases=()):
+        self.id = tid
+        self.name = name
+        self.division = division
         self.primary = primary
         self.secondary = secondary
+        self.aliases = tuple(aliases)
+
+    # The rest of the app talks about "islands"; a division is one island.
+    @property
+    def island(self):
+        return self.division
 
     def __repr__(self):
-        return f"<Team {self.shpl_name} ({self.mls_name})>"
+        return f"<Team {self.name}>"
 
 
 TEAMS = [Team(*row) for row in _TEAMS]
 
-# Fast lookups
-BY_ESPN_ID = {t.espn_id: t for t in TEAMS}
-BY_SHPL_NAME = {t.shpl_name: t for t in TEAMS}
+BY_ID = {t.id: t for t in TEAMS}
+BY_NAME = {t.name: t for t in TEAMS}
+
+# Every spelling we accept when reading season.json -> team id.
+_LOOKUP = {}
+for _t in TEAMS:
+    for _label in (_t.id, _t.name, *_t.aliases):
+        _LOOKUP[_label.lower().replace(".", "").replace("  ", " ").strip()] = _t
 
 
-def team_by_espn_id(espn_id):
-    """Return the SHPL Team for an ESPN team id, or None if unknown."""
-    return BY_ESPN_ID.get(str(espn_id))
+def resolve(label):
+    """Find a club from any reasonable spelling. Raises KeyError if unknown —
+    a typo in the results file should fail loudly, not invent a club."""
+    key = str(label).lower().replace(".", "").strip()
+    t = _LOOKUP.get(key)
+    if t is None:
+        raise KeyError(f"Unknown club: {label!r}")
+    return t
 
 
-def display_name(espn_id, fallback=""):
-    """SHPL name for an ESPN id; falls back to the given text (e.g. the raw
-    MLS name) if we don't have a mapping — so nothing ever renders blank."""
-    t = BY_ESPN_ID.get(str(espn_id))
-    return t.shpl_name if t else fallback
+
+# Division labels accepted in season.json.
+_DIVISION_LOOKUP = {
+    "st. helena": ST_HELENA, "st helena": ST_HELENA, "saint helena": ST_HELENA,
+    "st. helena division": ST_HELENA, "saint helena division": ST_HELENA,
+    "sth": ST_HELENA,
+    "ascension": ASCENSION, "ascension division": ASCENSION, "asc": ASCENSION,
+}
+
+
+def resolve_division(label):
+    """Accept any reasonable spelling of a division name."""
+    key = str(label).lower().strip()
+    d = _DIVISION_LOOKUP.get(key)
+    if d is None:
+        raise KeyError(f"Unknown division: {label!r}")
+    return d
+
+
+def team_by_id(tid):
+    return BY_ID.get(str(tid))
+
+
+def display_name(tid, fallback=""):
+    t = BY_ID.get(str(tid))
+    return t.name if t else fallback
 
 
 ISLANDS = [ST_HELENA, ASCENSION]
+DIVISIONS = ISLANDS
 
-# Sanity check: exactly 30 teams, 15 per island, no duplicate IDs.
-assert len(TEAMS) == 30, f"expected 30 teams, got {len(TEAMS)}"
-assert len(BY_ESPN_ID) == 30, "duplicate ESPN id in team map"
-assert sum(1 for t in TEAMS if t.island == ST_HELENA) == 15
-assert sum(1 for t in TEAMS if t.island == ASCENSION) == 15
+assert len(TEAMS) == 12, f"expected 12 clubs, got {len(TEAMS)}"
+assert len(BY_ID) == 12, "duplicate club id"
+assert sum(1 for t in TEAMS if t.division == ST_HELENA) == 6
+assert sum(1 for t in TEAMS if t.division == ASCENSION) == 6

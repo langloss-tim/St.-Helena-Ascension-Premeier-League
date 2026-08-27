@@ -1,106 +1,128 @@
 """
-Playoff bracket builder.
+The SHPL postseason bracket.
 
-The bracket is derived from the current standings (top 9 of each conference) using
-the standard playoff format, and any postseason games in the feed are matched to
-the bracket by the two teams involved — so it fills itself in as the playoffs are
-played, without relying on round labels from the feed.
+Per division (top five qualify):
 
-During the regular season there are no postseason games, so the bracket shows the
-*projected* seeding and matchups. Once Decision Day locks the table, those seeds
-become final; once games are played, winners advance automatically.
+    WILD CARD      #4  v  #5          -> winner takes the last bracket place
+    SEMI-FINAL 1   #1  v  WC winner
+    SEMI-FINAL 2   #2  v  #3
+    DIVISION FINAL  SF1 winner v SF2 winner
 
-Format (per conference):
-  Wild Card:     seed 8 v seed 9              (single game)
-  Round One:     1 v WC, 4 v 5, 3 v 6, 2 v 7  (best of 3)
-  Semifinals:    (1/WC v 4/5), (3/6 v 2/7)    (single game)
-  Conf Final:    the two semifinal winners     (single game)
-Then the two conference champions meet in the Cup Final (single game).
+The two division champions then meet in the GRAND FINAL.
+
+Every tie is a single game. Before the postseason starts the bracket is a
+projection off the current tables; once games appear in season.json's
+"playoffs" list it fills in round by round, resolving each round before the
+next so a slot is only named when it is actually decided.
 """
 
+import teams
 
-def _is_postseason(m):
-    slug = (m.get("season_slug") or "regular-season").lower()
-    return slug not in ("regular-season", "", "pre-season", "preseason")
-
-
-def _game_winner(m, team_id):
-    """'A' if team_id won, 'B' if lost, 'D' draw/unknown."""
-    hs, as_ = m["home"]["score"], m["away"]["score"]
-    if hs is None or as_ is None:
-        return "D"
-    is_home = m["home"]["espn_id"] == team_id
-    mine = hs if is_home else as_
-    theirs = as_ if is_home else hs
-    return "A" if mine > theirs else ("B" if mine < theirs else "D")
+ROUNDS = ["Wild Card", "Semi-Final", "Division Final", "Grand Final"]
 
 
-def _slot_from_seed(seeds, n):
-    row = seeds.get(n)
-    if row:
-        return {"team": row, "seed": n, "label": row["shpl_name"]}
-    return {"team": None, "seed": n, "label": f"Seed {n}"}
+def _slot(row=None, label=None, seed=None):
+    if row is not None:
+        return {"seed": seed or row.get("rank"), "team": row, "label": row["name"]}
+    return {"seed": seed, "team": None, "label": label or "TBD"}
 
 
-def _placeholder(label):
-    return {"team": None, "seed": None, "label": label}
+def _series(a, b, round_name, division=None):
+    return {
+        "round": round_name, "division": division,
+        "a": a, "b": b,
+        "game": None, "winner": None, "best_of": 1,
+        "games": [],
+    }
 
 
-def _series(post, slot_a, slot_b, best_of, label):
-    """Build one matchup; count wins from postseason games between the two teams."""
-    a, b = slot_a, slot_b
-    games, awins, bwins = [], 0, 0
-    if a["team"] and b["team"]:
-        ida, idb = a["team"]["espn_id"], b["team"]["espn_id"]
-        for m in post:
-            ids = {m["home"]["espn_id"], m["away"]["espn_id"]}
-            if {ida, idb} <= ids and m["state"] in ("in", "post"):
-                games.append(m)
-                w = _game_winner(m, ida)
-                if w == "A":
-                    awins += 1
-                elif w == "B":
-                    bwins += 1
-    need = 2 if best_of == 3 else 1
-    winner = "A" if awins >= need else ("B" if bwins >= need else None)
-    return {"a": a, "b": b, "awins": awins, "bwins": bwins,
-            "games": games, "best_of": best_of, "winner": winner, "label": label}
+def _ids(series):
+    return {
+        (series["a"]["team"] or {}).get("id"),
+        (series["b"]["team"] or {}).get("id"),
+    } - {None}
 
 
-def _winner_slot(series, fallback):
+def _attach(series, games):
+    """Give a series its game, if one has been played, and set the winner."""
+    want = _ids(series)
+    if len(want) != 2 or series["game"] is not None:
+        return False
+    for g in games:
+        if {g["home"]["id"], g["away"]["id"]} != want:
+            continue
+        if g.get("round") and series["round"] and g["round"] != series["round"]:
+            continue
+        series["game"] = g
+        series["games"] = [g]
+        if g["completed"]:
+            hs, as_ = g["home"]["score"], g["away"]["score"]
+            win_id = g["home"]["id"] if hs > as_ else (g["away"]["id"] if as_ > hs else None)
+            if win_id:
+                series["winner"] = "A" if (series["a"]["team"] or {}).get("id") == win_id else "B"
+        return True
+    return False
+
+
+def _winner_row(series):
     if series["winner"] == "A":
-        return series["a"]
+        return series["a"]["team"]
     if series["winner"] == "B":
-        return series["b"]
-    return _placeholder(fallback)
-
-
-def _build_conference(conf, post):
-    table = conf.get("table", [])
-    seeds = {i + 1: table[i] for i in range(min(9, len(table)))}
-
-    wc = _series(post, _slot_from_seed(seeds, 8), _slot_from_seed(seeds, 9), 1, "Wild Card")
-    r1 = [
-        _series(post, _slot_from_seed(seeds, 1), _winner_slot(wc, "Wild Card winner"), 3, "Round One"),
-        _series(post, _slot_from_seed(seeds, 4), _slot_from_seed(seeds, 5), 3, "Round One"),
-        _series(post, _slot_from_seed(seeds, 3), _slot_from_seed(seeds, 6), 3, "Round One"),
-        _series(post, _slot_from_seed(seeds, 2), _slot_from_seed(seeds, 7), 3, "Round One"),
-    ]
-    sf = [
-        _series(post, _winner_slot(r1[0], "R1 winner"), _winner_slot(r1[1], "R1 winner"), 1, "Semifinal"),
-        _series(post, _winner_slot(r1[2], "R1 winner"), _winner_slot(r1[3], "R1 winner"), 1, "Semifinal"),
-    ]
-    cf = _series(post, _winner_slot(sf[0], "Finalist"), _winner_slot(sf[1], "Finalist"), 1, "Conference Final")
-    return {"island": conf.get("island", ""), "wc": wc, "r1": r1, "sf": sf, "cf": cf,
-            "champion": _winner_slot(cf, "Conference champion")}
+        return series["b"]["team"]
+    return None
 
 
 def build_bracket(standings, matches):
-    post = [m for m in matches if _is_postseason(m)]
-    confs = [_build_conference(c, post) for c in standings.get("conferences", [])]
+    games = [m for m in matches if m.get("stage") == "playoff"]
+    has_postseason = bool(games)
 
-    final = None
-    if len(confs) >= 2:
-        final = _series(post, confs[0]["champion"], confs[1]["champion"], 1, "Cup Final")
+    divisions = []
+    for conf in standings.get("conferences", []):
+        table = conf.get("table", [])
+        seeds = {i: table[i - 1] for i in range(1, 6) if len(table) >= i}
+        div = conf["island"]
 
-    return {"has_postseason": len(post) > 0, "conferences": confs, "final": final}
+        wc = _series(_slot(seeds.get(4), "4th place", 4),
+                     _slot(seeds.get(5), "5th place", 5), "Wild Card", div)
+        sf1 = _series(_slot(seeds.get(1), "1st place", 1),
+                      _slot(None, "Wild Card winner"), "Semi-Final", div)
+        sf2 = _series(_slot(seeds.get(2), "2nd place", 2),
+                      _slot(seeds.get(3), "3rd place", 3), "Semi-Final", div)
+        df = _series(_slot(None, "Semi-Final 1 winner"),
+                     _slot(None, "Semi-Final 2 winner"), "Division Final", div)
+
+        # Resolve round by round: a slot fills only once the tie before it is won.
+        _attach(wc, games)
+        w = _winner_row(wc)
+        if w:
+            sf1["b"] = _slot(w, seed=wc["a"]["seed"] if wc["winner"] == "A" else wc["b"]["seed"])
+        _attach(sf1, games)
+        _attach(sf2, games)
+        for src, key in ((sf1, "a"), (sf2, "b")):
+            w = _winner_row(src)
+            if w:
+                df[key] = _slot(w, seed=(src["a"]["seed"] if src["winner"] == "A"
+                                         else src["b"]["seed"]))
+        _attach(df, games)
+
+        divisions.append({
+            "island": div,
+            "name": conf.get("name", div),
+            "wc": wc, "sf": [sf1, sf2], "df": df,
+            "champion": _winner_row(df),
+        })
+
+    final = _series(_slot(None, "St. Helena champion"),
+                    _slot(None, "Ascension champion"), "Grand Final")
+    for i, d in enumerate(divisions[:2]):
+        if d["champion"]:
+            final["a" if i == 0 else "b"] = _slot(d["champion"])
+    _attach(final, games)
+
+    return {
+        "has_postseason": has_postseason,
+        "divisions": divisions,
+        "conferences": divisions,   # older name, same data
+        "final": final,
+        "champion": _winner_row(final),
+    }

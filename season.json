@@ -1,0 +1,252 @@
+{
+  "season": "2026",
+  "updated": "2026-08-27",
+  "note": "Source of truth for the whole site. Add matchdays as they are played.",
+  "playoffs_open": false,
+  "matchdays": [
+    {
+      "n": 1,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Rovers Saint Helena",
+          "away": "Fugees FC",
+          "hs": 4,
+          "as": 0
+        },
+        {
+          "home": "Bellboys FC",
+          "away": "Harts United",
+          "hs": 3,
+          "as": 2
+        },
+        {
+          "home": "STH Young Boys",
+          "away": "La Verde FC",
+          "hs": 1,
+          "as": 2
+        }
+      ]
+    },
+    {
+      "n": 1,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "Island Boyz",
+          "away": "VC Milan",
+          "hs": 2,
+          "as": 0
+        },
+        {
+          "home": "Two Boats United",
+          "away": "Georgetown United",
+          "hs": 2,
+          "as": 2
+        },
+        {
+          "home": "77 Angels",
+          "away": "77 Devils FC",
+          "hs": 0,
+          "as": 4
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Harts United",
+          "away": "La Verde FC",
+          "hs": 3,
+          "as": 1
+        },
+        {
+          "home": "Rovers Saint Helena",
+          "away": "STH Young Boys",
+          "hs": 12,
+          "as": 1
+        },
+        {
+          "home": "Fugees FC",
+          "away": "Bellboys FC",
+          "hs": 1,
+          "as": 3
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "Georgetown United",
+          "away": "Island Boyz",
+          "hs": 3,
+          "as": 3
+        },
+        {
+          "home": "77 Devils FC",
+          "away": "VC Milan",
+          "hs": 5,
+          "as": 2
+        },
+        {
+          "home": "77 Angels",
+          "away": "Two Boats United",
+          "hs": 4,
+          "as": 6
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Harts United",
+          "away": "Rovers Saint Helena",
+          "hs": 1,
+          "as": 2
+        },
+        {
+          "home": "Fugees FC",
+          "away": "STH Young Boys",
+          "hs": 9,
+          "as": 2
+        },
+        {
+          "home": "Bellboys FC",
+          "away": "La Verde FC",
+          "hs": 4,
+          "as": 1
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "Island Boyz",
+          "away": "Two Boats United",
+          "hs": 6,
+          "as": 1
+        },
+        {
+          "home": "Georgetown United",
+          "away": "77 Devils FC",
+          "hs": 1,
+          "as": 1
+        },
+        {
+          "home": "77 Angels",
+          "away": "VC Milan",
+          "hs": 2,
+          "as": 2
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "La Verde FC",
+          "away": "Fugees FC",
+          "hs": 1,
+          "as": 1
+        },
+        {
+          "home": "Bellboys FC",
+          "away": "Harts United",
+          "hs": 4,
+          "as": 5
+        },
+        {
+          "home": "Rovers Saint Helena",
+          "away": "STH Young Boys",
+          "hs": 16,
+          "as": 1
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "Two Boats United",
+          "away": "77 Devils FC",
+          "hs": 1,
+          "as": 2
+        },
+        {
+          "home": "77 Angels",
+          "away": "Island Boyz",
+          "hs": 2,
+          "as": 3
+        },
+        {
+          "home": "VC Milan",
+          "away": "Georgetown United",
+          "hs": 2,
+          "as": 2
+        }
+      ]
+    }
+  ],
+  "scorers": [
+    {
+      "name": "Ronan Legg",
+      "goals": 6,
+      "country": "Saint Helena",
+      "code": "SH"
+    },
+    {
+      "name": "Rico Benjamin",
+      "goals": 5,
+      "country": "Saint Helena",
+      "code": "SH"
+    },
+    {
+      "name": "R. Ganiyu",
+      "goals": 5,
+      "country": "Saint Helena",
+      "code": "SH"
+    },
+    {
+      "name": "Z. Buzlu",
+      "goals": 5,
+      "country": "Turkey",
+      "code": "TR"
+    },
+    {
+      "name": "B. Turgut",
+      "goals": 4,
+      "country": "Sao Tome and Principe",
+      "code": "ST"
+    }
+  ],
+  "friendlies": [
+    {
+      "club": "Fugees FC",
+      "opponent": "New Stone Town FC",
+      "home": false,
+      "cs": 2,
+      "os": 4,
+      "date": null,
+      "note": "Friendly — does not count towards the league"
+    }
+  ],
+  "playoffs": []
+}

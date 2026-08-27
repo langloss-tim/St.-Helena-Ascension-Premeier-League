@@ -1,74 +1,146 @@
-# ⚽ St. Helena Premier League
+# St. Helena Premier League
 
-A live fan site for a South Atlantic soccer league covering **St. Helena** and
-**Ascension**. Standings, live/upcoming/past scores, and win probabilities are
-pulled from a live sports feed and update automatically as matches are played
-and new seasons begin.
+A fan site for the SHPL — twelve clubs playing across the islands of
+St. Helena and Ascension.
 
-- **St. Helena** clubs play in the **Eastern Conference**
-- **Ascension** clubs play in the **Western Conference**
+Live at **https://sthapl.streamlit.app** — deployed on Streamlit Cloud from this repo's `main` branch.
 
-## Features
-- **League Tables** — standings for each island, updating live with real results
-  (P / W / D / L / GD / Pts, top-9 playoff line highlighted).
-- **Matches** — Live, Upcoming, and Results tabs with scores and kick-off times
-  (shown in St. Helena time).
-- **Win %** — for upcoming fixtures, a home / draw / away win probability derived
-  from pre-match preview odds (normalised so the three add to 100%).
-- **Clubs** — the fifteen clubs of each island.
-- **Ask** — type a real question in the search box ("who's most likely to win the
-  league?", "who won the last Bellboys match?") and get a written answer, grounded
-  in the same live season data the rest of the site shows. Club and match-day
-  searches still resolve instantly without asking anything.
+The league is its own competition. It doesn't shadow any other league and it
+isn't wired to any outside sports feed: **`season.json` is the league**, and
+every table, form guide, projection and playoff bracket on the site is computed
+from it.
 
-## Run locally
+## The clubs
+
+| St. Helena Division 🇸🇭 | Ascension Division 🇦🇨 |
+| --- | --- |
+| Rovers Saint Helena | 77 Devils FC |
+| Bellboys FC | Georgetown United |
+| Harts United | Two Boats United |
+| Fugees FC | 77 Angels |
+| La Verde FC | Island Boyz |
+| STH Young Boys | VC Milan |
+
+Clubs play only inside their own division.
+
+## Publishing results
+
+Everything lives in `season.json`. Add a matchday, or fill in scores on one
+that's already there, and the whole site updates — tables, form, club pages,
+projections and the bracket.
+
+```jsonc
+{
+  "n": 5,                          // matchday number
+  "division": "St. Helena",        // "St. Helena" or "Ascension"
+  "date": "2026-09-06",            // optional; omit or use null if not set yet
+  "matches": [
+    {"home": "Harts United", "away": "Fugees FC", "hs": 2, "as": 2},
+    {"home": "Rovers Saint Helena", "away": "Bellboys FC", "hs": 1, "as": 0,
+     "live": true, "minute": "67'"},
+    {"home": "La Verde FC", "away": "STH Young Boys", "hs": null, "as": null}
+  ]
+}
+```
+
+* **`hs` / `as`** — home and away score. Both present = the match is final.
+* **`null` scores** — an upcoming fixture. It shows on the Upcoming tab with
+  the model's win projection.
+* **`"live": true`** — in progress. It appears on the Live tab with `minute`
+  on the card, and stays out of the table until it's final.
+* Club names can be written short (`"Harts"`, `"Rovers"`) — `teams.py` knows
+  the aliases. An unknown name fails loudly rather than inventing a club.
+
+Bump `"updated"` when you publish, so the sidebar shows the right date.
+
+### Playoffs
+
+Top five in each division qualify:
+
+```
+WILD CARD       #4 v #5           winner takes the last place
+SEMI-FINAL 1    #1 v WC winner
+SEMI-FINAL 2    #2 v #3
+DIVISION FINAL  SF1 winner v SF2 winner
+GRAND FINAL     St. Helena champion v Ascension champion
+```
+
+Every tie is a single game. Add postseason games to the `"playoffs"` list:
+
+```jsonc
+{"round": "Wild Card", "division": "Ascension",
+ "home": "Two Boats United", "away": "VC Milan", "hs": 3, "as": 1}
+```
+
+Rounds: `Wild Card`, `Semi-Final`, `Division Final`, `Grand Final` (the Grand
+Final needs no `division`). The bracket resolves round by round, so a slot is
+only named once the tie before it has actually been won. The Playoffs tab
+unlocks as soon as a playoff game exists, or when you set
+`"playoffs_open": true`.
+
+### Top scorers
+
+The Golden Boot chart is a `"scorers"` list. It shows in full on the Tables page
+and as a top three on the Home page, laid out **name → goals → country flag**.
+
+```jsonc
+{"name": "Ronan Legg", "goals": 6, "country": "Saint Helena", "code": "SH"}
+```
+
+`code` is the two-letter country code; the flag emoji is built from it, so a new
+country needs nothing but its code (`TR` → 🇹🇷, `ST` → 🇸🇹). Ranking is automatic,
+and players level on goals share a rank and keep the order you entered them in.
+Which club a player turns out for isn't published anywhere on the site.
+
+### Friendlies
+
+Matches against clubs from outside the league go in a separate `"friendlies"`
+list. They count for **nothing** — no points, no goals, no form, no place in the
+table — and they show on **one screen only: that club's own page**, under a
+"Friendlies" heading below its league results.
+
+```jsonc
+{"club": "Fugees FC", "opponent": "New Stone Town FC", "home": true,
+ "cs": 2, "os": 4, "date": null, "note": "Friendly"}
+```
+
+`cs` is the SHPL club's score and `os` the opponent's, so there's no home/away
+confusion — set `"home": false` if the club travelled. The opponent is just a
+name; it needs no entry in `teams.py` and never gets one.
+
+### Archiving a season
+
+Copy `season.json` to `season-<year>.json`, list the year in `seasons.json`,
+then clear `season.json` for the new season. A Season picker appears in the
+sidebar once more than one season exists.
+
+## Files
+
+| File | What it does |
+| --- | --- |
+| `season.json` | **The data.** Every result, fixture and playoff game. |
+| `teams.py` | The twelve clubs — divisions, colours, name aliases. |
+| `league.py` | Turns `season.json` into tables, form and projections. |
+| `feed.py` | Loads the current season or an archived one. |
+| `bracket.py` | Builds the playoff bracket. |
+| `app.py` | The Streamlit site — Home, Tables, Matches, Clubs, Playoffs, Ask. |
+| `ask.py` | The Ask assistant (needs `ANTHROPIC_API_KEY`). |
+| `facts.py` | Daily soccer / St. Helena facts on the Home page. |
+
+## Projections
+
+Upcoming fixtures show a win / draw / loss projection. It's the site's own
+model — points per game and goal difference per game, plus a home-field edge —
+not a betting market. Early in a season, with only a few games played, treat it
+as a rough read.
+
+## Running it
+
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
+python league.py      # prints both tables in the terminal
 ```
 
-## Deploy (Streamlit Cloud)
-1. Push this folder to a public GitHub repo (via GitHub Desktop on Windows).
-2. On https://share.streamlit.io create a new app, point it at the repo, and set
-   the main file to `app.py`.
-3. To switch on the **Ask** tab, add one secret in the app's
-   **Settings → Secrets**:
-   ```toml
-   ANTHROPIC_API_KEY = "sk-ant-..."
-   ```
-   Everything else works without it — with no key, the Ask tab simply says the
-   assistant is switched off.
-
-## How it works
-The score feed blocks datacenter IPs (like Streamlit Cloud's), so the app never
-calls it directly. Instead:
-
-1. A **GitHub Action** (`.github/workflows/update-data.yml`) runs every ~15 min
-   on GitHub's servers, fetches everything, and publishes a `feed.json` to a
-   separate **`data` branch**.
-2. The **Streamlit app** reads that `feed.json` over `raw.githubusercontent.com`
-   (GitHub is always reachable) — no direct feed calls, no 403.
-
-| File | Purpose |
-|------|---------|
-| `teams.py` | The club map (SHPL names, islands, source IDs, colours). Edit here to change a name or colour. |
-| `espn.py`  | Data layer: fetches standings/scoreboard/odds and returns clean, re-branded data. |
-| `build_feed.py` | Run by the Action; bundles everything into `feed.json`. |
-| `feed.py`  | App-side loader: reads the published `data` branch (with fallbacks). |
-| `app.py`   | Streamlit UI: sidebar nav, tables, match cards, win-probability bars. |
-| `ask.py`   | The Ask assistant: builds a plain-text season brief from `feed.json`, sends it with the question, and filters the answer on the way back. |
-| `.streamlit/config.toml` | Dark theme. |
-
-**One-time setup for the Action to publish:** in the repo on GitHub go to
-**Settings → Actions → General → Workflow permissions** and choose
-**"Read and write permissions"**, then Save. (If you rename the repo, update
-`GH_OWNER`/`GH_REPO` at the top of `feed.py`.)
-
-This is an unofficial, non-commercial fan project.
-
-## Notes / future season changes
-- Nothing needs updating between seasons — standings and fixtures come from
-  whatever season the feed is currently serving.
-- If a club's source ID ever changes, update its `espn_id` in `teams.py`.
-- Win probabilities appear only once preview odds are posted (usually a few days
-  before kick-off); until then the card shows a "not published yet" note.
+The Ask tab needs an `ANTHROPIC_API_KEY` in Streamlit secrets. Without one it
+says so politely and every other page works as normal.

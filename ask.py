@@ -1,7 +1,7 @@
 """
 Ask-the-league assistant.
 
-The sidebar search still answers club and match-day lookups itself (instant, no
+The sidebar search still answers club and matchday lookups itself (instant, no
 API call). Anything that isn't one of those — "who won last night", "who's most
 likely to win the title", "how are the Bellboys doing since June" — is routed
 here and answered by Claude, grounded in the exact same season snapshot the rest
@@ -9,9 +9,10 @@ of the site renders from. No web access, no guessing: if it isn't in the
 snapshot, the assistant says so.
 
 Two rules this module exists to protect:
-  * the model is only ever shown SHPL names (never the source league's, never a
-    venue, never a roster), and
-  * every answer is scrubbed on the way out, in case something slips through.
+  * the model is only ever shown what the site itself publishes — club names,
+    results, tables and matchdays; no venues, no rosters, no other leagues, and
+  * every answer still passes through `scrub()` on the way out, so there is one
+    place to add an outbound rule if one is ever needed.
 
 Configuration: an `ANTHROPIC_API_KEY` in Streamlit secrets (or the environment).
 Without one the Ask tab politely says the assistant is switched off; nothing
@@ -199,79 +200,41 @@ def available():
 # --------------------------------------------------------------------------- #
 # Leak guard: real names never go in, and never come out
 # --------------------------------------------------------------------------- #
-def _aliases(real_name):
-    """Every spelling of a real club name we want to catch in output."""
-    out = {real_name}
-    flat = real_name.replace(".", "")
-    out.add(flat)
-    for name in (real_name, flat):
-        core = [w for w in name.split() if w.upper() not in ("FC", "SC", "CF", "CITY")]
-        joined = " ".join(core)
-        if len(joined) >= 4:
-            out.add(joined)
-    return {a.replace("é", "e") for a in out} | out
-
-
-def _scrub_map():
-    m = {}
-    for t in teams.TEAMS:
-        for alias in _aliases(t.mls_name):
-            m[alias.lower()] = t.shpl_name
-    for league in ("Major League Soccer", "M.L.S", "MLS"):
-        m[league.lower()] = "the SHPL"
-    return m
-
-
-_SCRUB = _scrub_map()
-_SCRUB_RE = re.compile(
-    r"\b(?:" + "|".join(re.escape(k) for k in sorted(_SCRUB, key=len, reverse=True)) + r")\b",
-    re.IGNORECASE,
-)
-
-
 def scrub(text):
-    """Rewrite any real-world club or league name back into SHPL language.
+    """Kept as the single outbound filter for the assistant's text.
 
-    Belt and braces: the model is never shown these names in the first place.
-    Safe to call repeatedly on a growing string while streaming.
+    The SHPL doesn't shadow another competition, so there are no real club or
+    league names to rewrite — nothing needs replacing today. The hook stays
+    because every streamed chunk goes through it, and that's the one place a
+    future rule would belong. Safe to call repeatedly while streaming.
     """
-    if not text:
-        return text
-    return _SCRUB_RE.sub(lambda mo: _SCRUB.get(mo.group(0).lower(), "the SHPL"), text)
+    return text
 
 
 # --------------------------------------------------------------------------- #
-# Season context (SHPL names only — no venues, no rosters, no real names)
+# Season context (what the site publishes — no venues, no rosters)
 # --------------------------------------------------------------------------- #
-def _amdate(dt):
-    d = dt.astimezone(LOCAL_TZ)
-    return f"{d.strftime('%a')}, {d.strftime('%B')} {d.day}, {d.year}"
+def _label(m):
+    """How a match is referred to in the brief."""
+    if m["playoff"]:
+        return m["round"] or "Playoff"
+    if m["matchday"]:
+        return f"{m['division']} MD{m['matchday']}"
+    return m["division"] or "Fixture"
 
 
-def _amtime(dt):
-    return dt.astimezone(LOCAL_TZ).strftime("%I:%M %p ET").lstrip("0")
-
-
-def _shortdate(dt):
-    """'Sat Feb 21' — the fixture list is long, so every character counts."""
-    d = dt.astimezone(LOCAL_TZ)
-    return f"{d.strftime('%a')} {d.strftime('%b')} {d.day}"
-
-
-def _parse(s):
-    from datetime import datetime
-    if not s:
-        return None
-    try:
-        return datetime.fromisoformat(s)
-    except (TypeError, ValueError):
-        return None
+def _order(m):
+    """Chronological enough: matchdays in order, playoffs after them."""
+    rounds = {"Wild Card": 1, "Semi-Final": 2, "Division Final": 3, "Grand Final": 4}
+    if m["playoff"]:
+        return (2, rounds.get(m["round"], 9), m["division"] or "")
+    return (1, m["matchday"] or 0, m["division"] or "")
 
 
 def _form_strings(matches):
     """Last five results per club, oldest to newest, e.g. 'W W D L W'."""
     seq = {}
-    for m in sorted((x for x in matches if x["done"]), key=lambda x: x["when"]):
+    for m in sorted((x for x in matches if x["done"] and not x["friendly"]), key=_order):
         for side, other in ((m["home"], m["away"]), (m["away"], m["home"])):
             if side["score"] is None or other["score"] is None:
                 continue
@@ -289,43 +252,56 @@ def _rows(feed):
     """Flatten the feed's matches into the small shape this module needs."""
     out = []
     for m in feed.get("matches") or []:
-        when = m["start"] if hasattr(m.get("start"), "tzinfo") else _parse(m.get("start"))
         home, away = m.get("home") or {}, m.get("away") or {}
+        day = m.get("day")
         out.append({
             "id": str(m.get("id")),
-            "when": when,
             "state": m.get("state"),
             "done": bool(m.get("completed")),
             "detail": m.get("status_detail") or "",
-            "playoff": (m.get("season_slug") or "regular-season") != "regular-season",
-            "home": {"name": home.get("shpl_name") or "?", "score": home.get("score")},
-            "away": {"name": away.get("shpl_name") or "?", "score": away.get("score")},
+            "playoff": m.get("stage") == "playoff",
+            "friendly": m.get("stage") == "friendly",
+            "round": m.get("round") or "",
+            "division": m.get("division") or "",
+            "matchday": m.get("matchday"),
+            "date": (f"{day.strftime('%A')}, {day.strftime('%B')} {day.day}, {day.year}"
+                     if day else ""),
+            "home": {"name": home.get("name") or "?", "score": home.get("score")},
+            "away": {"name": away.get("name") or "?", "score": away.get("score")},
         })
-    return [r for r in out if r["when"] is not None]
+    return out
 
 
 def build_context(feed):
     """A compact, plain-text brief on the whole season. Deterministic, so it
-    caches cleanly across questions until the feed itself refreshes."""
+    caches cleanly across questions until the results file changes."""
     season = feed.get("season") or ""
     matches = _rows(feed)
     winprobs = feed.get("winprobs") or {}
     forms = _form_strings(matches)
 
     L = [f"ST. HELENA PREMIER LEAGUE — {season} SEASON"]
-    gen = _parse(feed.get("generated_at"))
-    if gen:
-        L.append(f"Data current as of {_amdate(gen)} at {_amtime(gen)}.")
-    L.append("Thirty clubs, split between two islands and two conferences. "
-             "Rosters and venues are not published, so no player or stadium "
-             "information exists in this data.")
+    if feed.get("generated_at"):
+        L.append(f"Results current as of {feed['generated_at']}.")
+    L.append("Twelve clubs in two divisions of six: the St. Helena Division and "
+             "the Ascension Division. Clubs play only inside their own division. "
+             "Squads, venues and referees are not published, so beyond the Golden "
+             "Boot chart below there is no player, stadium or official information "
+             "in this data. Matches are organised by matchday, and a fixture may "
+             "not have a date yet.")
+    L.append("Playoff format: the top five in each division qualify. 4th plays 5th "
+             "in a Wild Card game; the winner takes the last place. Then 1st plays "
+             "the Wild Card winner and 2nd plays 3rd, and those two winners meet in "
+             "the Division Final. The two division champions meet in the Grand Final "
+             "for the SHPL title. Every tie is a single game.")
 
     L.append("")
-    L.append("=== CONFERENCE TABLES ===")
+    L.append("=== DIVISION TABLES ===")
+    L.append("Ranked on points, then goal difference, then goals scored.")
     for conf in (feed.get("standings") or {}).get("conferences") or []:
-        L.append(f"-- {conf.get('name', '')} ({conf.get('island', '')}) --")
+        L.append(f"-- {conf.get('name', '')} --")
         for row in conf.get("table") or []:
-            name = row.get("shpl_name", "?")
+            name = row.get("name", "?")
             form = forms.get(name)
             L.append(
                 f"{row.get('rank', '?')}. {name}: {row.get('points', 0)} pts, "
@@ -341,31 +317,67 @@ def build_context(feed):
     if live:
         L.append("=== IN PROGRESS RIGHT NOW ===")
         for m in live:
-            L.append(f"{m['home']['name']} {m['home']['score']}-{m['away']['score']} "
-                     f"{m['away']['name']} ({m['detail']}) — {m['home']['name']} hosting")
+            L.append(f"{_label(m)}: {m['home']['name']} {m['home']['score']}-"
+                     f"{m['away']['score']} {m['away']['name']} ({m['detail']}) — "
+                     f"{m['home']['name']} hosting")
         L.append("")
 
-    played = sorted((m for m in matches if m["done"]), key=lambda m: m["when"])
+    played = sorted((m for m in matches if m["done"] and not m["friendly"]), key=_order)
     L.append(f"=== COMPLETED MATCHES ({len(played)}, oldest first) ===")
-    L.append(f"All dates are in {season}. Format: date — home team score-score away team")
+    L.append("Format: matchday — home team score-score away team. The home team hosts.")
     for m in played:
-        tag = " [playoff]" if m["playoff"] else ""
-        L.append(f"{_shortdate(m['when'])} — {m['home']['name']} "
-                 f"{m['home']['score']}-{m['away']['score']} {m['away']['name']}{tag}")
+        line = (f"{_label(m)} — {m['home']['name']} {m['home']['score']}-"
+                f"{m['away']['score']} {m['away']['name']}")
+        if m["date"]:
+            line += f" ({m['date']})"
+        L.append(line)
     L.append("")
 
-    upcoming = sorted((m for m in matches if m["state"] == "pre"), key=lambda m: m["when"])
+    upcoming = sorted((m for m in matches
+                       if m["state"] == "pre" and not m["friendly"]), key=_order)
     L.append(f"=== UPCOMING FIXTURES ({len(upcoming)}, soonest first) ===")
-    L.append("Format: date, kickoff — home team vs away team, then win chances "
-             "where a forecast exists. The home team hosts.")
+    if not upcoming:
+        L.append("None announced yet — the next matchday hasn't been published.")
+    else:
+        L.append("Format: matchday — home team vs away team, then the model's win "
+                 "chances. These projections are computed from form so far, not from "
+                 "a betting market.")
     for m in upcoming:
-        line = (f"{_shortdate(m['when'])}, {_amtime(m['when'])} — "
-                f"{m['home']['name']} vs {m['away']['name']}")
+        line = f"{_label(m)} — {m['home']['name']} vs {m['away']['name']}"
+        if m["date"]:
+            line += f" ({m['date']})"
         wp = winprobs.get(m["id"])
         if wp:
             line += (f" — win chance: {m['home']['name']} {wp.get('home_pct')}%, "
                      f"draw {wp.get('draw_pct')}%, {m['away']['name']} {wp.get('away_pct')}%")
         L.append(line)
+
+    scorers = feed.get("scorers") or []
+    if scorers:
+        L.append("")
+        L.append("=== GOLDEN BOOT (top scorers) ===")
+        L.append("Format: rank. player — goals (country). Players level on goals "
+                 "share a rank. These are the only players named anywhere in the "
+                 "league's data; which club each plays for is not published.")
+        for r in scorers:
+            L.append(f"{r['rank']}. {r['name']} — {r['goals']} goals "
+                     f"({r.get('country') or 'country not given'})")
+
+    friendlies = [m for m in matches if m["friendly"] and m["done"]]
+    if friendlies:
+        L.append("")
+        L.append("=== FRIENDLIES (NOT league matches) ===")
+        L.append("Played against clubs from outside the SHPL. These count for "
+                 "NOTHING: no points, no goals, no form, no place in the table, and "
+                 "they are not part of any club's record. Never add them to a "
+                 "record or a table. Mention one only if the fan asks about that "
+                 "specific match or about friendlies.")
+        for m in friendlies:
+            line = (f"{m['home']['name']} {m['home']['score']}-{m['away']['score']} "
+                    f"{m['away']['name']}")
+            if m["date"]:
+                line += f" ({m['date']})"
+            L.append(line)
 
     return "\n".join(L)
 
@@ -375,14 +387,15 @@ def build_context(feed):
 # --------------------------------------------------------------------------- #
 SYSTEM = """\
 You are the resident match analyst for the St. Helena Premier League (SHPL), a \
-30-club league played across the islands of St. Helena and Ascension. You answer \
+12-club league played across the islands of St. Helena and Ascension, in two \
+divisions of six. You answer \
 questions from fans on the league's own website — most often the son or brother \
 of the guy who built it. Talk like a friend who actually follows this league: \
 relaxed and a little bro-y, but sharp. You know the numbers cold and you're not \
 shy about having an opinion.
 
 Everything you know about this season is in the SEASON DATA below. Ground every \
-factual claim in it: results, tables, form, kickoff times and win chances all \
+factual claim in it: results, tables, form, matchdays and win chances all \
 come from there. If the data doesn't cover something, say so in a sentence \
 rather than guessing — and never invent a score, a date, or a fixture.
 
@@ -398,13 +411,14 @@ message gets old fast; one line that actually lands every few answers is the \
 target. Never explain the joke.
 
 The SHPL is the only league that exists in your world. Never mention any other \
-league, club, city, stadium, or competition, real or otherwise, and never name a \
-player — rosters aren't published, so you don't know any. Refer to clubs only by \
-their SHPL names.
+league, club, city, stadium, or competition, real or otherwise. The only players \
+you know are the ones on the Golden Boot chart below — full squads aren't \
+published, so never name anyone else, and never say which club a player turns out \
+for, because that isn't in the data either. Refer to clubs only by their SHPL names.
 
 Write for someone reading on a phone: a couple of short paragraphs, or a short \
-list when you're comparing clubs. No headings. Dates in American format \
-("Sunday, August 16, 2026") and times in ET. Answer what was asked, then stop."""
+list when you're comparing clubs. No headings. Refer to matches by matchday ("matchday 3") and use \
+American dates ("Sunday, August 16, 2026") when the data gives one. Answer what was asked, then stop."""
 
 
 def _client():

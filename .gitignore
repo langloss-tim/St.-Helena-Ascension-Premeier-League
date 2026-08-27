@@ -9,9 +9,6 @@ env/
 # Streamlit
 .streamlit/secrets.toml
 
-# Locally-built data snapshot (the `data` branch holds the real one)
-feed.json
-
 # OS / editor
 .DS_Store
 Thumbs.db

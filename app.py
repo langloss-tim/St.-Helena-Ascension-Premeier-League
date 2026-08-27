@@ -1,12 +1,13 @@
 """
 St. Helena Premier League — Streamlit app.
 
-A fan site for a South Atlantic island league (St. Helena + Ascension). Live
-standings, fixtures, scores and win probabilities update in real time.
+A fan site for a South Atlantic island league: twelve clubs across the
+St. Helena and Ascension divisions. The competition is its own — it doesn't
+shadow any other league, and it isn't wired to any outside sports feed.
 
-The underlying club data is fetched from a live sports feed and re-branded via
-teams.py. NOTE: the real-world source league is never surfaced anywhere in the
-UI — the site stands entirely on its own as the St. Helena Premier League.
+Everything on every page (tables, form, results, fixtures, projections and the
+playoff bracket) is computed from season.json by league.py. To publish new
+scores, edit season.json.
 
 Run locally:  streamlit run app.py
 """
@@ -153,12 +154,28 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .tbl td.club{ text-align:left; font-weight:600; }
 .tbl td.club .dot{ margin-right:.65rem; }
 .tbl td.rank{ color:var(--muted); font-variant-numeric:tabular-nums; width:2.6rem; }
-.tbl td.pts{ font-weight:800; font-size:1.4rem; }
+.tbl td.pts{ font-weight:800; font-size:1.5rem; color:#fff;
+              background:rgba(255,255,255,.06); }
+.tbl thead th.pts{ color:#fff; background:rgba(255,255,255,.06); }
+.tbl td.pts, .tbl thead th.pts{ position:sticky; right:0; }
+.legend .scoring{ color:var(--text); font-size:1.1rem; }
+.legend .scoring b{ font-weight:800; }
+.legend .scoring b.w{ color:#7fe08f; }
+.legend .scoring b.d{ color:var(--muted); }
+.legend .scoring b.l{ color:#ff9273; }
 .tbl tr:hover td{ background:rgba(255,255,255,.03); }
 .tbl tr.cutoff td{ border-bottom:2px solid rgba(255,255,255,.22); }
 .tbl tr.qual td.rank{ color:#57c66a; font-weight:700; }
 .legend{ font-size:1.05rem; color:var(--muted); margin-top:.9rem; }
 .legend b{ color:#57c66a; }
+.legend b.wc{ color:#f4b942; }
+.tbl tr.wildcard td.rank{ color:#f4b942; font-weight:700; }
+.tbl td.form{ text-align:left; white-space:nowrap; padding-left:.9rem; }
+.tbl td.form .formchip{ width:1.55rem; height:1.55rem; font-size:.8rem; margin-right:.18rem; }
+.tbl .tbd{ color:var(--muted); }
+.champline{ margin-top:1rem; font-size:1.3rem; text-align:center;
+            border:1px solid rgba(244,200,0,.5); border-radius:14px; padding:.9rem 1rem;
+            background:rgba(244,200,0,.07); }
 
 /* Match-day grouping */
 .daygroup{ margin-bottom:1.6rem; }
@@ -205,6 +222,24 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
      border-radius:99px; margin-left:.2rem; vertical-align:middle; }
 .ha.home{ background:rgba(87,198,106,.18); color:#7fe08f; }
 .ha.away{ background:rgba(255,255,255,.08); color:var(--muted); }
+.ha.friendly{ background:rgba(124,133,149,.22); color:#c3cad6;
+              border:1px solid rgba(255,255,255,.14); }
+
+/* Golden Boot */
+.scorers{ border:1px solid var(--line); border-radius:14px; background:var(--panel);
+          overflow:hidden; }
+.scorer{ display:flex; align-items:center; gap:.75rem; padding:.75rem 1rem;
+         border-bottom:1px solid rgba(255,255,255,.05); }
+.scorer:last-child{ border-bottom:none; }
+.scorer .srank{ min-width:2.1rem; color:var(--muted); font-weight:700;
+                font-variant-numeric:tabular-nums; }
+.scorer.lead .srank{ color:#f4c800; }
+.scorer .sname{ font-size:1.25rem; font-weight:600; }
+.scorer .sgoals{ margin-left:auto; font-size:1.45rem; font-weight:800;
+                 font-variant-numeric:tabular-nums; }
+.scorer .sgoals small{ font-size:.8rem; font-weight:600; color:var(--muted);
+                       margin-left:.3rem; }
+.scorer .sflag{ font-size:1.5rem; line-height:1; min-width:1.9rem; text-align:right; }
 
 /* Fact of the day (two compact cards side by side) */
 .factrow{ display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin:.3rem 0 1.5rem; }
@@ -351,14 +386,19 @@ def header(season):
 # Tables page
 # --------------------------------------------------------------------------- #
 def render_standings(standings, ncols=2):
+    # Two tables side by side, or a narrow screen, means every extra column
+    # pushes Points further off the edge. Points is the column people came to
+    # read, so on tight layouts the optional ones go instead.
+    compact = ncols == 1
+
     def one(conf):
         meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
         st.markdown(
             f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-            f'{meta["flag"]} {conf["island"]}</div>',
+            f'{meta["flag"]} {conf["name"]}</div>',
             unsafe_allow_html=True,
         )
-        st.markdown(_standings_html(conf["table"]), unsafe_allow_html=True)
+        st.markdown(_standings_html(conf["table"], compact=compact), unsafe_allow_html=True)
 
     confs = standings["conferences"]
     if ncols == 1:
@@ -370,247 +410,54 @@ def render_standings(standings, ncols=2):
             with col:
                 one(conf)
 
+def _standings_html(rows, compact=False):
+    """The league table. Points is the point of it — it stays on screen at
+    every width, and the columns that can be dropped are dropped around it."""
+    cols = ['<th class="l">#</th>', '<th class="l">Club</th>',
+            "<th>P</th>", "<th>W</th>", "<th>D</th>", "<th>L</th>"]
+    if not compact:
+        cols += ["<th>GF</th>", "<th>GA</th>"]
+    cols += ["<th>GD</th>", '<th class="pts">Pts</th>']
+    if not compact:
+        cols.append('<th class="l">Form</th>')
+    head = '<table class="tbl"><thead><tr>' + "".join(cols) + "</tr></thead><tbody>"
 
-def _standings_html(rows):
-    head = (
-        '<table class="tbl"><thead><tr>'
-        '<th class="l">#</th><th class="l">Club</th>'
-        '<th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>'
-        '</tr></thead><tbody>'
-    )
     body = []
     for r in rows:
         classes = []
-        if r["rank"] <= 9:
+        if r["rank"] <= 3:
             classes.append("qual")
-        if r["rank"] == 9:
-            classes.append("cutoff")  # divider line under the last playoff spot
+        elif r["rank"] <= 5:
+            classes.append("wildcard")
+        if r["rank"] == 5:
+            classes.append("cutoff")  # last club still alive for the playoffs
         cls = f' class="{" ".join(classes)}"' if classes else ""
-        body.append(
-            f'<tr{cls}>'
-            f'<td class="rank">{r["rank"]}</td>'
-            f'<td class="club">{dot(r["primary"])}{r["shpl_name"]}</td>'
-            f'<td>{r["played"]}</td><td>{r["wins"]}</td><td>{r["draws"]}</td>'
-            f'<td>{r["losses"]}</td><td>{r["gd"]:+d}</td>'
-            f'<td class="pts">{r["points"]}</td>'
-            f'</tr>'
-        )
-    legend = '<div class="legend"><b>Green</b> = top 9 qualify for the playoffs</div>'
-    return '<div class="tblwrap">' + head + "".join(body) + "</tbody></table></div>" + legend
 
+        cells = [f'<td class="rank">{r["rank"]}</td>',
+                 f'<td class="club">{dot(r["primary"])}{r["name"]}</td>',
+                 f'<td>{r["played"]}</td>', f'<td>{r["wins"]}</td>',
+                 f'<td>{r["draws"]}</td>', f'<td>{r["losses"]}</td>']
+        if not compact:
+            cells += [f'<td>{r["gf"]}</td>', f'<td>{r["ga"]}</td>']
+        cells += [f'<td>{r["gd"]:+d}</td>', f'<td class="pts">{r["points"]}</td>']
+        if not compact:
+            form = "".join(f'<span class="formchip {o.lower()}">{o}</span>'
+                           for o in r.get("form", [])) or '<span class="tbd">–</span>'
+            cells.append(f'<td class="form">{form}</td>')
+        body.append(f"<tr{cls}>" + "".join(cells) + "</tr>")
+
+    legend = ('<div class="legend">'
+              '<span class="scoring"><b class="w">Win 3 pts</b> · '
+              '<b class="d">Draw 1 pt</b> · <b class="l">Loss 0 pts</b></span><br>'
+              'Ranked on points, then goal difference, then goals scored.<br>'
+              '<b>Green</b> = straight into the semi-finals · '
+              '<b class="wc">Amber</b> = 4th and 5th meet in the Wild Card game'
+              '</div>')
+    return '<div class="tblwrap">' + head + "".join(body) + "</tbody></table></div>" + legend
 
 # --------------------------------------------------------------------------- #
 # Matches page
 # --------------------------------------------------------------------------- #
-LIVE_HTML = r"""
-<style>
-  :root{ color-scheme: dark; }
-  *{ box-sizing:border-box; }
-  body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-        color:#eef1f6; background:transparent; }
-  .stamp{ font-size:.85rem; color:#8b93a1; margin:0 0 .8rem; }
-  .empty{ border:1px dashed rgba(255,255,255,.15); border-radius:16px; padding:2rem 1.2rem;
-          text-align:center; color:#aab2bf; font-size:1.15rem; }
-  .empty span{ display:block; margin-top:.5rem; font-size:.95rem; color:#7d8593; }
-  .lg{ border:1px solid rgba(228,87,46,.5); border-left:6px solid #e4572e; border-radius:16px;
-       background:#161b26; padding:1rem 1.2rem; margin-bottom:1rem; }
-  .min{ color:#fff; background:#e4572e; display:inline-block; padding:.15rem .6rem; border-radius:99px;
-        font-size:.8rem; font-weight:800; letter-spacing:.4px; margin-bottom:.6rem; }
-  .row{ display:flex; align-items:center; justify-content:space-between; padding:.2rem 0; }
-  .tm{ display:flex; align-items:center; gap:.55rem; font-size:1.35rem; font-weight:700; }
-  .tm i{ width:16px; height:16px; border-radius:50%; display:inline-block;
-         box-shadow:inset 0 0 0 2px rgba(255,255,255,.25); }
-  .tm em{ font-style:normal; font-size:.65rem; font-weight:800; letter-spacing:.5px; color:#8b93a1;
-          background:rgba(255,255,255,.06); padding:.1rem .4rem; border-radius:99px; }
-  .row b{ font-size:1.8rem; font-variant-numeric:tabular-nums; }
-  .poss{ display:flex; height:9px; border-radius:99px; overflow:hidden; margin:.7rem 0 .3rem; }
-  .plabel{ display:flex; justify-content:space-between; font-size:.8rem; color:#aab2bf; }
-  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.8rem; }
-  .s{ display:flex; align-items:center; justify-content:space-between; background:#10141d;
-      border-radius:10px; padding:.45rem .7rem; }
-  .s span{ font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; }
-  .s small{ color:#8b93a1; font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; }
-  .forms{ text-align:center; color:#aab2bf; font-size:1rem; margin:.6rem 0; letter-spacing:.3px; font-weight:700; }
-  .forms span{ color:#6c7482; font-weight:400; }
-</style>
-<div class="stamp" id="stamp">Loading live matches…</div>
-<div id="app"></div>
-<script>
-  const TEAMS = __TEAMS__;
-  const SB = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard";
-  const SUM = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/summary?event=";
-  const nm = id => (TEAMS[id]||{}).name || null;
-  const col = id => (TEAMS[id]||{}).color || "#888";
-  const val = (s,id,k) => (s[id] && s[id][k] != null) ? s[id][k] : "0";
-
-  async function summaryFor(id){
-    try{
-      const d = await (await fetch(SUM+id)).json();
-      const stats = {};
-      ((d.boxscore && d.boxscore.teams) || []).forEach(t => {
-        const tid = t.team && t.team.id; const m = {};
-        (t.statistics || []).forEach(s => { m[s.name] = s.displayValue; });
-        if(tid) stats[tid] = m;
-      });
-      const lineups = {};
-      // Only the formation shape (e.g. "4-3-2-1") — never player names.
-      (d.rosters || []).forEach(t => {
-        const tid = t.team && t.team.id;
-        if(tid) lineups[tid] = { formation: t.formation || "" };
-      });
-      return { stats: stats, lineups: lineups };
-    }catch(e){ return { stats:{}, lineups:{} }; }
-  }
-  function statCell(label,h,a){ return '<div class="s"><span>'+h+'</span><small>'+label+'</small><span>'+a+'</span></div>'; }
-  function card(home, away, status, sum){
-    const s = sum.stats, lu = sum.lineups;
-    const hi = home.team.id, ai = away.team.id;
-    let hp = parseFloat(val(s,hi,"possessionPct")); if(isNaN(hp)) hp = 50;
-    let ap = parseFloat(val(s,ai,"possessionPct")); if(isNaN(ap)) ap = 100 - hp;
-    const hf = (lu[hi]||{}).formation || "", af = (lu[ai]||{}).formation || "";
-    // Formation shapes only — never player names (would give the source league away).
-    const formLine = (hf || af)
-      ? '<div class="forms">Formations &nbsp; '+(hf||'—')+' <span>vs</span> '+(af||'—')+'</div>'
-      : "";
-    return '<div class="lg">'
-      + '<div class="min">● ' + status + '</div>'
-      + '<div class="row"><span class="tm"><i style="background:'+col(hi)+'"></i>'+nm(hi)+' <em>HOME</em></span><b>'+home.score+'</b></div>'
-      + '<div class="row"><span class="tm"><i style="background:'+col(ai)+'"></i>'+nm(ai)+' <em>AWAY</em></span><b>'+away.score+'</b></div>'
-      + formLine
-      + '<div class="poss"><div style="width:'+hp+'%;background:'+col(hi)+'"></div><div style="width:'+ap+'%;background:'+col(ai)+'"></div></div>'
-      + '<div class="plabel"><span>Possession '+Math.round(hp)+'%</span><span>'+Math.round(ap)+'%</span></div>'
-      + '<div class="grid">'
-      + statCell("Shots", val(s,hi,"totalShots"), val(s,ai,"totalShots"))
-      + statCell("On target", val(s,hi,"shotsOnTarget"), val(s,ai,"shotsOnTarget"))
-      + statCell("Corners", val(s,hi,"wonCorners"), val(s,ai,"wonCorners"))
-      + statCell("Fouls", val(s,hi,"foulsCommitted"), val(s,ai,"foulsCommitted"))
-      + statCell("Yellow", val(s,hi,"yellowCards"), val(s,ai,"yellowCards"))
-      + statCell("Saves", val(s,hi,"saves"), val(s,ai,"saves"))
-      + '</div></div>';
-  }
-  async function render(){
-    const el = document.getElementById("app");
-    try{
-      const d = await (await fetch(SB)).json();
-      const evs = (d.events||[]).filter(e => e.status.type.state === "in");
-      const live = evs.filter(e => {
-        const c = e.competitions[0].competitors;
-        return nm(c[0].team.id) && nm(c[1].team.id);
-      });
-      if(!live.length){
-        el.innerHTML = '<div class="empty">No matches are live right now.'
-          + '<span>Live scores and in-game stats appear here automatically the moment a game kicks off.</span></div>';
-      } else {
-        let html = "";
-        for(const e of live){
-          const c = e.competitions[0].competitors;
-          const home = c.find(x=>x.homeAway==="home"), away = c.find(x=>x.homeAway==="away");
-          const status = e.status.type.detail || e.status.type.shortDetail || "LIVE";
-          const sum = await summaryFor(e.id);
-          html += card(home, away, status, sum);
-        }
-        el.innerHTML = html;
-      }
-      document.getElementById("stamp").textContent = "🔴 Live · refreshes every 5s · " + new Date().toLocaleTimeString();
-    }catch(err){
-      document.getElementById("stamp").textContent = "Could not reach the live feed — retrying…";
-    }
-  }
-  render();
-  setInterval(render, 5000);
-</script>
-"""
-
-
-def live_component():
-    tmap = {t.espn_id: {"name": t.shpl_name, "color": t.primary} for t in teams.TEAMS}
-    html = LIVE_HTML.replace("__TEAMS__", json.dumps(tmap))
-    components.html(html, height=760, scrolling=True)
-
-
-STANDINGS_HTML = r"""
-<style>
-  :root{ color-scheme: dark; }
-  *{ box-sizing:border-box; }
-  body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#eef1f6; background:transparent; }
-  .stamp{ font-size:.85rem; color:#8b93a1; margin:0 0 1rem; }
-  .grid{ display:grid; grid-template-columns:__COLS__; gap:2rem; }
-  .ch{ font-size:1.7rem; font-weight:800; margin-bottom:.7rem; }
-  table{ width:100%; border-collapse:collapse; font-size:1.15rem; }
-  thead th{ text-transform:uppercase; font-size:.78rem; letter-spacing:.5px; color:#8b93a1; font-weight:700;
-            padding:.5rem .4rem; border-bottom:1px solid rgba(255,255,255,.12); text-align:center; }
-  thead th.l{ text-align:left; }
-  td{ padding:.6rem .4rem; border-bottom:1px solid rgba(255,255,255,.05); text-align:center; font-variant-numeric:tabular-nums; }
-  td.cl{ text-align:left; font-weight:600; }
-  td.cl i{ width:14px; height:14px; border-radius:50%; display:inline-block; margin-right:.55rem;
-           box-shadow:inset 0 0 0 2px rgba(255,255,255,.22); vertical-align:middle; }
-  td.rk{ color:#8b93a1; width:2.2rem; }
-  td.pt{ font-weight:800; font-size:1.25rem; }
-  tr:hover td{ background:rgba(255,255,255,.03); }
-  tr.qual td.rk{ color:#57c66a; font-weight:700; }
-  tr.cutoff td{ border-bottom:2px solid rgba(255,255,255,.22); }
-  .lg{ font-size:.95rem; color:#8b93a1; margin-top:.7rem; }
-  .empty{ color:#aab2bf; padding:2rem; text-align:center; }
-</style>
-<div class="stamp" id="stamp">Loading table…</div>
-<div class="grid" id="tbls"></div>
-<script>
-  const T = __TEAMS__;
-  const URL = "https://site.api.espn.com/apis/v2/sports/soccer/usa.1/standings";
-  const val = (s,n) => { for(const x of s){ if(x.name===n) return x.value; } return 0; };
-  const gd = v => { v = Number(v)||0; return (v>0?"+":"")+v; };
-  function tbl(c){
-    const flag = c.island==="St. Helena" ? "🇸🇭" : (c.island==="Ascension" ? "🇦🇨" : "");
-    const rows = c.rows.map(r => '<tr class="'+(r.rank<=9?"qual":"")+' '+(r.rank===9?"cutoff":"")+'">'
-      + '<td class="rk">'+r.rank+'</td>'
-      + '<td class="cl"><i style="background:'+r.color+'"></i>'+r.name+'</td>'
-      + '<td>'+r.P+'</td><td>'+r.W+'</td><td>'+r.D+'</td><td>'+r.L+'</td><td>'+gd(r.GD)+'</td>'
-      + '<td class="pt">'+r.PTS+'</td></tr>').join("");
-    return '<div class="conf"><div class="ch">'+flag+' '+c.island+'</div>'
-      + '<table><thead><tr><th class="l">#</th><th class="l">Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>'
-      + '<tbody>'+rows+'</tbody></table><div class="lg">🟢 Top 9 qualify for the playoffs</div></div>';
-  }
-  async function render(){
-    const el = document.getElementById("tbls");
-    try{
-      const d = await (await fetch(URL)).json();
-      const confs = (d.children||[]).map(ch => {
-        const entries = (ch.standings && ch.standings.entries) || [];
-        const votes = {};
-        const rows = entries.map(e => {
-          const id = String(e.team.id), s = e.stats||[], info = T[id]||{};
-          if(info.island) votes[info.island] = (votes[info.island]||0)+1;
-          return { name: info.name||e.team.displayName, color: info.color||"#888",
-                   P: val(s,"gamesPlayed"), W: val(s,"wins"), D: val(s,"ties"), L: val(s,"losses"),
-                   GD: val(s,"pointDifferential"), GF: val(s,"pointsFor"), PTS: val(s,"points") };
-        });
-        rows.sort((a,b) => b.PTS-a.PTS || b.GD-a.GD || b.GF-a.GF);
-        rows.forEach((r,i) => r.rank = i+1);
-        const island = Object.keys(votes).sort((a,b)=>votes[b]-votes[a])[0] || ch.name;
-        return { island, rows };
-      });
-      confs.sort((a,b) => (a.island==="St. Helena"?0:1) - (b.island==="St. Helena"?0:1));
-      el.innerHTML = confs.map(tbl).join("");
-      document.getElementById("stamp").textContent = "🔴 Live table · updates every 15s · " + new Date().toLocaleTimeString();
-    }catch(e){
-      document.getElementById("stamp").textContent = "Could not load the table — retrying…";
-    }
-  }
-  render();
-  setInterval(render, 15000);
-</script>
-"""
-
-
-def standings_component(ncols):
-    tmap = {t.espn_id: {"name": t.shpl_name, "color": t.primary, "island": t.island}
-            for t in teams.TEAMS}
-    html = (STANDINGS_HTML
-            .replace("__TEAMS__", json.dumps(tmap))
-            .replace("__COLS__", "1fr 1fr" if ncols == 2 else "1fr"))
-    components.html(html, height=(1120 if ncols == 2 else 2050), scrolling=True)
-
-
 CLOCK_HTML = r"""
 <style>
   body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#eef1f6; background:transparent; }
@@ -649,307 +496,135 @@ def clock_component():
     components.html(CLOCK_HTML, height=110, scrolling=False)
 
 
-MATCHES_HTML = r"""
-<style>
-  :root{ color-scheme: dark; }
-  *{ box-sizing:border-box; }
-  body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#eef1f6; background:transparent; }
-  .stamp{ font-size:.85rem; color:#8b93a1; margin:.2rem 0 .8rem; }
-  .tabs{ display:flex; gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; }
-  .tab{ background:#161b26; color:#cfd5df; border:1px solid rgba(255,255,255,.12); border-radius:99px;
-        padding:.5rem 1rem; font-size:1.05rem; font-weight:600; cursor:pointer; }
-  .tab.on{ background:#e4572e; color:#fff; border-color:#e4572e; }
-  .empty{ border:1px dashed rgba(255,255,255,.15); border-radius:14px; padding:1.6rem; text-align:center; color:#aab2bf; }
-  .focusbar{ display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem;
-             font-size:1.2rem; font-weight:700; }
-  .focusbar button{ background:#161b26; color:#e4572e; border:1px solid rgba(255,255,255,.15); border-radius:8px;
-                    padding:.4rem .8rem; cursor:pointer; font-weight:700; }
-  .daygroup{ margin-bottom:1.4rem; }
-  .dayhdr{ display:flex; align-items:baseline; justify-content:space-between; gap:1rem; margin:1.1rem 0 .6rem;
-           padding-bottom:.35rem; border-bottom:1px solid rgba(255,255,255,.09); }
-  .dayhdr > span:first-child{ font-size:1.3rem; font-weight:700; }
-  .daycount{ font-size:.95rem; color:#8b93a1; white-space:nowrap; }
-  .match{ border:1px solid rgba(255,255,255,.09); border-left:6px solid #888; border-radius:16px;
-          padding:1rem 1.2rem; margin-bottom:.8rem; background:#161b26; }
-  .match.islive{ border-color:#e4572e; }
-  .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem; }
-  .status{ font-size:1rem; color:#8b93a1; }
-  .live{ color:#fff; background:#e4572e; padding:.16rem .6rem; border-radius:99px; font-size:.9rem; font-weight:800; }
-  .mrow{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.2rem 0; }
-  .tname{ display:flex; align-items:center; gap:.6rem; font-size:1.55rem; font-weight:600; }
-  .tname i{ width:16px; height:16px; border-radius:50%; box-shadow:inset 0 0 0 2px rgba(255,255,255,.22); }
-  .tname.win{ font-weight:800; } .tname.lose{ color:#8b93a1; }
-  .ha{ font-size:.68rem; font-weight:800; letter-spacing:.5px; padding:.1rem .45rem; border-radius:99px; }
-  .ha.home{ background:rgba(87,198,106,.18); color:#7fe08f; } .ha.away{ background:rgba(255,255,255,.08); color:#8b93a1; }
-  .score{ font-size:2rem; font-weight:800; font-variant-numeric:tabular-nums; min-width:1.6rem; text-align:center; }
-  .kick{ font-size:1.05rem; color:#8b93a1; margin-top:.5rem; }
-  .wp{ margin:.7rem 0 .1rem; }
-  .wp .bar{ height:13px; border-radius:99px; overflow:hidden; display:flex; }
-  .wp .bar > div{ height:100%; }
-  .wp .labels{ display:flex; justify-content:space-between; font-size:1rem; margin-top:.4rem; }
-  .wp .labels .mid{ color:#8b93a1; }
-  .forms{ text-align:center; color:#aab2bf; font-size:1rem; margin:.6rem 0; font-weight:700; }
-  .forms span{ color:#6c7482; font-weight:400; }
-  .poss{ display:flex; height:11px; border-radius:99px; overflow:hidden; margin:.7rem 0 .3rem; }
-  .plabel{ display:flex; justify-content:space-between; font-size:.9rem; color:#aab2bf; }
-  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-top:.8rem; }
-  .s{ display:flex; align-items:center; justify-content:space-between; background:#10141d; border-radius:10px; padding:.45rem .7rem; }
-  .s span{ font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums; }
-  .s small{ color:#8b93a1; font-size:.72rem; text-transform:uppercase; letter-spacing:.4px; }
-</style>
-<div class="stamp" id="stamp">Loading matches…</div>
-<div class="tabs" id="tabs"></div>
-<div id="wrap"></div>
-<script>
-  const TEAMS = __TEAMS__;
-  const SEASON = __SEASON__;
-  const FOCUS = "__FOCUS__";
-  const SB = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard?dates="+SEASON+"0101-"+SEASON+"1231&limit=1000";
-  const SUM = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/summary?event=";
-  const nm = id => (TEAMS[id]||{}).name || null;
-  const col = id => (TEAMS[id]||{}).color || "#888";
-  let EVENTS = null, TAB = FOCUS ? "focus" : "live";
-  const ODDS = {};
-
-  const dkey = iso => new Date(iso).toLocaleDateString('en-CA', {timeZone:'America/New_York'});
-  const dlabel = iso => new Date(iso).toLocaleDateString('en-US', {timeZone:'America/New_York', weekday:'long', month:'long', day:'numeric', year:'numeric'});
-  const kickoff = iso => new Date(iso).toLocaleString('en-US', {timeZone:'America/New_York', weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) + " ET";
-  const implied = ml => { ml = Number(ml); if(!ml) return null; return ml<0 ? (-ml)/(-ml+100) : 100/(ml+100); };
-
-  async function fetchOdds(id){
-    try{
-      const d = await (await fetch(SUM+id)).json();
-      const b = (d.pickcenter || d.odds || [])[0];
-      if(!b){ ODDS[id]="none"; return; }
-      const h = implied((b.homeTeamOdds||{}).moneyLine), a = implied((b.awayTeamOdds||{}).moneyLine);
-      const dr = implied((b.drawOdds||{}).moneyLine) || 0;
-      if(h==null || a==null){ ODDS[id]="none"; return; }
-      const tot = h+a+dr; if(tot<=0){ ODDS[id]="none"; return; }
-      ODDS[id] = { h:Math.round(h/tot*100), d:Math.round(dr/tot*100), a:Math.round(a/tot*100) };
-    }catch(e){ ODDS[id]="none"; }
-  }
-  async function ensureOdds(list){
-    const todo = list.filter(m => !(m.id in ODDS)).slice(0, 24);
-    if(!todo.length) return;
-    await Promise.all(todo.map(m => fetchOdds(m.id)));
-    render();
-  }
-
-  // Live in-game stats + formation (fetched fresh each cycle for live games).
-  const sval = (s,id,k) => (s[id] && s[id][k]!=null) ? s[id][k] : "0";
-  const statCell = (label,h,a) => '<div class="s"><span>'+h+'</span><small>'+label+'</small><span>'+a+'</span></div>';
-  async function summaryFor(id){
-    try{
-      const d = await (await fetch(SUM+id)).json();
-      const stats = {};
-      ((d.boxscore && d.boxscore.teams) || []).forEach(t => {
-        const tid = t.team && t.team.id; const m = {};
-        (t.statistics || []).forEach(x => { m[x.name] = x.displayValue; });
-        if(tid) stats[tid] = m;
-      });
-      const lineups = {};
-      (d.rosters || []).forEach(t => { const tid = t.team && t.team.id; if(tid) lineups[tid] = { formation: t.formation || "" }; });
-      return { stats: stats, lineups: lineups };
-    }catch(e){ return { stats:{}, lineups:{} }; }
-  }
-  function liveCard(m, sum){
-    const s = sum.stats, lu = sum.lineups, hi = m.home.id, ai = m.away.id;
-    let hp = parseFloat(sval(s,hi,"possessionPct")); if(isNaN(hp)) hp = 50;
-    let ap = parseFloat(sval(s,ai,"possessionPct")); if(isNaN(ap)) ap = 100 - hp;
-    const hf = (lu[hi]||{}).formation || "", af = (lu[ai]||{}).formation || "";
-    const forms = (hf || af) ? '<div class="forms">Formations &nbsp; '+(hf||'—')+' <span>vs</span> '+(af||'—')+'</div>' : "";
-    return '<div class="match islive" style="border-left-color:'+col(hi)+'">'
-      + '<div class="top"><span class="live">● '+m.detail+'</span><span class="status">'+nm(hi)+' hosting</span></div>'
-      + teamRow(m, m.home, true, true) + teamRow(m, m.away, false, true) + forms
-      + '<div class="poss"><div style="width:'+hp+'%;background:'+col(hi)+'"></div><div style="width:'+ap+'%;background:'+col(ai)+'"></div></div>'
-      + '<div class="plabel"><span>Possession '+Math.round(hp)+'%</span><span>'+Math.round(ap)+'%</span></div>'
-      + '<div class="grid">'
-      + statCell("Shots", sval(s,hi,"totalShots"), sval(s,ai,"totalShots"))
-      + statCell("On target", sval(s,hi,"shotsOnTarget"), sval(s,ai,"shotsOnTarget"))
-      + statCell("Corners", sval(s,hi,"wonCorners"), sval(s,ai,"wonCorners"))
-      + statCell("Fouls", sval(s,hi,"foulsCommitted"), sval(s,ai,"foulsCommitted"))
-      + statCell("Yellow", sval(s,hi,"yellowCards"), sval(s,ai,"yellowCards"))
-      + statCell("Saves", sval(s,hi,"saves"), sval(s,ai,"saves"))
-      + '</div></div>';
-  }
-  async function renderLive(list){
-    const wrap = document.getElementById("wrap");
-    let html = "";
-    for(const m of list){ html += liveCard(m, await summaryFor(m.id)); }
-    if(document.getElementById("wrap")) document.getElementById("wrap").innerHTML = html;
-  }
-
-  const isDraw = m => m.home.score!=null && m.home.score===m.away.score;
-  function teamRow(m, s, isHome, showScore){
-    const sc = showScore ? (s.score!=null?s.score:'–') : '';
-    let cls = "tname";
-    if(showScore && m.completed){ cls += s.winner ? " win" : (isDraw(m)?"":" lose"); }
-    const tag = isHome ? '<span class="ha home">HOME</span>' : '<span class="ha away">AWAY</span>';
-    return '<div class="mrow"><span class="'+cls+'"><i style="background:'+col(s.id)+'"></i>'+nm(s.id)+tag+'</span><span class="score">'+sc+'</span></div>';
-  }
-  function winbar(m){
-    const o = ODDS[m.id]; if(!o || o==='none') return '';
-    return '<div class="wp"><div class="bar"><div style="width:'+o.h+'%;background:'+col(m.home.id)+'"></div><div style="width:'+o.d+'%;background:#7c8595"></div><div style="width:'+o.a+'%;background:'+col(m.away.id)+'"></div></div><div class="labels"><span>'+nm(m.home.id)+' · '+o.h+'%</span><span class="mid">Draw '+o.d+'%</span><span>'+o.a+'% · '+nm(m.away.id)+'</span></div></div>';
-  }
-  function card(m, showProb){
-    const showScore = m.state==='in' || m.state==='post', live = m.state==='in';
-    const top = live ? '<span class="live">● '+m.detail+'</span>' : '<span class="status">'+(showScore?m.detail:kickoff(m.iso))+'</span>';
-    const hosting = '<span class="status">'+nm(m.home.id)+' hosting</span>';
-    const kick = showScore ? '' : '<div class="kick">🕓 '+kickoff(m.iso)+'</div>';
-    const wb = showProb ? winbar(m) : '';
-    return '<div class="match '+(live?'islive':'')+'" style="border-left-color:'+col(m.home.id)+'"><div class="top">'+top+hosting+'</div>'+teamRow(m,m.home,true,showScore)+teamRow(m,m.away,false,showScore)+kick+wb+'</div>';
-  }
-  function groupHTML(list, showProb, newestFirst){
-    const groups = {}, order = [];
-    list.forEach(m => { const k = dkey(m.iso); if(!(k in groups)){ groups[k]=[]; order.push(k); } groups[k].push(m); });
-    if(newestFirst) order.reverse();
-    return order.map(k => {
-      const ms = groups[k];
-      const hdr = '<div class="dayhdr"><span>'+dlabel(ms[0].iso)+'</span><span class="daycount">'+ms.length+(ms.length===1?' match':' matches')+'</span></div>';
-      return '<div class="daygroup">'+hdr+ms.map(m => card(m, showProb)).join("")+'</div>';
-    }).join("");
-  }
-  const empty = msg => '<div class="empty">'+msg+'</div>';
-  const tabBtn = (id, label) => '<button class="tab '+(TAB===id?'on':'')+'" onclick="setTab(\''+id+'\')">'+label+'</button>';
-  function setTab(t){ TAB = t; render(); }
-  window.setTab = setTab;
-
-  function render(){
-    if(!EVENTS) return;
-    const live = EVENTS.filter(m => m.state==='in');
-    const up = EVENTS.filter(m => m.state==='pre').sort((a,b)=> new Date(a.iso)-new Date(b.iso));
-    const post = EVENTS.filter(m => m.state==='post').sort((a,b)=> new Date(a.iso)-new Date(b.iso));
-    document.getElementById("tabs").innerHTML =
-      tabBtn('live','🔴 Live ('+live.length+')') + tabBtn('upcoming','📅 Upcoming ('+up.length+')') + tabBtn('results','✅ Results ('+post.length+')');
-    const wrap = document.getElementById("wrap");
-    if(TAB==='focus' && FOCUS){
-      const day = EVENTS.filter(m => dkey(m.iso)===FOCUS).sort((a,b)=> new Date(a.iso)-new Date(b.iso));
-      ensureOdds(day.filter(m => m.state==='pre'));
-      wrap.innerHTML = '<div class="focusbar"><span>'+(day[0]?dlabel(day[0].iso):FOCUS)+'</span><button onclick="setTab(\'results\')">Show all ✕</button></div>'
-        + (day.length ? day.map(m => card(m, true)).join("") : empty('No matches on that day.'));
-    } else if(TAB==='live'){
-      if(live.length){ renderLive(live); } else { wrap.innerHTML = empty('No matches are live right now — check Upcoming.'); }
-    } else if(TAB==='upcoming'){
-      ensureOdds(up.slice(0, 24));
-      wrap.innerHTML = up.length ? groupHTML(up, true, false) : empty('No upcoming fixtures.');
-    } else {
-      wrap.innerHTML = post.length ? groupHTML(post, false, true) : empty('No results yet this season.');
-    }
-    document.getElementById("stamp").textContent = "🔴 Live · updates every 15s · " + new Date().toLocaleTimeString('en-US',{timeZone:'America/New_York'}) + " ET";
-  }
-  async function load(){
-    try{
-      const d = await (await fetch(SB)).json();
-      EVENTS = (d.events||[]).map(e => {
-        const c = e.competitions[0], cs = c.competitors;
-        const home = cs.find(x=>x.homeAway==='home'), away = cs.find(x=>x.homeAway==='away');
-        return { id:e.id, state:e.status.type.state, detail:e.status.type.shortDetail||e.status.type.detail||'',
-          iso:e.date, completed:e.status.type.completed,
-          home:{ id:String(home.team.id), score:home.score, winner:home.winner },
-          away:{ id:String(away.team.id), score:away.score, winner:away.winner } };
-      }).filter(m => nm(m.home.id) && nm(m.away.id));
-      render();
-    }catch(e){
-      document.getElementById("stamp").textContent = "Could not load matches — retrying…";
-    }
-  }
-  load(); setInterval(load, 15000);
-</script>
-"""
-
-
-def matches_component(focus_iso):
-    tmap = {t.espn_id: {"name": t.shpl_name, "color": t.primary} for t in teams.TEAMS}
-    year = datetime.now(LOCAL_TZ).year
-    html = (MATCHES_HTML
-            .replace("__TEAMS__", json.dumps(tmap))
-            .replace("__SEASON__", str(year))
-            .replace("__FOCUS__", focus_iso or ""))
-    components.html(html, height=900, scrolling=True)
+def league_only(matches):
+    """Everything except friendlies. Friendlies count for nothing and belong on
+    exactly one screen — the club's own page — so every other view filters
+    through here."""
+    return [m for m in matches if m.get("stage") != "friendly"]
 
 
 def render_matches(matches, feed):
-    focus = st.session_state.get("focus_day")
+    matches = league_only(matches)
+    focus = st.session_state.get("focus_group")
     if focus:
-        try:
-            fd = date.fromisoformat(focus)
-        except ValueError:
-            fd = None
-        if fd:
-            if st.button("← Show all matches"):
-                st.session_state.focus_day = None
-                st.rerun()
-            st.markdown(f'<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
-                        f'{_day_label(fd)}</div>', unsafe_allow_html=True)
-            day_matches = [m for m in matches
-                           if m["start"] and m["start"].astimezone(LOCAL_TZ).date() == fd]
-            if day_matches:
-                _render_day_groups(day_matches, feed, show_prob=True, newest_first=False)
-            else:
-                st.info("No matches on that day.")
-            return
+        group = [m for m in matches if _group_key(m) == focus]
+        if st.button("← Show all matches"):
+            st.session_state.focus_group = None
+            st.rerun()
+        st.markdown(f'<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
+                    f'{_group_label(focus)}</div>', unsafe_allow_html=True)
+        if group:
+            _render_day_groups(group, feed, show_prob=True, newest_first=False)
+        else:
+            st.info("Nothing scheduled there yet.")
+        return
 
     live = [m for m in matches if m["state"] == "in"]
     upcoming = [m for m in matches if m["state"] == "pre"]
     past = [m for m in matches if m["state"] == "post"]
 
     tab_live, tab_up, tab_past = st.tabs(
-        ["🔴 Live", f"📅 Upcoming ({len(upcoming)})", f"✅ Results ({len(past)})"]
+        [f"🔴 Live ({len(live)})", f"📅 Upcoming ({len(upcoming)})", f"✅ Results ({len(past)})"]
     )
     with tab_live:
-        st.markdown('<div class="hint">Real-time scores and in-game stats, straight from the pitch.</div>',
-                    unsafe_allow_html=True)
-        live_component()
+        if live:
+            _render_day_groups(live, feed, show_prob=False, newest_first=False)
+        else:
+            st.info("No match is being played right now. Kick-offs show up here "
+                    "the moment one starts.")
     with tab_up:
         if not upcoming:
-            st.info("No upcoming fixtures.")
+            st.info("No fixtures announced yet — they'll appear here as soon as "
+                    "the next matchday is set.")
         else:
-            st.caption(f"{len(upcoming)} fixtures remaining this season")
+            st.caption(f"{len(upcoming)} fixtures to come")
             _render_day_groups(upcoming, feed, show_prob=True, newest_first=False)
     with tab_past:
         if not past:
             st.info("No results yet this season.")
         else:
-            days = len({_day_key(m) for m in past})
-            st.caption(f"{len(past)} matches played across {days} match days this season")
+            days = len({_group_key(m) for m in past})
+            st.caption(f"{len(past)} matches played across {days} matchdays this season")
             _render_day_groups(past, feed, show_prob=False, newest_first=True)
 
+def _group_key(m):
+    """Matches are grouped by matchday, not by calendar date — a matchday is
+    how this league is actually scheduled, and fixtures often arrive before a
+    date is set."""
+    if m.get("stage") == "playoff":
+        return f"playoff|{m.get('round') or 'Playoffs'}"
+    return f"{m.get('division') or ''}|{m.get('matchday') or 0}"
 
-def _day_key(m):
-    return m["start"].astimezone(LOCAL_TZ).date() if m["start"] else None
+
+def _group_sort(key):
+    kind, rest = key.split("|", 1)
+    if kind == "playoff":
+        order = {"Wild Card": 1, "Semi-Final": 2, "Division Final": 3, "Grand Final": 4}
+        return (2, order.get(rest, 9), rest)
+    try:
+        n = int(rest)
+    except ValueError:
+        n = 0
+    return (1, n, kind)
 
 
-def _day_label(d):
-    if d is None:
-        return "Date to be confirmed"
+def _group_label(key):
+    kind, rest = key.split("|", 1)
+    if kind == "playoff":
+        return f"🏆 {rest}"
+    meta = ISLAND_META.get(kind, {"flag": ""})
+    name = teams.DIVISION_NAME.get(kind, kind)
+    return f'{meta["flag"]} {name} · Matchday {rest}'
+
+
+def _day_label(m):
+    """The date under a match card, when one has been set."""
+    d = m.get("day")
+    if not d:
+        return ""
     return f"{d.strftime('%A')}, {d.strftime('%B')} {d.day}, {d.year}"
 
 
 def _render_day_groups(matches, feed, show_prob, newest_first):
-    """Group matches by calendar day and render each day in a single call."""
+    """Group matches by matchday and render each group in a single call."""
     groups = {}
     for m in matches:
-        groups.setdefault(_day_key(m), []).append(m)
+        groups.setdefault(_group_key(m), []).append(m)
 
-    days = sorted((d for d in groups if d is not None), reverse=newest_first)
-    if None in groups:  # undated fixtures go last
-        days = days + [None]
-
-    for d in days:
-        day_matches = groups[d]
-        n = len(day_matches)
-        header = (f'<div class="dayhdr"><span>{_day_label(d)}</span>'
-                  f'<span class="daycount">{n} {"match" if n == 1 else "matches"}</span></div>')
-        cards = "".join(_match_html(m, feed, show_prob) for m in day_matches)
+    keys = sorted(groups, key=_group_sort, reverse=newest_first)
+    for key in keys:
+        group = groups[key]
+        n = len(group)
+        dates = {_day_label(m) for m in group} - {""}
+        count = f"{n} {'match' if n == 1 else 'matches'}"
+        right = f"{dates.pop()} · {count}" if len(dates) == 1 else count
+        header = (f'<div class="dayhdr"><span>{_group_label(key)}</span>'
+                  f'<span class="daycount">{right}</span></div>')
+        cards = "".join(_match_html(m, feed, show_prob) for m in group)
         st.markdown(f'<div class="daygroup">{header}{cards}</div>', unsafe_allow_html=True)
 
+def _short_when(m):
+    """Which matchday (or round) a match belongs to — the card's top line."""
+    if m.get("stage") == "playoff":
+        return m.get("round") or "Playoffs"
+    if m.get("matchday"):
+        return f"Matchday {m['matchday']}"
+    return m.get("division") or ""
 
-def _fmt_kickoff(dt):
-    if not dt:
-        return "TBD"
-    d = dt.astimezone(LOCAL_TZ)
-    return d.strftime("%a, %b ") + f"{d.day} · " + d.strftime("%I:%M %p ET").lstrip("0")
 
+def _when_label(m):
+    """A short, human line for when a match is / was played."""
+    bits = []
+    if m.get("stage") == "playoff":
+        bits.append(m.get("round") or "Playoffs")
+    elif m.get("matchday"):
+        bits.append(f"Matchday {m['matchday']}")
+    d = _day_label(m)
+    if d:
+        bits.append(d)
+    if m.get("time"):
+        bits.append(m["time"])
+    return " · ".join(bits) or "Date to be confirmed"
 
 def _is_draw(m):
     hs, as_ = m["home"]["score"], m["away"]["score"]
@@ -961,9 +636,11 @@ def _match_html(m, feed, show_prob):
     home, away = m["home"], m["away"]
     show_score = m["state"] in ("in", "post")
 
-    top_left = (f'<span class="live">● LIVE · {m["status_detail"]}</span>' if live
-                else f'<span class="status">{m["status_detail"] or _fmt_kickoff(m["start"])}</span>')
-    hosting = f'<span class="status">{home["shpl_name"]} hosting</span>'
+    if live:
+        top_left = f'<span class="live">● LIVE · {m["status_detail"]}</span>'
+    else:
+        top_left = f'<span class="status">{_short_when(m)}</span>'
+    hosting = f'<span class="status">{home["name"]} hosting</span>'
 
     def row(side, is_home):
         s = side["score"] if side["score"] is not None else "–"
@@ -972,10 +649,13 @@ def _match_html(m, feed, show_prob):
         if show_score and m["completed"]:
             cls += " win" if side.get("winner") else (" lose" if not _is_draw(m) else "")
         tag = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
-        return (f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["shpl_name"]}'
+        return (f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["name"]}'
                 f'{tag}</span>{score}</div>')
 
-    kick = "" if show_score else f'<div class="kick">🕓 {_fmt_kickoff(m["start"])}</div>'
+    when = _day_label(m) or "Date to be confirmed"
+    if m.get("time"):
+        when += f' · {m["time"]}'
+    kick = "" if show_score else f'<div class="kick">🕓 {when}</div>'
     winbar = _winbar_html(m, feed) if show_prob else ""
     border = f'border-left-color:{home["primary"]};'
     card_cls = "match islive" if live else "match"
@@ -997,10 +677,10 @@ def _winbar_html(m, feed):
         f'<div style="width:{d}%;background:#7c8595"></div>'
         f'<div style="width:{a}%;background:{ac}"></div></div>'
         '<div class="labels">'
-        f'<span>{m["home"]["shpl_name"]} · {h}%</span>'
+        f'<span>{m["home"]["name"]} · {h}%</span>'
         f'<span class="mid">Draw {d}%</span>'
-        f'<span>{a}% · {m["away"]["shpl_name"]}</span></div>'
-        '<div class="note">Pre-match win probability</div></div>'
+        f'<span>{a}% · {m["away"]["name"]}</span></div>'
+        '<div class="note">SHPL model projection · from form so far</div></div>'
     )
 
 
@@ -1008,9 +688,9 @@ def _winbar_html(m, feed):
 # Home page
 # --------------------------------------------------------------------------- #
 def match_of_the_day(feed):
-    """Pick a featured upcoming fixture: the most evenly-matched one with odds,
-    else the next fixture. Returns (match, winprob_or_None) or None."""
-    up = [m for m in datafeed.get_matches(feed) if m["state"] == "pre"]
+    """Pick a featured upcoming fixture: the most evenly-matched one the model
+    can't call, else simply the next one up. Returns (match, projection) or None."""
+    up = [m for m in league_only(datafeed.get_matches(feed)) if m["state"] == "pre"]
     if not up:
         return None
     scored = []
@@ -1022,6 +702,28 @@ def match_of_the_day(feed):
         scored.sort(key=lambda x: x[0])
         return scored[0][1], scored[0][2]
     return up[0], None
+
+def render_scorers(feed, limit=None):
+    """The scoring chart. Reads left to right the way it was asked for:
+    name, then goals, then the player's country flag."""
+    rows = feed.get("scorers") or []
+    if not rows:
+        return
+    st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
+                '🥇 Golden Boot</div>', unsafe_allow_html=True)
+    shown = rows[:limit] if limit else rows
+    cards = ""
+    for r in shown:
+        cls = "scorer lead" if r["rank"] == 1 else "scorer"
+        flag = (f'<span class="sflag" title="{r["country"]}">{r["flag"]}</span>'
+                if r["flag"] else '<span class="sflag"></span>')
+        cards += (f'<div class="{cls}"><span class="srank">{r["rank"]}</span>'
+                  f'<span class="sname">{r["name"]}</span>'
+                  f'<span class="sgoals">{r["goals"]}<small>goals</small></span>'
+                  f'{flag}</div>')
+    st.markdown(f'<div class="scorers">{cards}</div>', unsafe_allow_html=True)
+    if limit and len(rows) > limit:
+        st.caption(f"Top {limit} of {len(rows)} — the full chart is on the Tables page.")
 
 
 def render_weather():
@@ -1064,14 +766,14 @@ def render_home(feed, ncols=2):
                    f'<div style="width:{wp["draw_pct"]}%;background:#7c8595"></div>'
                    f'<div style="width:{wp["away_pct"]}%;background:{a["primary"]}"></div></div>'
                    '<div class="labels">'
-                   f'<span>{h["shpl_name"]} · {wp["home_pct"]}%</span>'
+                   f'<span>{h["name"]} · {wp["home_pct"]}%</span>'
                    f'<span class="mid">Draw {wp["draw_pct"]}%</span>'
-                   f'<span>{wp["away_pct"]}% · {a["shpl_name"]}</span></div></div>')
+                   f'<span>{wp["away_pct"]}% · {a["name"]}</span></div></div>')
         st.markdown(
             '<div class="motd"><div class="motd-label">⭐ Match of the Day</div>'
-            f'<div class="motd-teams">{dot(h["primary"])}{h["shpl_name"]}'
-            f'<span class="motd-v">v</span>{dot(a["primary"])}{a["shpl_name"]}</div>'
-            f'<div class="motd-when">🕓 {_fmt_kickoff(m["start"])} · {h["shpl_name"]} hosting</div>'
+            f'<div class="motd-teams">{dot(h["primary"])}{h["name"]}'
+            f'<span class="motd-v">v</span>{dot(a["primary"])}{a["name"]}</div>'
+            f'<div class="motd-when">🕓 {_when_label(m)} · {h["name"]} hosting</div>'
             f'{bar}</div>',
             unsafe_allow_html=True,
         )
@@ -1088,7 +790,7 @@ def render_home(feed, ncols=2):
                 st.markdown(
                     f'<div class="leader" style="border-left-color:{top["primary"]}">'
                     f'<div class="leader-isl">{meta["flag"]} {conf["island"]}</div>'
-                    f'<div class="leader-name">{dot(top["primary"])}{top["shpl_name"]}</div>'
+                    f'<div class="leader-name">{dot(top["primary"])}{top["name"]}</div>'
                     f'<div class="leader-pts">{top["points"]} pts · {top["wins"]}-{top["draws"]}-{top["losses"]}</div>'
                     f'</div>', unsafe_allow_html=True)
 
@@ -1101,8 +803,10 @@ def render_home(feed, ncols=2):
                 with col:
                     leader(conf)
 
+    render_scorers(feed, limit=3)
+
     # Next few fixtures
-    matches = datafeed.get_matches(feed)
+    matches = league_only(datafeed.get_matches(feed))
     upcoming = [m for m in matches if m["state"] == "pre"][:5]
     if upcoming:
         st.markdown('<div class="eyebrow"><span class="bar" style="background:#3d9be0"></span>'
@@ -1127,14 +831,14 @@ def render_clubs(feed):
         club_list = [t for t in teams.TEAMS if t.island == island]
         cols = st.columns(3)
         for i, t in enumerate(club_list):
-            if cols[i % 3].button(t.shpl_name, key=f"club_{t.espn_id}", use_container_width=True):
-                st.session_state.selected_club = t.espn_id
+            if cols[i % 3].button(t.name, key=f"club_{t.id}", use_container_width=True):
+                st.session_state.selected_club = t.id
                 st.rerun()
         st.write("")
 
 
-def render_club_detail(feed, espn_id):
-    team = teams.BY_ESPN_ID.get(str(espn_id))
+def render_club_detail(feed, club_id):
+    team = teams.BY_ID.get(str(club_id))
     if not team:
         st.session_state.selected_club = None
         st.rerun()
@@ -1147,7 +851,7 @@ def render_club_detail(feed, espn_id):
     meta = ISLAND_META.get(team.island, {"flag": "", "accent": "#888"})
     st.markdown(
         f'<div class="club-hero" style="border-left-color:{team.primary}">'
-        f'<div class="club-hero-name">{dot(team.primary)}{team.shpl_name}</div>'
+        f'<div class="club-hero-name">{dot(team.primary)}{team.name}</div>'
         f'<div class="club-hero-isl">{meta["flag"]} {team.island}</div></div>',
         unsafe_allow_html=True,
     )
@@ -1157,7 +861,7 @@ def render_club_detail(feed, espn_id):
     row = None
     for conf in standings["conferences"]:
         for r in conf["table"]:
-            if r["espn_id"] == str(espn_id):
+            if r["id"] == str(club_id):
                 row = r
                 break
     if row:
@@ -1173,50 +877,62 @@ def render_club_detail(feed, espn_id):
 
     # This club's matches
     matches = [m for m in datafeed.get_matches(feed)
-               if m["home"]["espn_id"] == str(espn_id) or m["away"]["espn_id"] == str(espn_id)]
+               if m["home"]["id"] == str(club_id) or m["away"]["id"] == str(club_id)]
     played = [m for m in matches if m["state"] in ("in", "post")]
     upcoming = [m for m in matches if m["state"] == "pre"]
 
-    # Form (last 5 completed)
-    last5 = [m for m in played if m["state"] == "post"][-5:]
+    # Form is a league record — a friendly never moves it.
+    last5 = [m for m in league_only(played) if m["state"] == "post"][-5:]
     if last5:
-        chips = "".join(_form_chip(m, espn_id) for m in last5)
+        chips = "".join(_form_chip(m, club_id) for m in last5)
         st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>{chips}</div>',
                     unsafe_allow_html=True)
 
-    tab_res, tab_fix = st.tabs([f"✅ Results ({len(played)})", f"📅 Fixtures ({len(upcoming)})"])
+    friendlies = [m for m in played if m.get("stage") == "friendly"]
+    tab_res, tab_fix = st.tabs([f"✅ Results ({len(league_only(played))})",
+                                f"📅 Fixtures ({len(league_only(upcoming))})"])
     with tab_res:
-        if not played:
+        league_played = league_only(played)
+        if not league_played:
             st.info("No matches played yet.")
         else:
-            html = "".join(_club_match_html(m, espn_id, feed) for m in reversed(played))
+            html = "".join(_club_match_html(m, club_id, feed) for m in reversed(league_played))
+            st.markdown(html, unsafe_allow_html=True)
+        if friendlies:
+            st.markdown('<div class="eyebrow"><span class="bar" style="background:#7c8595"></span>'
+                        'Friendlies</div>', unsafe_allow_html=True)
+            st.markdown('<div class="hint">Played outside the league. These don\'t count '
+                        'towards points, goals, form or the table.</div>',
+                        unsafe_allow_html=True)
+            html = "".join(_club_match_html(m, club_id, feed) for m in reversed(friendlies))
             st.markdown(html, unsafe_allow_html=True)
     with tab_fix:
-        if not upcoming:
+        league_up = league_only(upcoming)
+        if not league_up:
             st.info("No upcoming fixtures.")
         else:
-            html = "".join(_club_match_html(m, espn_id, feed) for m in upcoming)
+            html = "".join(_club_match_html(m, club_id, feed) for m in league_up)
             st.markdown(html, unsafe_allow_html=True)
 
 
-def _outcome(m, espn_id):
+def _outcome(m, club_id):
     """Return 'W'/'D'/'L' for the given club, or None if not decided."""
     if m["home"]["score"] is None or m["away"]["score"] is None:
         return None
-    is_home = m["home"]["espn_id"] == str(espn_id)
+    is_home = m["home"]["id"] == str(club_id)
     mine = m["home"]["score"] if is_home else m["away"]["score"]
     theirs = m["away"]["score"] if is_home else m["home"]["score"]
     return "W" if mine > theirs else ("L" if mine < theirs else "D")
 
 
-def _form_chip(m, espn_id):
-    o = _outcome(m, espn_id) or "–"
+def _form_chip(m, club_id):
+    o = _outcome(m, club_id) or "–"
     cls = {"W": "w", "D": "d", "L": "l"}.get(o, "")
     return f'<span class="formchip {cls}">{o}</span>'
 
 
-def _club_match_html(m, espn_id, feed):
-    is_home = m["home"]["espn_id"] == str(espn_id)
+def _club_match_html(m, club_id, feed):
+    is_home = m["home"]["id"] == str(club_id)
     opp = m["away"] if is_home else m["home"]
     ha = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
     played = m["state"] in ("in", "post")
@@ -1224,10 +940,10 @@ def _club_match_html(m, espn_id, feed):
     if played:
         mine = m["home"]["score"] if is_home else m["away"]["score"]
         theirs = m["away"]["score"] if is_home else m["home"]["score"]
-        o = _outcome(m, espn_id)
+        o = _outcome(m, club_id)
         ocls = {"W": "w", "D": "d", "L": "l"}.get(o, "")
         right = f'<span class="cm-score">{mine} – {theirs}</span><span class="formchip {ocls}">{o or "–"}</span>'
-        when = _fmt_kickoff(m["start"]).split(" · ")[0]
+        when = _when_label(m)
     else:
         wp = datafeed.get_win_probabilities(feed, m["id"])
         if wp:
@@ -1235,12 +951,14 @@ def _club_match_html(m, espn_id, feed):
             right = f'<span class="cm-pred">Win chance {pct:.0f}%</span>'
         else:
             right = '<span class="cm-pred muted">Prediction soon</span>'
-        when = _fmt_kickoff(m["start"])
+        when = _when_label(m)
 
     prep = "vs" if is_home else "at"
+    friendly = ('<span class="ha friendly">FRIENDLY</span>'
+                if m.get("stage") == "friendly" else "")
     return (f'<div class="cmatch" style="border-left-color:{opp["primary"]}">'
-            f'<div class="cm-left"><span class="cm-when">{when}</span>{ha}'
-            f'<span class="cm-opp">{prep} {dot(opp["primary"])}{opp["shpl_name"]}</span></div>'
+            f'<div class="cm-left"><span class="cm-when">{when}</span>{ha}{friendly}'
+            f'<span class="cm-opp">{prep} {dot(opp["primary"])}{opp["name"]}</span></div>'
             f'<div class="cm-right">{right}</div></div>')
 
 
@@ -1253,40 +971,45 @@ def render_playoffs(feed):
     brk = bracket.build_bracket(standings, matches)
 
     if brk["has_postseason"]:
-        st.markdown('<div class="hint">The bracket updates automatically as playoff games are played — '
-                    'winners advance to the next round.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hint">The bracket fills in game by game — each winner '
+                    'moves straight into the next round.</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="hint">🔮 Projected bracket. Seeding is provisional until the end of the '
-                    'regular season, then fills in game-by-game once the playoffs begin.</div>',
-                    unsafe_allow_html=True)
+        st.markdown('<div class="hint">🔮 Projected bracket. Seeding is provisional until the '
+                    'league season ends, then it fills in game by game once the playoffs '
+                    'begin.<br><b>Wild Card</b> 4th v 5th · the winner takes the last place, '
+                    'then <b>1st v Wild Card winner</b> and <b>2nd v 3rd</b>, and those winners '
+                    'meet in the Division Final.</div>', unsafe_allow_html=True)
 
-    for conf in brk["conferences"]:
-        meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
+    for div in brk["divisions"]:
+        meta = ISLAND_META.get(div["island"], {"flag": "", "accent": "#888"})
         st.markdown(
             f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-            f'{meta["flag"]} {conf["island"]}</div>', unsafe_allow_html=True)
+            f'{meta["flag"]} {div["name"]}</div>', unsafe_allow_html=True)
         cols = (
-            ('Wild Card', [conf["wc"]]),
-            ('Round One', conf["r1"]),
-            ('Semifinals', conf["sf"]),
-            ('Conference Final', [conf["cf"]]),
+            ("Wild Card", [div["wc"]]),
+            ("Semi-Finals", div["sf"]),
+            ("Division Final", [div["df"]]),
         )
         col_html = "".join(
             f'<div class="brk-col"><div class="brk-h">{title}</div>'
-            + "".join(_series_html(s) for s in series) + '</div>'
+            + "".join(_series_html(x) for x in series) + '</div>'
             for title, series in cols
         )
         st.markdown(f'<div class="brk-cols">{col_html}</div>', unsafe_allow_html=True)
 
-    if brk["final"]:
-        st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
-                    '🏆 Cup Final</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="brk-final">{_series_html(brk["final"], big=True)}</div>',
+    st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
+                '🏆 Grand Final</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="brk-final">{_series_html(brk["final"], big=True)}</div>',
+                unsafe_allow_html=True)
+    if brk["champion"]:
+        st.markdown(f'<div class="champline">🏆 <b>{brk["champion"]["name"]}</b> '
+                    'are champions of the St. Helena Premier League.</div>',
                     unsafe_allow_html=True)
 
-
 def _series_html(s, big=False):
-    def team_row(slot, is_winner, wins):
+    game = s.get("game")
+
+    def team_row(slot, is_winner):
         cls = "steam"
         if s["winner"]:
             cls += " win" if is_winner else " out"
@@ -1295,25 +1018,26 @@ def _series_html(s, big=False):
             name = f'{dot(slot["team"]["primary"])}{slot["label"]}'
         else:
             name = f'<span class="tbd">{slot["label"]}</span>'
-        w = f'<span class="swins">{wins}</span>' if (s["best_of"] == 3 and s["games"]) else ""
-        chk = ' ✓' if (s["winner"] and is_winner) else ""
-        return f'<div class="{cls}">{seed}{name}{chk}{w}</div>'
+        score = ""
+        if game and game["completed"]:
+            tid = slot["team"]["id"] if slot["team"] else None
+            side = game["home"] if game["home"]["id"] == tid else game["away"]
+            score = f'<span class="swins">{side["score"]}</span>'
+        chk = " ✓" if (s["winner"] and is_winner) else ""
+        return f'<div class="{cls}">{seed}{name}{chk}{score}</div>'
 
-    if s["best_of"] == 3:
-        meta = f'Best of 3 · {s["awins"]}–{s["bwins"]}' if s["games"] else 'Best of 3'
+    if game and game["completed"]:
+        meta = "Full time"
+    elif game:
+        meta = "In progress"
     else:
-        if s["games"]:
-            g = s["games"][-1]
-            meta = f'{g["home"]["score"]}–{g["away"]["score"]}'
-        else:
-            meta = 'Single game'
+        meta = "Single game"
 
     cls = "series big" if big else "series"
     return (f'<div class="{cls}">'
-            f'{team_row(s["a"], s["winner"] == "A", s["awins"])}'
-            f'{team_row(s["b"], s["winner"] == "B", s["bwins"])}'
+            f'{team_row(s["a"], s["winner"] == "A")}'
+            f'{team_row(s["b"], s["winner"] == "B")}'
             f'<div class="smeta">{meta}</div></div>')
-
 
 # --------------------------------------------------------------------------- #
 # Ask page — answers written from the same season snapshot the site renders
@@ -1326,8 +1050,8 @@ def league_context(stamp, _feed):
 
 
 SUGGESTED = [
-    "Who's most likely to win the league?",
-    "Which fixture this week is the closest call?",
+    "Who's most likely to win each division?",
+    "How did the last matchday go?",
     "Who won the last time the Bellboys played?",
     "Which club is in the best form right now?",
 ]
@@ -1451,41 +1175,26 @@ def nav_items(playoffs_open):
 
 
 def _playoff_gate(feed):
-    """When should the Playoffs tab open? Returns (is_open, unlock_date, start_date).
+    """When does the Playoffs tab open? Returns (is_open, note, None).
 
-    Opens ~21 days before the playoffs start. The start is the first postseason
-    game once ESPN schedules them, otherwise estimated a few days after the last
-    regular-season game (Decision Day)."""
+    It unlocks as soon as a playoff game exists, or the moment `playoffs_open`
+    is switched on in season.json — nothing here depends on a calendar."""
     if not feed:
         return (False, None, None)
-    matches = datafeed.get_matches(feed)
-    today = datetime.now(LOCAL_TZ).date()
-
-    post = [m["start"] for m in matches
-            if (m.get("season_slug") or "regular-season") not in
-            ("regular-season", "", "pre-season", "preseason") and m["start"]]
-    if post:
-        start = min(post).astimezone(LOCAL_TZ).date()
-    else:
-        reg = [m["start"] for m in matches if m["start"]]
-        if not reg:
-            return (False, None, None)
-        start = max(reg).astimezone(LOCAL_TZ).date() + timedelta(days=5)
-
-    unlock = start - timedelta(days=21)
-    return (today >= unlock, unlock, start)
-
+    if feed.get("has_playoff_games") or feed.get("playoffs_open"):
+        return (True, None, None)
+    return (False, "when the league season ends", None)
 
 def _search_box(search_feed):
     """Express route: no stops unless the search is genuinely ambiguous.
 
-    A club goes straight to that club, a match day straight to that day, and
-    anything else straight to the assistant — all without an intermediate
+    A club goes straight to that club, a matchday straight to that matchday,
+    and anything else straight to the assistant — all without an intermediate
     button to click. Buttons appear only when the text matches more than one
     thing, where a choice can't be skipped.
     """
     q = st.text_input("🔎 Search or ask", key="q_widget",
-                      placeholder="e.g. Bellboys, Aug 16, or who wins the title?",
+                      placeholder="e.g. Bellboys, matchday 3, or who wins the title?",
                       label_visibility="collapsed")
     ql = (q or "").strip()
     if not ql:
@@ -1494,20 +1203,21 @@ def _search_box(search_feed):
         return
     low = ql.lower()
 
-    club_hits = [t for t in teams.TEAMS if low in t.shpl_name.lower()][:6]
-    # Day matching is token-based, so "aug 16", "august 16" — and "16 aug", for
-    # anyone who writes it that way — all find Sunday, August 16. Everything
-    # this site *shows* is American: month first, always.
-    words = low.replace(",", " ").split()
-    day_hits, seen = [], set()
-    for m in (datafeed.get_matches(search_feed) if search_feed else []):
-        d = m["start"].astimezone(LOCAL_TZ).date() if m["start"] else None
-        if not d or d in seen:
+    club_hits = [t for t in teams.TEAMS if low in t.name.lower()][:6]
+
+    # Matchday search is token-based, so "matchday 3", "md3" and "ascension 3"
+    # all land on the right group of fixtures.
+    words = low.replace(",", " ").replace("md", "matchday ").split()
+    group_hits, seen = [], set()
+    for m in (league_only(datafeed.get_matches(search_feed)) if search_feed else []):
+        key = _group_key(m)
+        if key in seen:
             continue
-        if all(w in _day_label(d).lower() for w in words):
-            day_hits.append(d)
-            seen.add(d)
-    day_hits = day_hits[:5]
+        haystack = (_group_label(key) + " matchday " + str(m.get("matchday") or "")).lower()
+        if all(w in haystack for w in words):
+            group_hits.append(key)
+            seen.add(key)
+    group_hits = group_hits[:6]
 
     # `search_seen` stops the same text re-firing on every later rerun, which
     # would otherwise drag the user back here as they browse.
@@ -1519,28 +1229,26 @@ def _search_box(search_feed):
             st.session_state[k] = v
         st.rerun()
 
-    if len(club_hits) + len(day_hits) == 1 and fresh:
+    if len(club_hits) + len(group_hits) == 1 and fresh:
         if club_hits:
-            _go(selected_club=club_hits[0].espn_id, page="🛡️ Clubs")
-        _go(focus_day=day_hits[0].isoformat(), page="⚽ Matches")
+            _go(selected_club=club_hits[0].id, page="🛡️ Clubs")
+        _go(focus_group=group_hits[0], page="⚽ Matches")
 
-    if club_hits or day_hits:
+    if club_hits or group_hits:
         for t in club_hits:
-            if st.button(f"🛡️ {t.shpl_name}", key=f"s_{t.espn_id}",
+            if st.button(f"🛡️ {t.name}", key=f"s_{t.id}", use_container_width=True):
+                _go(selected_club=t.id, page="🛡️ Clubs")
+        for key in group_hits:
+            if st.button(f"📅 {_group_label(key)}", key=f"sd_{key}",
                          use_container_width=True):
-                _go(selected_club=t.espn_id, page="🛡️ Clubs")
-        for d in day_hits:
-            if st.button(f"📅 {_day_label(d)}", key=f"sd_{d.isoformat()}",
-                         use_container_width=True):
-                _go(focus_day=d.isoformat(), page="⚽ Matches")
+                _go(focus_group=key, page="⚽ Matches")
         return
 
-    # Not a club and not a match day — it's a question. Straight to the
+    # Not a club and not a matchday — it's a question. Straight to the
     # assistant, which explains itself even when it isn't connected yet.
     if fresh:
         _go(ask_seen=low, ask_pending=ql, page="💬 Ask")
     st.caption("💬 Answered on the Ask tab.")
-
 
 def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
     """Render the sidebar navigation (button menu). Returns (page, season).
@@ -1566,7 +1274,7 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
                 st.session_state.page = item
                 st.rerun()
         if not playoffs_open and unlock_date:
-            st.caption(f"🥇 Playoffs open ~{unlock_date.strftime('%B')} {unlock_date.day}")
+            st.caption(f"🥇 Playoffs open {unlock_date}")
 
         st.divider()
         dev_default = st.session_state.get("device", "💻 Laptop")
@@ -1659,9 +1367,9 @@ def main():
     if season is not None and feed:
         st.sidebar.caption(f"📚 Viewing the {feed.get('season', '')} season (archived)")
     else:
-        st.sidebar.caption(
-            "🔴 **Live tab & league Table update in real time** (from your browser).\n\n"
-            "Match results in the Matches tab settle within a few minutes of full time.")
+        stamp = f" · updated {gen.strftime('%B')} {gen.day}, {gen.year}" if gen else ""
+        st.sidebar.caption(f"📋 Every table, result and projection on this site is "
+                           f"built from the league's own results{stamp}.")
 
     header(feed["season"] if feed else "")
 
@@ -1680,31 +1388,24 @@ def main():
     if page != "🛡️ Clubs":
         st.session_state.selected_club = None
     if page != "⚽ Matches":
-        st.session_state.focus_day = None
+        st.session_state.focus_group = None
 
     if page == "🏠 Home":
         render_home(feed, ncols)
     elif page == "🏆 Tables":
-        if season is None:
-            st.markdown('<div class="hint">Live league tables — they update in real time as goals go in.</div>',
-                        unsafe_allow_html=True)
-            standings_component(ncols)
+        hint = ("Final standings for this archived season." if season is not None
+                else "Both divisions, updated as each matchday is played.")
+        st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
+        if standings["conferences"]:
+            render_standings(standings, ncols)
         else:
-            st.markdown('<div class="hint">Final standings for this archived season.</div>',
-                        unsafe_allow_html=True)
-            if standings["conferences"]:
-                render_standings(standings, ncols)
-            else:
-                st.warning("Standings could not be loaded.")
+            st.warning("Standings could not be loaded.")
+        render_scorers(feed)
     elif page == "⚽ Matches":
-        if season is None:
-            st.markdown('<div class="hint">Live, upcoming and recent fixtures — updating in real time (times in ET).</div>',
-                        unsafe_allow_html=True)
-            matches_component(st.session_state.get("focus_day") or "")
-        else:
-            st.markdown('<div class="hint">Fixtures & results for this archived season (times in ET).</div>',
-                        unsafe_allow_html=True)
-            render_matches(datafeed.get_matches(feed), feed)
+        hint = ("Fixtures & results for this archived season." if season is not None
+                else "Live, upcoming and completed matches, grouped by matchday.")
+        st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
+        render_matches(datafeed.get_matches(feed), feed)
     elif page == "🥇 Playoffs":
         render_playoffs(feed)
     elif page == "💬 Ask":
@@ -1717,7 +1418,7 @@ def main():
 
     st.divider()
     st.markdown(
-        '<div class="foot">St. Helena Premier League · an unofficial fan project · scores update automatically.</div>',
+        '<div class="foot">St. Helena Premier League · St. Helena &amp; Ascension divisions · results published by the league.</div>',
         unsafe_allow_html=True,
     )
 

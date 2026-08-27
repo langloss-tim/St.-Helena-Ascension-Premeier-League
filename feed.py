@@ -1,119 +1,89 @@
 """
 App-side data loader.
 
-Primary source: the `data` branch published by the GitHub Action, read over
-raw.githubusercontent.com (GitHub is reachable from Streamlit Cloud; the score
-feed itself is not). Falls back to a local feed.json, then to a direct live
-fetch — so it also works when running locally.
+The league's data lives in the repo, in season.json — so there is nothing to
+fetch, nothing to rate-limit and nothing to go down. Past seasons are kept
+alongside it as season-<year>.json and listed in seasons.json.
 
-Everything returned here matches the shape the UI already expects:
-  - get_standings()        -> same dict as espn.get_standings()
-  - get_matches()          -> list like espn.get_matches(), 'start' as datetime
-  - get_win_probabilities(id) -> dict or None
+Everything returned matches the shape the UI expects:
+  - get_standings(feed)            -> {"season", "conferences": [...]}
+  - get_matches(feed)              -> list of match dicts, 'day' as a date
+  - get_win_probabilities(feed, id)-> dict or None
 """
 
 import json
 import os
-from datetime import datetime
+from datetime import date, datetime
 
-import requests
+import league
 
-import espn
-
-# If you rename the GitHub repo, update these two lines (owner / repo).
-GH_OWNER = "langloss-tim"
-GH_REPO = "St.-Helena-Ascension-Premeier-League"
-GH_BRANCH = "data"
-_RAW = f"https://raw.githubusercontent.com/{GH_OWNER}/{GH_REPO}/{GH_BRANCH}"
-FEED_URL = f"{_RAW}/feed.json"
-SEASONS_URL = f"{_RAW}/seasons.json"
-
-
-def _archive_url(season):
-    return f"{_RAW}/feed-{season}.json"
-
-
-_TIMEOUT = 12
+_DIR = os.path.dirname(os.path.abspath(__file__))
+CURRENT = os.path.join(_DIR, "season.json")
+SEASONS_INDEX = os.path.join(_DIR, "seasons.json")
 
 
 class FeedUnavailable(RuntimeError):
     pass
 
 
-def _parse_dt(s):
+def _archive_path(season):
+    return os.path.join(_DIR, f"season-{season}.json")
+
+
+def _parse_day(s):
+    """Accept '2026-08-16' or '2026-08-16T19:30'. Returns a date, or None."""
     if not s:
         return None
+    text = str(s)
     try:
-        return datetime.fromisoformat(s)
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        pass
+    try:
+        return datetime.fromisoformat(text).date()
     except ValueError:
         return None
 
 
-def _hydrate_matches(raw_matches):
-    out = []
-    for m in raw_matches:
-        mm = dict(m)
-        mm["start"] = _parse_dt(m.get("start"))
-        out.append(mm)
-    return out
+def _hydrate(feed):
+    for m in feed.get("matches", []):
+        m["day"] = _parse_day(m.get("date"))
+    return feed
 
 
 def load_seasons():
-    """Return a sorted list of season years that have an archived feed, or []."""
+    """Season years that have data. The current season always counts."""
+    years = set()
     try:
-        r = requests.get(SEASONS_URL, timeout=_TIMEOUT)
-        if r.status_code == 200:
-            data = r.json()
-            if isinstance(data, list):
-                return sorted({int(x) for x in data})
-    except (requests.RequestException, ValueError, TypeError):
+        with open(SEASONS_INDEX, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            years.update(int(y) for y in data)
+    except (OSError, ValueError, TypeError):
         pass
-    return []
+    try:
+        with open(CURRENT, encoding="utf-8") as f:
+            years.add(int(json.load(f).get("season")))
+    except (OSError, ValueError, TypeError):
+        pass
+    return sorted(years)
 
 
 def load_feed(season=None):
-    """Return a season snapshot dict, or raise FeedUnavailable.
-
-    season=None loads the current/live feed. A specific year loads that season's
-    archive (falling back to the current feed if the archive is missing).
-    Order: published data branch -> local feed.json -> live fetch.
-    """
-    urls = [FEED_URL] if season is None else [_archive_url(season), FEED_URL]
-    for url in urls:
-        try:
-            r = requests.get(url, timeout=_TIMEOUT)
-            if r.status_code == 200:
-                return r.json()
-        except (requests.RequestException, ValueError):
+    """Build the season snapshot. season=None is the current season."""
+    paths = [CURRENT] if season is None else [_archive_path(season), CURRENT]
+    last_error = None
+    for path in paths:
+        if not os.path.exists(path):
             continue
-
-    # 2) local snapshot (handy for local dev / offline)
-    if os.path.exists("feed.json"):
         try:
-            with open("feed.json", encoding="utf-8") as f:
-                return json.load(f)
-        except (OSError, ValueError):
-            pass
-
-    # 3) last resort: build it live right now (works off a non-blocked network)
-    try:
-        matches = espn.get_matches()
-        winprobs = {}
-        for m in matches:
-            if m["state"] == "pre":
-                wp = espn.get_win_probabilities(m["id"])
-                if wp:
-                    winprobs[m["id"]] = wp
-        standings = espn.get_standings()
-        return {
-            "generated_at": None,
-            "season": standings.get("season", ""),
-            "standings": standings,
-            "matches": [{**m, "start": m["start"].isoformat() if m["start"] else None} for m in matches],
-            "winprobs": winprobs,
-        }
-    except espn.ESPNError as e:
-        raise FeedUnavailable(str(e))
+            return _hydrate(league.build_feed(path=path))
+        except (OSError, ValueError, KeyError) as e:
+            last_error = e
+    raise FeedUnavailable(
+        f"could not read the results file ({last_error})" if last_error
+        else "no results file found"
+    )
 
 
 # Convenience accessors used by the UI ------------------------------------- #
@@ -122,12 +92,12 @@ def get_standings(feed):
 
 
 def get_matches(feed):
-    return _hydrate_matches(feed.get("matches", []))
+    return feed.get("matches", [])
 
 
-def get_win_probabilities(feed, event_id):
-    return (feed.get("winprobs") or {}).get(str(event_id))
+def get_win_probabilities(feed, match_id):
+    return (feed.get("winprobs") or {}).get(str(match_id))
 
 
 def generated_at(feed):
-    return _parse_dt(feed.get("generated_at"))
+    return _parse_day(feed.get("generated_at"))
