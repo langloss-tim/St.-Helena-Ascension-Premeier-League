@@ -51,9 +51,34 @@ st.set_page_config(
 LOCAL_TZ = ZoneInfo("America/New_York")
 
 ISLAND_META = {
-    teams.ST_HELENA: {"flag": "🇸🇭", "accent": "#e4572e"},
-    teams.ASCENSION: {"flag": "🇦🇨", "accent": "#3d9be0"},
+    teams.ST_HELENA: {"flag": "🇸🇭", "code": "sh", "accent": "#e4572e"},
+    teams.ASCENSION: {"flag": "🇦🇨", "code": "ac", "accent": "#3d9be0"},
 }
+
+
+# One source for every flag on the site. lipis/flag-icons rather than flagcdn,
+# because it carries AC (Ascension) and flagcdn does not.
+CDN_ROOT = "https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3"
+
+
+def flag_img(code, emoji="", label="", cls="flagimg"):
+    """A flag as a drawn image rather than the regional-indicator emoji.
+    Windows has no glyphs for those emoji -- it renders them as the two bare
+    letters ("SH", "AC"), so the emoji on its own is not a flag on the machines
+    this site is actually read on. The emoji stays as the alt text, which is
+    what shows if the image cannot be fetched. Derived from the two-letter code
+    alone, so a new island or country still needs nothing but its code."""
+    code = (code or "").strip().lower()
+    if len(code) != 2 or not code.isalpha():
+        return emoji
+    return (f'<img class="{cls}" src="{CDN_ROOT}/{code}.svg" '
+            f'alt="{emoji or label}" title="{label}" loading="lazy">')
+
+
+def island_img(island, cls="flagimg"):
+    """The flag for one of the two islands, ready to drop into markup."""
+    meta = ISLAND_META.get(island, {})
+    return flag_img(meta.get("code"), meta.get("flag", ""), str(island), cls)
 
 
 # --------------------------------------------------------------------------- #
@@ -82,16 +107,17 @@ WMO = {
     95: ("⛈️", "Thunderstorm"), 96: ("⛈️", "Thunderstorm"), 99: ("⛈️", "Thunderstorm"),
 }
 WEATHER_LOCATIONS = [
-    ("St. Helena", "🇸🇭", -15.93, -5.72),
-    ("Ascension", "🇦🇨", -7.93, -14.42),
+    ("St. Helena", "🇸🇭", "sh", -15.93, -5.72),
+    ("Ascension", "🇦🇨", "ac", -7.93, -14.42),
 ]
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def load_weather():
     out = []
-    for name, flag, lat, lon in WEATHER_LOCATIONS:
-        entry = {"name": name, "flag": flag, "temp": None, "code": None, "wind": None, "hum": None}
+    for name, flag, fcode, lat, lon in WEATHER_LOCATIONS:
+        entry = {"name": name, "flag": flag, "fcode": fcode,
+                 "temp": None, "code": None, "wind": None, "hum": None}
         try:
             r = requests.get(
                 "https://api.open-meteo.com/v1/forecast",
@@ -263,6 +289,11 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
                     text-align:right; }
 .scorer .srank, .scorer .sgoals, .scorer .sflag{ flex:none; }
 
+/* Island/country flags in running text. Sized in em so they track whatever
+   type they sit next to, from the small weather label to the club hero. */
+.flagimg{ width:1.5em; height:auto; display:inline-block; vertical-align:-.22em;
+          border-radius:2px; box-shadow:0 0 0 1px rgba(255,255,255,.14); }
+
 /* Fact of the day (two compact cards side by side) */
 .factrow{ display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin:.3rem 0 1.5rem; }
 @media (max-width:800px){ .factrow{ grid-template-columns:1fr; } }
@@ -424,7 +455,7 @@ def render_standings(standings, ncols=2, device=None):
         meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
         st.markdown(
             f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-            f'{meta["flag"]} {conf["name"]}</div>',
+            f'{island_img(conf["island"])} {conf["name"]}</div>',
             unsafe_allow_html=True,
         )
         st.markdown(_standings_html(conf["table"], level=level), unsafe_allow_html=True)
@@ -500,12 +531,14 @@ CLOCK_HTML = r"""
   .clk.sh{ border-left:4px solid #e4572e; }
   .cl-l{ font-size:.8rem; color:#8b93a1; white-space:nowrap; }
   .cl-l span{ background:rgba(255,255,255,.08); padding:.02rem .3rem; border-radius:5px; margin-left:.2rem; }
+  .cl-l img.flagimg{ width:1.25em; height:auto; vertical-align:-.2em; border-radius:2px;
+                     box-shadow:0 0 0 1px rgba(255,255,255,.14); }
   .cl-t{ font-size:1.3rem; font-weight:800; font-variant-numeric:tabular-nums; margin-top:.15rem; }
 </style>
 <div class="clockrow" id="clocks"></div>
 <script>
   const ZONES = [
-    {label:"🇸🇭 St. Helena", tz:"Atlantic/St_Helena", abbr:"GMT", sh:true},
+    {label:"<img class='flagimg' src='https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/sh.svg' alt='🇸🇭'> St. Helena", tz:"Atlantic/St_Helena", abbr:"GMT", sh:true},
     {label:"Eastern", tz:"America/New_York", abbr:"ET"},
     {label:"Central", tz:"America/Chicago", abbr:"CT"},
     {label:"Mountain", tz:"America/Denver", abbr:"MT"},
@@ -545,7 +578,7 @@ def render_matches(matches, feed):
             st.session_state.focus_group = None
             st.rerun()
         st.markdown(f'<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
-                    f'{_group_label(focus)}</div>', unsafe_allow_html=True)
+                    f'{_group_label_html(focus)}</div>', unsafe_allow_html=True)
         if group:
             _render_day_groups(group, feed, show_prob=True, newest_first=False)
         else:
@@ -610,6 +643,17 @@ def _group_label(key):
     return f'{meta["flag"]} {name} · Matchday {rest}'
 
 
+def _group_label_html(key):
+    """The same label for the places that render HTML. _group_label itself has
+    to stay plain text: it also fills button captions and the search haystack,
+    neither of which can render a tag."""
+    kind, rest = key.split("|", 1)
+    if kind == "playoff":
+        return f"🏆 {rest}"
+    name = teams.DIVISION_NAME.get(kind, kind)
+    return f'{island_img(kind)} {name} · Matchday {rest}'
+
+
 def _day_label(m):
     """The date under a match card, when one has been set."""
     d = m.get("day")
@@ -631,7 +675,7 @@ def _render_day_groups(matches, feed, show_prob, newest_first):
         dates = {_day_label(m) for m in group} - {""}
         count = f"{n} {'match' if n == 1 else 'matches'}"
         right = f"{dates.pop()} · {count}" if len(dates) == 1 else count
-        header = (f'<div class="dayhdr"><span>{_group_label(key)}</span>'
+        header = (f'<div class="dayhdr"><span>{_group_label_html(key)}</span>'
                   f'<span class="daycount">{right}</span></div>')
         cards = "".join(_match_html(m, feed, show_prob) for m in group)
         st.markdown(f'<div class="daygroup">{header}{cards}</div>', unsafe_allow_html=True)
@@ -777,7 +821,7 @@ def render_weather():
         if w["temp"] is not None:
             extra = f'<div class="wx-sub">{desc} · 💨 {w["wind"]} mph · 💧 {w["hum"]}%</div>'
         cards += (f'<div class="wx"><div class="wx-emoji">{emoji}</div>'
-                  f'<div><div class="wx-loc">{w["flag"]} {w["name"]}</div>'
+                  f'<div><div class="wx-loc">{flag_img(w["fcode"], w["flag"], w["name"])} {w["name"]}</div>'
                   f'<div class="wx-temp">{temp}</div>{extra}</div></div>')
     st.markdown(f'<div class="wxrow">{cards}</div>', unsafe_allow_html=True)
 
@@ -791,7 +835,8 @@ def render_home(feed, ncols=2):
         '<div class="factrow">'
         f'<div class="factcard"><div class="factlabel">⚽ Soccer fact of the day</div>'
         f'<div class="facttext">{facts.soccer_fact(day)}</div></div>'
-        f'<div class="factcard sh"><div class="factlabel sh">🇸🇭 St. Helena fact of the day</div>'
+        f'<div class="factcard sh"><div class="factlabel sh">'
+        f'{flag_img("sh", "🇸🇭", "St. Helena")} St. Helena fact of the day</div>'
         f'<div class="facttext">{facts.sthelena_fact(day)}</div></div>'
         '</div>',
         unsafe_allow_html=True,
@@ -831,7 +876,7 @@ def render_home(feed, ncols=2):
             if top:
                 st.markdown(
                     f'<div class="leader" style="border-left-color:{top["primary"]}">'
-                    f'<div class="leader-isl">{meta["flag"]} {conf["island"]}</div>'
+                    f'<div class="leader-isl">{island_img(conf["island"])} {conf["island"]}</div>'
                     f'<div class="leader-name">{dot(top["primary"])}{top["name"]}</div>'
                     f'<div class="leader-pts">{top["points"]} pts · {top["wins"]}-{top["draws"]}-{top["losses"]}</div>'
                     f'</div>', unsafe_allow_html=True)
@@ -867,7 +912,7 @@ def render_clubs(feed):
         meta = ISLAND_META.get(island, {"flag": "", "accent": "#888"})
         st.markdown(
             f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-            f'{meta["flag"]} {island}</div>',
+            f'{island_img(island)} {island}</div>',
             unsafe_allow_html=True,
         )
         club_list = [t for t in teams.TEAMS if t.island == island]
@@ -894,7 +939,7 @@ def render_club_detail(feed, club_id):
     st.markdown(
         f'<div class="club-hero" style="border-left-color:{team.primary}">'
         f'<div class="club-hero-name">{dot(team.primary)}{team.name}</div>'
-        f'<div class="club-hero-isl">{meta["flag"]} {team.island}</div></div>',
+        f'<div class="club-hero-isl">{island_img(team.island)} {team.island}</div></div>',
         unsafe_allow_html=True,
     )
 

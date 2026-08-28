@@ -256,7 +256,7 @@ def _flag_url(code):
     code = (code or "").strip().lower()
     if len(code) != 2 or not code.isalpha():
         return ""
-    return "https://flagcdn.com/w80/%s.png" % code
+    return "https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/%s.svg" % code
 
 
 def build_scorers(data):
