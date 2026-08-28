@@ -217,6 +217,14 @@
           "live": true,
           "kickoff": "2026-08-28T17:28:56Z",
           "stoppage": 11
+        },
+        {
+          "home": "STH Young Boys",
+          "away": "Harts United",
+          "hs": 0,
+          "as": 0,
+          "live": true,
+          "kickoff": "2026-08-28T19:01:05Z"
         }
       ]
     }
