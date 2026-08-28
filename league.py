@@ -21,8 +21,9 @@ from outside the league, they count for NOTHING — no points, no goals, no form
 no place in the tables — and they appear on one screen only: that club's own
 page. Everything else on the site ignores them.
 
-Optional per-match keys: "note", "kickoff", "minute", "date" (overrides the
-matchday's).
+Optional per-match keys: "note", "kickoff", "stoppage", "minute", "date"
+(overrides the matchday's). "stoppage" is the announced added minutes, which
+lets the clock run 90+1 to 90+N instead of stopping dead on 90'.
 """
 
 import json
@@ -158,7 +159,15 @@ def _live_minute(raw):
     minute = int(elapsed // 60) + 1                # the 1st minute is "1'"
     if minute < 1:
         return "0'"
-    return f"{min(minute, FULL_TIME)}'"
+    if minute <= FULL_TIME:
+        return f"{minute}'"
+
+    # Past 90. Without an announced amount there is nothing to count, so the
+    # clock just holds; with one it runs 90+1 up to 90+N and then holds there.
+    added = int(raw.get("stoppage") or 0)
+    if added <= 0:
+        return f"{FULL_TIME}'"
+    return f"{FULL_TIME}+{min(minute - FULL_TIME, added)}'"
 
 
 def _one_match(raw, division, matchday, idx, block_date, stage, round_name):
