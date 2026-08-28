@@ -145,7 +145,7 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 
 /* Standings table */
 .tblwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.tbl{ width:100%; border-collapse:collapse; font-size:1.28rem; }
+.tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:1.28rem; }
 .tbl thead th{ text-transform:uppercase; font-size:.9rem; letter-spacing:.6px;
    color:var(--muted); font-weight:700; padding:.55rem .5rem; border-bottom:1px solid var(--line);
    text-align:center; }
@@ -155,15 +155,22 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .tbl td.club .dot{ margin-right:.65rem; }
 .tbl td.rank{ color:var(--muted); font-variant-numeric:tabular-nums; width:2.6rem; }
 .tbl td.pts{ font-weight:800; font-size:1.5rem; color:#fff;
-              background:rgba(255,255,255,.06); }
-.tbl thead th.pts{ color:#fff; background:rgba(255,255,255,.06); }
-.tbl td.pts, .tbl thead th.pts{ position:sticky; right:0; }
+              background:#1c1f25; }
+.tbl thead th.pts{ color:#fff; background:#1c1f25; }
+/* Pts is pinned to the right edge. Its background MUST stay opaque -- with a
+   translucent one the GD/GA cells scroll underneath and bleed through it,
+   which reads as a smudged, double-printed column. #1c1f25 is exactly the old
+   rgba(255,255,255,.06) already flattened onto --bg, so it looks unchanged. */
+.tbl td.pts, .tbl thead th.pts{ position:sticky; right:0; z-index:2;
+              box-shadow:-1px 0 0 var(--line); }
+.tbl thead th.pts{ z-index:3; }
 .legend .scoring{ color:var(--text); font-size:1.1rem; }
 .legend .scoring b{ font-weight:800; }
 .legend .scoring b.w{ color:#7fe08f; }
 .legend .scoring b.d{ color:var(--muted); }
 .legend .scoring b.l{ color:#ff9273; }
 .tbl tr:hover td{ background:rgba(255,255,255,.03); }
+.tbl tr:hover td.pts{ background:#23262c; }
 .tbl tr.cutoff td{ border-bottom:2px solid rgba(255,255,255,.22); }
 .tbl tr.qual td.rank{ color:#57c66a; font-weight:700; }
 .legend{ font-size:1.05rem; color:var(--muted); margin-top:.9rem; }
@@ -173,6 +180,14 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .tbl td.form{ text-align:left; white-space:nowrap; padding-left:.9rem; }
 .tbl td.form .formchip{ width:1.55rem; height:1.55rem; font-size:.8rem; margin-right:.18rem; }
 .tbl .tbd{ color:var(--muted); }
+/* Side-by-side tables get half the width; shrink the furniture so the columns
+   that remain still fit without forcing a scrollbar. */
+.tbl.tight{ font-size:1.12rem; }
+.tbl.tight thead th{ font-size:.82rem; padding:.5rem .34rem; }
+.tbl.tight td{ padding:.7rem .34rem; }
+.tbl.tight td.rank{ width:2.2rem; }
+.tbl.tight td.pts{ font-size:1.32rem; }
+.tbl.tight td.club .dot{ margin-right:.45rem; }
 .champline{ margin-top:1rem; font-size:1.3rem; text-align:center;
             border:1px solid rgba(244,200,0,.5); border-radius:14px; padding:.9rem 1rem;
             background:rgba(244,200,0,.07); }
@@ -234,12 +249,19 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .scorer .srank{ min-width:2.1rem; color:var(--muted); font-weight:700;
                 font-variant-numeric:tabular-nums; }
 .scorer.lead .srank{ color:#f4c800; }
-.scorer .sname{ font-size:1.25rem; font-weight:600; }
+.scorer .sname{ font-size:1.25rem; font-weight:600; white-space:nowrap;
+                overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .scorer .sgoals{ margin-left:auto; font-size:1.45rem; font-weight:800;
                  font-variant-numeric:tabular-nums; }
 .scorer .sgoals small{ font-size:.8rem; font-weight:600; color:var(--muted);
                        margin-left:.3rem; }
-.scorer .sflag{ font-size:1.5rem; line-height:1; min-width:1.9rem; text-align:right; }
+/* The flag is an <img>, so it needs a drawn size rather than a font size.
+   The span rule is the fallback for a country with no usable code. */
+.scorer img.sflag{ width:2.1rem; height:auto; display:block; border-radius:3px;
+                   box-shadow:0 0 0 1px rgba(255,255,255,.14); }
+.scorer span.sflag{ font-size:1.5rem; line-height:1; min-width:2.1rem;
+                    text-align:right; }
+.scorer .srank, .scorer .sgoals, .scorer .sflag{ flex:none; }
 
 /* Fact of the day (two compact cards side by side) */
 .factrow{ display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin:.3rem 0 1.5rem; }
@@ -358,6 +380,7 @@ def apply_device_css(device):
         extra += ".block-container{padding-left:.6rem;padding-right:.6rem;}"
     if device == "📱 Phone":
         extra += ".hero-title{font-size:2.3rem;letter-spacing:-.5px;}"
+        extra += ".scorer{gap:.5rem;}.scorer img.sflag{width:1.8rem;}"
         extra += ".brk-col{min-width:200px;}"
     extra += "</style>"
     st.markdown(extra, unsafe_allow_html=True)
@@ -385,11 +408,17 @@ def header(season):
 # --------------------------------------------------------------------------- #
 # Tables page
 # --------------------------------------------------------------------------- #
-def render_standings(standings, ncols=2):
-    # Two tables side by side, or a narrow screen, means every extra column
-    # pushes Points further off the edge. Points is the column people came to
-    # read, so on tight layouts the optional ones go instead.
-    compact = ncols == 1
+def render_standings(standings, ncols=2, device=None):
+    # Two tables side by side each get HALF the width, so that is the layout
+    # most likely to push Points off the edge -- not the single-column one,
+    # which hands the whole width to one table. This test used to be the wrong
+    # way round, so the widest column set was rendered in the narrowest box.
+    # Points is the column people came to read, so drop the optional columns
+    # widest-first (Form, then GF/GA) by how much room there actually is.
+    if ncols == 1:
+        level = "min" if device == "📱 Phone" else "full"
+    else:
+        level = "mid"
 
     def one(conf):
         meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
@@ -398,7 +427,7 @@ def render_standings(standings, ncols=2):
             f'{meta["flag"]} {conf["name"]}</div>',
             unsafe_allow_html=True,
         )
-        st.markdown(_standings_html(conf["table"], compact=compact), unsafe_allow_html=True)
+        st.markdown(_standings_html(conf["table"], level=level), unsafe_allow_html=True)
 
     confs = standings["conferences"]
     if ncols == 1:
@@ -410,17 +439,21 @@ def render_standings(standings, ncols=2):
             with col:
                 one(conf)
 
-def _standings_html(rows, compact=False):
+def _standings_html(rows, level="full"):
     """The league table. Points is the point of it — it stays on screen at
     every width, and the columns that can be dropped are dropped around it."""
+    show_form = level == "full"
+    show_gfga = level in ("full", "mid")
+    tcls = "tbl" if level == "full" else "tbl tight"
+
     cols = ['<th class="l">#</th>', '<th class="l">Club</th>',
             "<th>P</th>", "<th>W</th>", "<th>D</th>", "<th>L</th>"]
-    if not compact:
+    if show_gfga:
         cols += ["<th>GF</th>", "<th>GA</th>"]
     cols += ["<th>GD</th>", '<th class="pts">Pts</th>']
-    if not compact:
+    if show_form:
         cols.append('<th class="l">Form</th>')
-    head = '<table class="tbl"><thead><tr>' + "".join(cols) + "</tr></thead><tbody>"
+    head = f'<table class="{tcls}"><thead><tr>' + "".join(cols) + "</tr></thead><tbody>"
 
     body = []
     for r in rows:
@@ -437,10 +470,10 @@ def _standings_html(rows, compact=False):
                  f'<td class="club">{dot(r["primary"])}{r["name"]}</td>',
                  f'<td>{r["played"]}</td>', f'<td>{r["wins"]}</td>',
                  f'<td>{r["draws"]}</td>', f'<td>{r["losses"]}</td>']
-        if not compact:
+        if show_gfga:
             cells += [f'<td>{r["gf"]}</td>', f'<td>{r["ga"]}</td>']
         cells += [f'<td>{r["gd"]:+d}</td>', f'<td class="pts">{r["points"]}</td>']
-        if not compact:
+        if show_form:
             form = "".join(f'<span class="formchip {o.lower()}">{o}</span>'
                            for o in r.get("form", [])) or '<span class="tbd">–</span>'
             cells.append(f'<td class="form">{form}</td>')
@@ -705,7 +738,10 @@ def match_of_the_day(feed):
 
 def render_scorers(feed, limit=None):
     """The scoring chart. Reads left to right the way it was asked for:
-    name, then goals, then the player's country flag."""
+    name, then goals, then the player's flag. The flag is an image rather
+    than the regional-indicator emoji, because Windows draws that emoji as the
+    bare letters ("SH", "TR") instead of a flag. The emoji is kept as the alt
+    text, so it still stands in if the image cannot be fetched."""
     rows = feed.get("scorers") or []
     if not rows:
         return
@@ -715,8 +751,14 @@ def render_scorers(feed, limit=None):
     cards = ""
     for r in shown:
         cls = "scorer lead" if r["rank"] == 1 else "scorer"
-        flag = (f'<span class="sflag" title="{r["country"]}">{r["flag"]}</span>'
-                if r["flag"] else '<span class="sflag"></span>')
+        if r.get("flag_url"):
+            flag = (f'<img class="sflag" src="{r["flag_url"]}" '
+                    f'alt="{r["flag"] or r["country"]}" title="{r["country"]}" '
+                    f'loading="lazy">')
+        elif r["flag"]:
+            flag = f'<span class="sflag" title="{r["country"]}">{r["flag"]}</span>'
+        else:
+            flag = '<span class="sflag"></span>'
         cards += (f'<div class="{cls}"><span class="srank">{r["rank"]}</span>'
                   f'<span class="sname">{r["name"]}</span>'
                   f'<span class="sgoals">{r["goals"]}<small>goals</small></span>'
@@ -1397,7 +1439,7 @@ def main():
                 else "Both divisions, updated as each matchday is played.")
         st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
         if standings["conferences"]:
-            render_standings(standings, ncols)
+            render_standings(standings, ncols, device)
         else:
             st.warning("Standings could not be loaded.")
         render_scorers(feed)
