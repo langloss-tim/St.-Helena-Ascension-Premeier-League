@@ -253,6 +253,10 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .live{ color:#fff; background:var(--accent); padding:.22rem .7rem; border-radius:99px;
        font-size:.95rem; font-weight:800; letter-spacing:.4px; }
 .match.islive{ border-color:var(--accent); }
+/* A sending-off, shown against the club that lost the player. */
+.redcard{ display:inline-block; width:.72em; height:.72em; background:#e0322d;
+          border-radius:2px; margin-left:.45rem; vertical-align:-.02em;
+          box-shadow:0 0 0 1px rgba(0,0,0,.45); }
 
 /* Win probability bar */
 .wp{ margin:.85rem 0 .2rem; }
@@ -738,8 +742,12 @@ def _match_html(m, feed, show_prob):
         if show_score and m["completed"]:
             cls += " win" if side.get("winner") else (" lose" if not _is_draw(m) else "")
         tag = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
+        # One square per player sent off, so two reds show as two squares.
+        reds = ''.join(
+            '<span class="redcard" title="Sent off"></span>'
+            for _ in range(side.get("reds", 0)))
         return (f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["name"]}'
-                f'{tag}</span>{score}</div>')
+                f'{reds}{tag}</span>{score}</div>')
 
     when = _day_label(m) or "Date to be confirmed"
     if m.get("time"):

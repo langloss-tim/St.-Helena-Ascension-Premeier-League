@@ -220,6 +220,7 @@
           "away": "Harts United",
           "hs": 2,
           "as": 0,
+          "reds": ["Harts United"],
           "live": true,
           "kickoff": "2026-08-28T19:01:05Z"
         }

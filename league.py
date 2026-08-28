@@ -21,7 +21,7 @@ from outside the league, they count for NOTHING — no points, no goals, no form
 no place in the tables — and they appear on one screen only: that club's own
 page. Everything else on the site ignores them.
 
-Optional per-match keys: "note", "kickoff", "stoppage", "minute", "date"
+Optional per-match keys: "note", "reds", "kickoff", "stoppage", "minute", "date"
 (overrides the matchday's). "stoppage" is the announced added minutes, which
 lets the clock run 90+1 to 90+N instead of stopping dead on 90'.
 """
@@ -58,15 +58,31 @@ def load_season_file(path=None):
         return json.load(f)
 
 
-def _side(team, score):
+def _side(team, score, reds=0):
     return {
         "id": team.id,
         "name": team.name,
         "score": score,
         "winner": False,
+        "reds": reds,
         "primary": team.primary,
         "secondary": team.secondary,
     }
+
+
+def _count_reds(raw, home, away):
+    """Sendings-off per side. "reds" is a list of club names, one entry per
+    player sent off, so a second red for the same club is just that club named
+    twice. Names go through teams.resolve, so a typo fails loudly here rather
+    than quietly dropping a card."""
+    counts = {home.id: 0, away.id: 0}
+    for name in raw.get("reds") or []:
+        club = teams.resolve(name)
+        if club.id not in counts:
+            raise KeyError(
+                "%s was sent off in a match it is not playing in" % club.name)
+        counts[club.id] += 1
+    return counts[home.id], counts[away.id]
 
 
 def _external(name):
@@ -74,6 +90,7 @@ def _external(name):
     it exists only to be named on the other half of a friendly."""
     tid = "ext-" + re.sub(r"[^a-z0-9]+", "", str(name).lower())
     return {"id": tid, "name": str(name), "score": None, "winner": False,
+            "reds": 0,
             "primary": "#7c8595", "secondary": "#3a4150", "external": True}
 
 
@@ -193,7 +210,8 @@ def _one_match(raw, division, matchday, idx, block_date, stage, round_name):
         prefix = _slug(division)
     mid = f"{prefix}-{'md%s' % matchday if matchday else round_name.lower().replace(' ', '') or 'x'}-{idx}"
 
-    h, a = _side(home, hs), _side(away, as_)
+    h_reds, a_reds = _count_reds(raw, home, away)
+    h, a = _side(home, hs, h_reds), _side(away, as_, a_reds)
     if completed and hs != as_:
         h["winner"] = hs > as_
         a["winner"] = as_ > hs
