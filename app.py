@@ -56,9 +56,18 @@ ISLAND_META = {
 }
 
 
-# One source for every flag on the site. lipis/flag-icons rather than flagcdn,
-# because it carries AC (Ascension) and flagcdn does not.
-CDN_ROOT = "https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3"
+# flagcdn draws the real ensigns: St. Helena comes back with its shield (the
+# wirebird and the ship), not a bare Union Jack. lipis/flag-icons was tried
+# first and had to be abandoned -- its sh.svg is byte-for-byte the UK flag, so
+# the site was flying Britain over the St. Helena Division.
+CDN_ROOT = "https://flagcdn.com/w160"
+
+# flagcdn has no AC: Ascension is an exceptionally reserved code rather than a
+# full ISO country, so its flag is named outright instead of derived.
+FLAG_OVERRIDES = {
+    "ac": ("https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/"
+           "Flag_of_Ascension_Island.svg/320px-Flag_of_Ascension_Island.svg.png"),
+}
 
 
 def flag_img(code, emoji="", label="", cls="flagimg"):
@@ -71,7 +80,8 @@ def flag_img(code, emoji="", label="", cls="flagimg"):
     code = (code or "").strip().lower()
     if len(code) != 2 or not code.isalpha():
         return emoji
-    return (f'<img class="{cls}" src="{CDN_ROOT}/{code}.svg" '
+    src = FLAG_OVERRIDES.get(code) or f"{CDN_ROOT}/{code}.png"
+    return (f'<img class="{cls}" src="{src}" '
             f'alt="{emoji or label}" title="{label}" loading="lazy">')
 
 
@@ -291,7 +301,7 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 
 /* Island/country flags in running text. Sized in em so they track whatever
    type they sit next to, from the small weather label to the club hero. */
-.flagimg{ width:1.5em; height:auto; display:inline-block; vertical-align:-.22em;
+.flagimg{ width:1.9em; height:auto; display:inline-block; vertical-align:-.26em;
           border-radius:2px; box-shadow:0 0 0 1px rgba(255,255,255,.14); }
 
 /* Fact of the day (two compact cards side by side) */
@@ -531,14 +541,14 @@ CLOCK_HTML = r"""
   .clk.sh{ border-left:4px solid #e4572e; }
   .cl-l{ font-size:.8rem; color:#8b93a1; white-space:nowrap; }
   .cl-l span{ background:rgba(255,255,255,.08); padding:.02rem .3rem; border-radius:5px; margin-left:.2rem; }
-  .cl-l img.flagimg{ width:1.25em; height:auto; vertical-align:-.2em; border-radius:2px;
+  .cl-l img.flagimg{ width:1.6em; height:auto; vertical-align:-.25em; border-radius:2px;
                      box-shadow:0 0 0 1px rgba(255,255,255,.14); }
   .cl-t{ font-size:1.3rem; font-weight:800; font-variant-numeric:tabular-nums; margin-top:.15rem; }
 </style>
 <div class="clockrow" id="clocks"></div>
 <script>
   const ZONES = [
-    {label:"<img class='flagimg' src='https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/sh.svg' alt='🇸🇭'> St. Helena", tz:"Atlantic/St_Helena", abbr:"GMT", sh:true},
+    {label:"<img class='flagimg' src='https://flagcdn.com/w160/sh.png' alt='🇸🇭'> St. Helena", tz:"Atlantic/St_Helena", abbr:"GMT", sh:true},
     {label:"Eastern", tz:"America/New_York", abbr:"ET"},
     {label:"Central", tz:"America/Chicago", abbr:"CT"},
     {label:"Mountain", tz:"America/Denver", abbr:"MT"},
@@ -795,14 +805,9 @@ def render_scorers(feed, limit=None):
     cards = ""
     for r in shown:
         cls = "scorer lead" if r["rank"] == 1 else "scorer"
-        if r.get("flag_url"):
-            flag = (f'<img class="sflag" src="{r["flag_url"]}" '
-                    f'alt="{r["flag"] or r["country"]}" title="{r["country"]}" '
-                    f'loading="lazy">')
-        elif r["flag"]:
-            flag = f'<span class="sflag" title="{r["country"]}">{r["flag"]}</span>'
-        else:
-            flag = '<span class="sflag"></span>'
+        drawn = flag_img(r["code"], r["flag"], r["country"], "sflag")
+        flag = (drawn if drawn.startswith("<img")
+                else f'<span class="sflag" title="{r["country"]}">{drawn}</span>')
         cards += (f'<div class="{cls}"><span class="srank">{r["rank"]}</span>'
                   f'<span class="sname">{r["name"]}</span>'
                   f'<span class="sgoals">{r["goals"]}<small>goals</small></span>'

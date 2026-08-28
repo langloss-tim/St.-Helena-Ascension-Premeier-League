@@ -247,18 +247,6 @@ def _flag(code):
     return "".join(chr(0x1F1E6 + ord(c) - ord("A")) for c in code)
 
 
-def _flag_url(code):
-    """The same country code as a real flag image. Windows has no glyphs for
-    the regional-indicator emoji -- Segoe UI Emoji just draws the two letters --
-    so the emoji alone shows up as "SH"/"TR" on the machines this site is read
-    on. The image renders everywhere, and is still derived from nothing but the
-    code, so a new country needs only its code (never a new asset)."""
-    code = (code or "").strip().lower()
-    if len(code) != 2 or not code.isalpha():
-        return ""
-    return "https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/%s.svg" % code
-
-
 def build_scorers(data):
     """The scoring chart, ranked. Players level on goals share a rank, and the
     next rank skips accordingly (6, 5, 5, 5, 4 -> 1, 2, 2, 2, 5)."""
@@ -271,7 +259,6 @@ def build_scorers(data):
             "country": raw.get("country", ""),
             "code": (raw.get("code") or "").upper(),
             "flag": _flag(raw.get("code")),
-            "flag_url": _flag_url(raw.get("code")),
         })
     # Players level on goals keep the order they were entered in, rather than
     # being reshuffled alphabetically behind the league's back.
