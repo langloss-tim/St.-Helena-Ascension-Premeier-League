@@ -203,6 +203,21 @@
           "as": 2
         }
       ]
+    },
+    {
+      "n": 5,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Bellboys FC",
+          "away": "Rovers Saint Helena",
+          "hs": 0,
+          "as": 0,
+          "live": true,
+          "kickoff": "2026-08-28T16:56:07Z"
+        }
+      ]
     }
   ],
   "scorers": [

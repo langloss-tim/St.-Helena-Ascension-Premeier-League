@@ -94,7 +94,9 @@ def island_img(island, cls="flagimg"):
 # --------------------------------------------------------------------------- #
 # Cached data (one snapshot powers every page)
 # --------------------------------------------------------------------------- #
-@st.cache_data(ttl=120, show_spinner=False)
+# Short TTL: a live match ticks its minute in season.json while it is being
+# played, and a two-minute cache would show a minute that had already gone.
+@st.cache_data(ttl=15, show_spinner=False)
 def load_feed(season=None):
     return datafeed.load_feed(season)
 

@@ -11,21 +11,25 @@ A match in season.json looks like:
 
   * hs/as present  -> played (full time)
   * hs/as null     -> upcoming fixture
-  * "live": true   -> in progress; "minute" is shown on the card
+  * "live": true   -> in progress. Give it a "kickoff" timestamp and the
+                      clock runs itself: the card shows however many minutes
+                      have passed since then, recomputed on every page load.
+                      A literal "minute" still works as an override.
 
 Friendlies live in their own "friendlies" list. They are played against clubs
 from outside the league, they count for NOTHING — no points, no goals, no form,
 no place in the tables — and they appear on one screen only: that club's own
 page. Everything else on the site ignores them.
 
-Optional per-match keys: "note", "minute", "date" (overrides the matchday's).
+Optional per-match keys: "note", "kickoff", "minute", "date" (overrides the
+matchday's).
 """
 
 import json
 import math
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 import teams
 
@@ -130,6 +134,33 @@ def build_matches(data):
     return out
 
 
+FULL_TIME = 90
+
+
+def _live_minute(raw):
+    """The clock for a match in progress, worked out from its kickoff rather
+    than written down. Storing the kickoff once means the minute is right
+    whenever the page is opened, with nothing left to keep updating by hand.
+
+    Returns "" when there is no usable kickoff, so the caller can fall back to
+    a "minute" written in directly."""
+    ko = raw.get("kickoff")
+    if not ko:
+        return ""
+    try:
+        start = datetime.fromisoformat(str(ko).replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    if start.tzinfo is None:                       # bare timestamp means UTC
+        start = start.replace(tzinfo=timezone.utc)
+
+    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+    minute = int(elapsed // 60) + 1                # the 1st minute is "1'"
+    if minute < 1:
+        return "0'"
+    return f"{min(minute, FULL_TIME)}'"
+
+
 def _one_match(raw, division, matchday, idx, block_date, stage, round_name):
     home = teams.resolve(raw["home"])
     away = teams.resolve(raw["away"])
@@ -139,7 +170,7 @@ def _one_match(raw, division, matchday, idx, block_date, stage, round_name):
 
     if live:
         state, completed = "in", False
-        detail = raw.get("minute") or "LIVE"
+        detail = _live_minute(raw) or raw.get("minute") or "LIVE"
     elif played:
         state, completed = "post", True
         detail = raw.get("status") or "FT"
