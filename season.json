@@ -212,11 +212,8 @@
         {
           "home": "Bellboys FC",
           "away": "Rovers Saint Helena",
-          "hs": 1,
-          "as": 1,
-          "live": true,
-          "kickoff": "2026-08-28T17:28:56Z",
-          "stoppage": 11
+          "hs": 2,
+          "as": 1
         },
         {
           "home": "STH Young Boys",
@@ -255,10 +252,10 @@
       "code": "TR"
     },
     {
-      "name": "B. Turgut",
-      "goals": 4,
-      "country": "Sao Tome and Principe",
-      "code": "ST"
+      "name": "C. Lee",
+      "goals": 6,
+      "country": "Ascension",
+      "code": "AC"
     }
   ],
   "friendlies": [
