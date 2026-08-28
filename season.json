@@ -218,11 +218,9 @@
         {
           "home": "STH Young Boys",
           "away": "Harts United",
-          "hs": 2,
+          "hs": 3,
           "as": 0,
-          "reds": ["Harts United"],
-          "live": true,
-          "kickoff": "2026-08-28T19:01:05Z"
+          "reds": ["Harts United"]
         }
 ,
         {
@@ -230,9 +228,7 @@
           "away": "La Verde FC",
           "hs": 2,
           "as": 1,
-          "reds": ["Fugees FC"],
-          "live": true,
-          "kickoff": "2026-08-28T18:03:51Z"
+          "reds": ["Fugees FC"]
         }
       ]
     }
