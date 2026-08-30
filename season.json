@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "updated": "2026-08-28",
+  "updated": "2026-08-30",
   "note": "Source of truth for the whole site. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [
@@ -229,6 +229,19 @@
           "hs": 2,
           "as": 1,
           "reds": ["Fugees FC"]
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "Island Boyz",
+          "away": "77 Devils FC",
+          "hs": 1,
+          "as": 1
         }
       ]
     }
