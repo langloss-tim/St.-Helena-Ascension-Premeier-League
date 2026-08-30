@@ -287,6 +287,15 @@
       "os": 4,
       "date": null,
       "note": "Friendly — does not count towards the league"
+    },
+    {
+      "club": "Island Boyz",
+      "opponent": "Sporting Kansas City",
+      "home": false,
+      "cs": 0,
+      "os": 4,
+      "date": null,
+      "note": "Friendly — does not count towards the league"
     }
   ],
   "playoffs": []
