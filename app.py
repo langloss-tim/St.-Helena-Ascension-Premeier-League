@@ -12,8 +12,11 @@ scores, edit season.json.
 Run locally:  streamlit run app.py
 """
 
+import base64
 import json
 from datetime import date, datetime, timedelta
+from functools import lru_cache
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
@@ -56,18 +59,39 @@ ISLAND_META = {
 }
 
 
-# flagcdn draws the real ensigns: St. Helena comes back with its shield (the
-# wirebird and the ship), not a bare Union Jack. lipis/flag-icons was tried
-# first and had to be abandoned -- its sh.svg is byte-for-byte the UK flag, so
-# the site was flying Britain over the St. Helena Division.
+# The flags the site flies are VENDORED into flags/ and inlined as data URIs,
+# not hotlinked. Ascension used to be fetched from Wikimedia and it broke on
+# its own: Wikimedia renders only certain thumbnail widths of that file, the
+# 320px one stopped being among them, the URL started answering 400, and the
+# Golden Boot drew a broken-image icon where the flag should be. A file sitting
+# next to the app cannot 404, cannot rate-limit and cannot be reached for.
+#
+# flagcdn stays as the fallback for any code that isn't vendored, so a new
+# country still needs nothing but its two-letter code. It draws the real
+# ensigns: St. Helena comes back with its shield (the wirebird and the ship),
+# not a bare Union Jack. lipis/flag-icons was tried first and had to be
+# abandoned -- its sh.svg is byte-for-byte the UK flag, so the site was flying
+# Britain over the St. Helena Division.
+#
+# To vendor a new flag: drop a <code>.png in flags/ and nothing else changes.
+FLAG_DIR = Path(__file__).resolve().parent / "flags"
 CDN_ROOT = "https://flagcdn.com/w160"
 
-# flagcdn has no AC: Ascension is an exceptionally reserved code rather than a
-# full ISO country, so its flag is named outright instead of derived.
-FLAG_OVERRIDES = {
-    "ac": ("https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/"
-           "Flag_of_Ascension_Island.svg/320px-Flag_of_Ascension_Island.svg.png"),
-}
+
+@lru_cache(maxsize=None)
+def flag_src(code):
+    """The image source for a two-letter code -- the vendored flag as a data
+    URI when flags/ has it, a flagcdn URL when it doesn't, "" when the code
+    isn't usable. Cached because the same handful of flags is rebuilt on every
+    rerun and base64 of a file on disk is pure repeat work."""
+    code = (code or "").strip().lower()
+    if len(code) != 2 or not code.isalpha():
+        return ""
+    try:
+        raw = (FLAG_DIR / f"{code}.png").read_bytes()
+    except OSError:
+        return f"{CDN_ROOT}/{code}.png"
+    return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 
 def flag_img(code, emoji="", label="", cls="flagimg"):
@@ -75,12 +99,10 @@ def flag_img(code, emoji="", label="", cls="flagimg"):
     Windows has no glyphs for those emoji -- it renders them as the two bare
     letters ("SH", "AC"), so the emoji on its own is not a flag on the machines
     this site is actually read on. The emoji stays as the alt text, which is
-    what shows if the image cannot be fetched. Derived from the two-letter code
-    alone, so a new island or country still needs nothing but its code."""
-    code = (code or "").strip().lower()
-    if len(code) != 2 or not code.isalpha():
+    what shows if the image cannot be drawn."""
+    src = flag_src(code)
+    if not src:
         return emoji
-    src = FLAG_OVERRIDES.get(code) or f"{CDN_ROOT}/{code}.png"
     return (f'<img class="{cls}" src="{src}" '
             f'alt="{emoji or label}" title="{label}" loading="lazy">')
 
@@ -554,7 +576,7 @@ CLOCK_HTML = r"""
 <div class="clockrow" id="clocks"></div>
 <script>
   const ZONES = [
-    {label:"<img class='flagimg' src='https://flagcdn.com/w160/sh.png' alt='🇸🇭'> St. Helena", tz:"Atlantic/St_Helena", abbr:"GMT", sh:true},
+    {label:"<img class='flagimg' src='__SH_FLAG__' alt='🇸🇭'> St. Helena", tz:"Atlantic/St_Helena", abbr:"GMT", sh:true},
     {label:"Eastern", tz:"America/New_York", abbr:"ET"},
     {label:"Central", tz:"America/Chicago", abbr:"CT"},
     {label:"Mountain", tz:"America/Denver", abbr:"MT"},
@@ -575,7 +597,10 @@ CLOCK_HTML = r"""
 
 
 def clock_component():
-    components.html(CLOCK_HTML, height=110, scrolling=False)
+    # The clock is an iframe with its own document, so it cannot call
+    # flag_img() -- the source is substituted in on the way out.
+    components.html(CLOCK_HTML.replace("__SH_FLAG__", flag_src("sh")),
+                    height=110, scrolling=False)
 
 
 def league_only(matches):
