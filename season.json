@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "updated": "2026-08-30",
+  "updated": "2026-09-02",
   "note": "Source of truth for the whole site. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [
@@ -68,8 +68,8 @@
         {
           "home": "Rovers Saint Helena",
           "away": "STH Young Boys",
-          "hs": 12,
-          "as": 1
+          "hs": 7,
+          "as": 0
         },
         {
           "home": "Fugees FC",
@@ -118,7 +118,7 @@
         {
           "home": "Fugees FC",
           "away": "STH Young Boys",
-          "hs": 9,
+          "hs": 7,
           "as": 2
         },
         {
@@ -174,8 +174,8 @@
         {
           "home": "STH Young Boys",
           "away": "Rovers Saint Helena",
-          "hs": 1,
-          "as": 16
+          "hs": 2,
+          "as": 10
         }
       ]
     },
