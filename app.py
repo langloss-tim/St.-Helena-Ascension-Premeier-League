@@ -235,6 +235,9 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .tbl.mini td.form .formchip{ width:.6rem; height:.6rem; border-radius:50%;
    font-size:0; margin-right:.17rem; }
 .tbl .tbd{ color:var(--muted); }
+.tbl td.club .isl{ margin-left:.55rem; font-size:.6em; font-weight:800;
+   letter-spacing:.5px; padding:.14em .42em; border-radius:6px;
+   border:1px solid currentColor; vertical-align:.14em; opacity:.85; }
 /* Side-by-side tables get half the width; shrink the furniture so the columns
    that remain still fit without forcing a scrollbar. */
 .tbl.tight{ font-size:1.12rem; }
@@ -504,10 +507,20 @@ def render_standings(standings, ncols=2, device=None):
             with col:
                 one(conf)
 
-def _standings_html(rows, level="full"):
+def _standings_html(rows, level="full", gfga=None, qual=True, island=False,
+                    legend=True):
     """The league table. Points is the point of it — it stays on screen at
-    every width, and the columns that can be dropped are dropped around it."""
-    show_gfga = level in ("full", "mid")
+    every width, and the columns that can be dropped are dropped around it.
+
+    `qual` paints the playoff colours (green top three, amber wild card). The
+    overall table switches them OFF: those places are won inside a division,
+    so colouring a merged table by its own order would promise places that
+    aren't real. `island` adds the division flag beside each club, which only
+    the merged table needs.
+    """
+    if gfga is None:
+        gfga = level in ("full", "mid")
+    show_gfga = gfga
     dots = level == "min"          # a phone gets colour dots, not letters
     tcls = {"full": "tbl", "mid": "tbl tight"}.get(level, "tbl tight mini")
 
@@ -521,16 +534,27 @@ def _standings_html(rows, level="full"):
     body = []
     for r in rows:
         classes = []
-        if r["rank"] <= 3:
-            classes.append("qual")
-        elif r["rank"] <= 5:
-            classes.append("wildcard")
-        if r["rank"] == 5:
-            classes.append("cutoff")  # last club still alive for the playoffs
+        if qual:
+            if r["rank"] <= 3:
+                classes.append("qual")
+            elif r["rank"] <= 5:
+                classes.append("wildcard")
+            if r["rank"] == 5:
+                classes.append("cutoff")  # last club still alive for the playoffs
         cls = f' class="{" ".join(classes)}"' if classes else ""
 
+        # A two-letter division pill, not the island flag: the flags are inlined
+        # base64 PNGs, and repeating one on all twelve rows put 130KB of data
+        # URI into a single table. The pill is tinted with the island's accent.
+        badge = ""
+        if island:
+            meta = ISLAND_META.get(r.get("division"), {})
+            code = (meta.get("code") or "")[:2].upper()
+            if code:
+                badge = (f'<span class="isl" style="color:{meta.get("accent", "#888")}" '
+                         f'title="{r.get("division_name", "")}">{code}</span>')
         cells = [f'<td class="rank">{r["rank"]}</td>',
-                 f'<td class="club">{dot(r["primary"])}{r["name"]}</td>',
+                 f'<td class="club">{dot(r["primary"])}{r["name"]}{badge}</td>',
                  f'<td>{r["played"]}</td>', f'<td>{r["wins"]}</td>',
                  f'<td>{r["draws"]}</td>', f'<td>{r["losses"]}</td>']
         if show_gfga:
@@ -542,15 +566,37 @@ def _standings_html(rows, level="full"):
                   f'<td class="pts">{r["points"]}</td>']
         body.append(f"<tr{cls}>" + "".join(cells) + "</tr>")
 
-    legend = ('<div class="legend">'
-              '<span class="scoring"><b class="w">Win 3 pts</b> · '
-              '<b class="d">Draw 1 pt</b> · <b class="l">Loss 0 pts</b></span><br>'
-              'Ranked on points, then goal difference, then goals scored.<br>'
-              'Form = last five matches, oldest first.<br>'
-              '<b>Green</b> = straight into the semi-finals · '
-              '<b class="wc">Amber</b> = 4th and 5th meet in the Wild Card game'
-              '</div>')
-    return '<div class="tblwrap">' + head + "".join(body) + "</tbody></table></div>" + legend
+    foot = ('<div class="legend">'
+            '<span class="scoring"><b class="w">Win 3 pts</b> · '
+            '<b class="d">Draw 1 pt</b> · <b class="l">Loss 0 pts</b></span><br>'
+            'Ranked on points, then goal difference, then goals scored.<br>'
+            'Form = last five matches, oldest first.<br>'
+            '<b>Green</b> = straight into the semi-finals · '
+            '<b class="wc">Amber</b> = 4th and 5th meet in the Wild Card game'
+            '</div>') if legend else ""
+    return '<div class="tblwrap">' + head + "".join(body) + "</tbody></table></div>" + foot
+
+
+def render_overall(feed, device=None):
+    """Every club in one table, under the two division tables.
+
+    Same ranking rule as the tables above it, and the same Form column — it is
+    a view of the very same rows, not a second set of numbers. Full width, so
+    it keeps GF/GA off and shows nothing the divisions don't already say.
+    """
+    table = datafeed.get_overall(feed)
+    if not table:
+        return
+    st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
+                'Overall &mdash; all twelve clubs</div>', unsafe_allow_html=True)
+    st.markdown(_standings_html(table,
+                                level=("min" if device == "📱 Phone" else "full"),
+                                gfga=False, qual=False, island=True, legend=False),
+                unsafe_allow_html=True)
+    st.markdown('<div class="legend">One league-wide order, ranked exactly like the '
+                'division tables — points, then goal difference, then goals scored.<br>'
+                'It settles bragging rights only: every playoff place is won inside '
+                'a club&rsquo;s own division.</div>', unsafe_allow_html=True)
 
 # --------------------------------------------------------------------------- #
 # Matches page
@@ -1397,6 +1443,8 @@ def main():
         st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
         if standings["conferences"]:
             render_standings(standings, ncols, device)
+            st.divider()
+            render_overall(feed, device)
         else:
             st.warning("Standings could not be loaded.")
         render_scorers(feed)

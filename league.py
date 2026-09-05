@@ -293,6 +293,31 @@ def build_standings(data, matches):
     return {"season": str(data.get("season", "")), "conferences": conferences}
 
 
+def build_overall(standings):
+    """All twelve clubs in one table, ranked by exactly the rule the division
+    tables use: points, then goal difference, then goals scored, then wins,
+    then name.
+
+    The rows are COPIES. A club's `rank` is its position in its own division
+    and the site colours the division tables from it, so ranking the merged
+    list in place would silently rewrite both tables. The division placing is
+    kept alongside as `division_rank`.
+    """
+    table = []
+    for conf in standings.get("conferences", []):
+        for r in conf["table"]:
+            row = dict(r)
+            row["division"] = conf["island"]
+            row["division_name"] = conf["name"]
+            row["division_rank"] = r["rank"]
+            table.append(row)
+
+    table.sort(key=lambda r: (-r["points"], -r["gd"], -r["gf"], -r["wins"], r["name"]))
+    for i, r in enumerate(table, start=1):
+        r["rank"] = i
+    return table
+
+
 # --------------------------------------------------------------------------- #
 # Golden Boot
 # --------------------------------------------------------------------------- #

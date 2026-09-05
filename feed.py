@@ -91,6 +91,14 @@ def get_standings(feed):
     return feed.get("standings", {"season": "", "conferences": []})
 
 
+def get_overall(feed):
+    """All twelve clubs in one table, ranked like the division tables.
+
+    Derived on demand rather than stored in the feed, so an archived season
+    saved before this table existed still gets one."""
+    return league.build_overall(get_standings(feed))
+
+
 def get_matches(feed):
     return feed.get("matches", [])
 
