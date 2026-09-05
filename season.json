@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "updated": "2026-09-02",
+  "updated": "2026-09-05",
   "note": "Source of truth for the whole site. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [
@@ -99,8 +99,8 @@
         {
           "home": "77 Angels",
           "away": "Two Boats United",
-          "hs": 4,
-          "as": 6
+          "hs": 0,
+          "as": 2
         }
       ]
     },
@@ -220,15 +220,18 @@
           "away": "Harts United",
           "hs": 3,
           "as": 0,
-          "reds": ["Harts United"]
-        }
-,
+          "reds": [
+            "Harts United"
+          ]
+        },
         {
           "home": "Fugees FC",
           "away": "La Verde FC",
           "hs": 2,
           "as": 1,
-          "reds": ["Fugees FC"]
+          "reds": [
+            "Fugees FC"
+          ]
         }
       ]
     },
@@ -254,6 +257,56 @@
           "away": "VC Milan",
           "hs": 3,
           "as": 1
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Harts United",
+          "away": "Fugees FC",
+          "hs": 0,
+          "as": 2
+        },
+        {
+          "home": "STH Young Boys",
+          "away": "Bellboys FC",
+          "hs": 1,
+          "as": 0
+        },
+        {
+          "home": "La Verde FC",
+          "away": "Rovers Saint Helena",
+          "hs": 2,
+          "as": 1
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "77 Angels",
+          "away": "Island Boyz",
+          "hs": 2,
+          "as": 1
+        },
+        {
+          "home": "77 Devils FC",
+          "away": "VC Milan",
+          "hs": 3,
+          "as": 0
+        },
+        {
+          "home": "Georgetown United",
+          "away": "Two Boats United",
+          "hs": 0,
+          "as": 0
         }
       ]
     }
