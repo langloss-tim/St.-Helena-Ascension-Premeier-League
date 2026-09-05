@@ -28,20 +28,6 @@ import facts
 import feed as datafeed
 import teams
 
-# The Ask tab is a bonus, not a load-bearing part of the site. If its module or
-# its dependency is unavailable on the server, the tab politely switches itself
-# off and every other page carries on exactly as before.
-try:
-    import ask
-    ASK_IMPORT_ERROR = None
-except Exception as _e:  # noqa: BLE001 - any import failure must stay non-fatal
-    ask = None
-    ASK_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
-
-
-def ask_ready():
-    return ask is not None and ask.available()
-
 st.set_page_config(
     page_title="St. Helena Premier League",
     page_icon="⚽",
@@ -1167,128 +1153,9 @@ def _series_html(s, big=False):
             f'<div class="smeta">{meta}</div></div>')
 
 # --------------------------------------------------------------------------- #
-# Ask page — answers written from the same season snapshot the site renders
-# --------------------------------------------------------------------------- #
-@st.cache_data(ttl=900, show_spinner=False)
-def league_context(stamp, _feed):
-    """The season brief handed to the assistant. Keyed on the feed's own
-    timestamp, so it's rebuilt only when new data lands."""
-    return ask.build_context(_feed)
-
-
-SUGGESTED = [
-    "Who's most likely to win each division?",
-    "How did the last matchday go?",
-    "Who won the last time the Bellboys played?",
-    "Which club is in the best form right now?",
-]
-
-
-def _connection_test(expanded=False):
-    """A button that actually calls the API and reports what came back.
-
-    Every setup failure used to print the same sentence, which made a missing
-    key and a rejected key indistinguishable. This says which one it is.
-    """
-    with st.expander("🔌 Test the connection", expanded=expanded):
-        st.caption("Makes one tiny real call and reports exactly what happened. "
-                   "Never shows the key itself.")
-        if st.button("Run the test", key="ask_diag", use_container_width=True):
-            with st.spinner("Calling the API…"):
-                ok, headline, detail = ask.diagnose()
-            (st.success if ok else st.error)(headline)
-            st.code(detail)
-            if ok:
-                st.caption("Reload the page and the assistant will answer.")
-        st.caption("Set the key under **Manage app → Settings → Secrets**:")
-        st.code('ANTHROPIC_API_KEY = "sk-ant-..."', language="toml")
-        st.caption("Quotes and the = sign matter, and it has to be saved on "
-                   "this app — a key added to a different Streamlit app "
-                   "doesn't carry over.")
-
-
-def render_ask(feed):
-    st.markdown('<div class="hint">Ask anything about the season — results, form, '
-                'the tables, or who&rsquo;s likely to win. Every answer is written '
-                'from the league&rsquo;s own live data.</div>', unsafe_allow_html=True)
-
-    if not ask_ready():
-        # Show the question anyway, so it doesn't feel like it vanished.
-        waiting = st.session_state.get("ask_pending")
-        if waiting:
-            with st.chat_message("user"):
-                st.markdown(waiting)
-        if ask is None:
-            st.error("💬 The assistant module didn't load on this server. "
-                     "Everything else on the site works as usual.")
-            st.code(ASK_IMPORT_ERROR or "unknown import error")
-            st.write("Check that `anthropic` is listed in `requirements.txt`, "
-                     "then reboot the app so it reinstalls.")
-            return
-        st.warning("💬 No API key is reaching this app yet, so the assistant "
-                   "can't start. Everything else on the site works as usual.")
-        _connection_test(expanded=True)
-        return
-
-    thread = st.session_state.setdefault("ask_thread", [])
-    for msg in thread:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    if not thread:
-        st.caption("Not sure where to start?")
-        cols = st.columns(2)
-        for i, s in enumerate(SUGGESTED):
-            if cols[i % 2].button(s, key=f"sug_{i}", use_container_width=True):
-                st.session_state.ask_pending = s
-                st.rerun()
-
-    # No question cap and no turn cap — the conversation runs as long as the
-    # fan wants it to, and every earlier exchange is replayed for context.
-    typed = st.chat_input("Ask about the SHPL…")
-    question = st.session_state.pop("ask_pending", None) or typed
-
-    if thread and st.button("🧹 Start a new conversation", key="ask_clear"):
-        st.session_state.ask_thread = []
-        st.session_state.ask_seen = None
-        st.rerun()
-
-    # Available even when a key IS loaded — a key that's present but rejected
-    # is a different problem from no key at all, and needs the same button.
-    _connection_test()
-
-    if not question:
-        return
-
-    with st.chat_message("user"):
-        st.markdown(question)
-
-    context = league_context(feed.get("generated_at") or "", feed)
-    with st.chat_message("assistant"):
-        holder = st.empty()
-        # Say something immediately — the first words take a few seconds to
-        # arrive, and an empty bubble reads as a broken page.
-        holder.markdown("_Reading the season data…_")
-        text = ""
-        try:
-            for piece in ask.stream_answer(question, context, thread):
-                text += piece
-                holder.markdown(ask.scrub(text) + " ▌")
-        except ask.AskError as e:
-            holder.warning(str(e))
-            return
-        answer = ask.scrub(text).strip()
-        holder.markdown(answer or "_Nothing came back — try asking that again._")
-
-    thread.extend([{"role": "user", "content": question},
-                   {"role": "assistant", "content": answer}])
-    st.session_state.ask_thread = thread
-
-
-# --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-PAGES = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs", "💬 Ask"]
+PAGES = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs"]
 
 
 def nav_items(playoffs_open):
@@ -1315,13 +1182,12 @@ def _playoff_gate(feed):
 def _search_box(search_feed):
     """Express route: no stops unless the search is genuinely ambiguous.
 
-    A club goes straight to that club, a matchday straight to that matchday,
-    and anything else straight to the assistant — all without an intermediate
-    button to click. Buttons appear only when the text matches more than one
-    thing, where a choice can't be skipped.
+    A club goes straight to that club and a matchday straight to that matchday,
+    without an intermediate button to click. Buttons appear only when the text
+    matches more than one thing, where a choice can't be skipped.
     """
-    q = st.text_input("🔎 Search or ask", key="q_widget",
-                      placeholder="e.g. Bellboys, matchday 3, or who wins the title?",
+    q = st.text_input("🔎 Search", key="q_widget",
+                      placeholder="e.g. Bellboys, or matchday 3",
                       label_visibility="collapsed")
     ql = (q or "").strip()
     if not ql:
@@ -1371,11 +1237,8 @@ def _search_box(search_feed):
                 _go(focus_group=key, page="⚽ Matches")
         return
 
-    # Not a club and not a matchday — it's a question. Straight to the
-    # assistant, which explains itself even when it isn't connected yet.
-    if fresh:
-        _go(ask_seen=low, ask_pending=ql, page="💬 Ask")
-    st.caption("💬 Answered on the Ask tab.")
+    # Not a club and not a matchday — nothing to jump to.
+    st.caption("No club or matchday matches that.")
 
 def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
     """Render the sidebar navigation (button menu). Returns (page, season).
@@ -1535,8 +1398,6 @@ def main():
         render_matches(datafeed.get_matches(feed), feed)
     elif page == "🥇 Playoffs":
         render_playoffs(feed)
-    elif page == "💬 Ask":
-        render_ask(feed)
     else:  # Clubs
         if st.session_state.get("selected_club"):
             render_club_detail(feed, st.session_state.selected_club)

@@ -123,8 +123,7 @@ sidebar once more than one season exists.
 | `league.py` | Turns `season.json` into tables, form and projections. |
 | `feed.py` | Loads the current season or an archived one. |
 | `bracket.py` | Builds the playoff bracket. |
-| `app.py` | The Streamlit site — Home, Tables, Matches, Clubs, Playoffs, Ask. |
-| `ask.py` | The Ask assistant (needs `ANTHROPIC_API_KEY`). |
+| `app.py` | The Streamlit site — Home, Tables, Matches, Clubs, Playoffs. |
 | `facts.py` | Daily soccer / St. Helena facts on the Home page. |
 
 ## Projections
@@ -141,6 +140,3 @@ pip install -r requirements.txt
 streamlit run app.py
 python league.py      # prints both tables in the terminal
 ```
-
-The Ask tab needs an `ANTHROPIC_API_KEY` in Streamlit secrets. Without one it
-says so politely and every other page works as normal.
