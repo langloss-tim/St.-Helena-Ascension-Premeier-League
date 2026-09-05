@@ -225,6 +225,15 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
 .tbl tr.wildcard td.rank{ color:#f4b942; font-weight:700; }
 .tbl td.form{ text-align:left; white-space:nowrap; padding-left:.9rem; }
 .tbl td.form .formchip{ width:1.55rem; height:1.55rem; font-size:.8rem; margin-right:.18rem; }
+/* Form sits immediately left of Pts, so the two read together once a narrow
+   table is scrolled to its right-hand end. It shrinks with the table: letters
+   while there is room for them, plain colour dots on a phone. */
+.tbl.tight td.form{ padding-left:.5rem; }
+.tbl.tight td.form .formchip{ width:1.05rem; height:1.05rem; font-size:.58rem;
+   border-radius:4px; margin-right:.1rem; }
+.tbl.mini td.form{ padding-left:.45rem; }
+.tbl.mini td.form .formchip{ width:.6rem; height:.6rem; border-radius:50%;
+   font-size:0; margin-right:.17rem; }
 .tbl .tbd{ color:var(--muted); }
 /* Side-by-side tables get half the width; shrink the furniture so the columns
    that remain still fit without forcing a scrollbar. */
@@ -468,8 +477,9 @@ def render_standings(standings, ncols=2, device=None):
     # most likely to push Points off the edge -- not the single-column one,
     # which hands the whole width to one table. This test used to be the wrong
     # way round, so the widest column set was rendered in the narrowest box.
-    # Points is the column people came to read, so drop the optional columns
-    # widest-first (Form, then GF/GA) by how much room there actually is.
+    # Points is the column people came to read. Form is always shown -- it just
+    # gets smaller (letters, then dots) -- so GF/GA are the only columns that
+    # drop, and that happens only on a phone.
     if ncols == 1:
         level = "min" if device == "📱 Phone" else "full"
     else:
@@ -497,17 +507,15 @@ def render_standings(standings, ncols=2, device=None):
 def _standings_html(rows, level="full"):
     """The league table. Points is the point of it — it stays on screen at
     every width, and the columns that can be dropped are dropped around it."""
-    show_form = level == "full"
     show_gfga = level in ("full", "mid")
-    tcls = "tbl" if level == "full" else "tbl tight"
+    dots = level == "min"          # a phone gets colour dots, not letters
+    tcls = {"full": "tbl", "mid": "tbl tight"}.get(level, "tbl tight mini")
 
     cols = ['<th class="l">#</th>', '<th class="l">Club</th>',
             "<th>P</th>", "<th>W</th>", "<th>D</th>", "<th>L</th>"]
     if show_gfga:
         cols += ["<th>GF</th>", "<th>GA</th>"]
-    cols += ["<th>GD</th>", '<th class="pts">Pts</th>']
-    if show_form:
-        cols.append('<th class="l">Form</th>')
+    cols += ["<th>GD</th>", '<th class="l">Form</th>', '<th class="pts">Pts</th>']
     head = f'<table class="{tcls}"><thead><tr>' + "".join(cols) + "</tr></thead><tbody>"
 
     body = []
@@ -527,17 +535,18 @@ def _standings_html(rows, level="full"):
                  f'<td>{r["draws"]}</td>', f'<td>{r["losses"]}</td>']
         if show_gfga:
             cells += [f'<td>{r["gf"]}</td>', f'<td>{r["ga"]}</td>']
-        cells += [f'<td>{r["gd"]:+d}</td>', f'<td class="pts">{r["points"]}</td>']
-        if show_form:
-            form = "".join(f'<span class="formchip {o.lower()}">{o}</span>'
-                           for o in r.get("form", [])) or '<span class="tbd">–</span>'
-            cells.append(f'<td class="form">{form}</td>')
+        form = "".join(
+            f'<span class="formchip {o.lower()}" title="{o}">{"" if dots else o}</span>'
+            for o in r.get("form", [])) or '<span class="tbd">–</span>'
+        cells += [f'<td>{r["gd"]:+d}</td>', f'<td class="form">{form}</td>',
+                  f'<td class="pts">{r["points"]}</td>']
         body.append(f"<tr{cls}>" + "".join(cells) + "</tr>")
 
     legend = ('<div class="legend">'
               '<span class="scoring"><b class="w">Win 3 pts</b> · '
               '<b class="d">Draw 1 pt</b> · <b class="l">Loss 0 pts</b></span><br>'
               'Ranked on points, then goal difference, then goals scored.<br>'
+              'Form = last five matches, oldest first.<br>'
               '<b>Green</b> = straight into the semi-finals · '
               '<b class="wc">Amber</b> = 4th and 5th meet in the Wild Card game'
               '</div>')
