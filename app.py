@@ -1089,48 +1089,33 @@ def render_club_detail(feed, club_id):
 
     outside = [m for m in played if m.get("stage") in NON_LEAGUE_STAGES]
 
-    # Non-league games get their own TAB, named after the competition they were
-    # actually played in. Tucked under the league results they were effectively
-    # invisible — worse still on a club whose league tab reads (0).
-    tabs = [f"✅ Results ({len(league_only(played))})",
-            f"📅 Fixtures ({len(league_only(upcoming))})"]
-    if outside:
-        badges = []
-        for m in outside:
-            b = m.get("badge") or m.get("competition") or "Other"
-            if b not in badges:
-                badges.append(b)
-        label = " · ".join(badges[:2]) if badges else "Outside the league"
-        tabs.append(f"🏆 {label} ({len(outside)})")
-
-    rendered = st.tabs(tabs)
-    tab_res, tab_fix = rendered[0], rendered[1]
-    tab_out = rendered[2] if outside else None
+    tab_res, tab_fix = st.tabs([f"✅ Results ({len(league_only(played))})",
+                                f"📅 Fixtures ({len(league_only(upcoming))})"])
 
     with tab_res:
         league_played = league_only(played)
         if not league_played:
             st.info("No matches played yet.")
-            if outside:
-                st.caption(f"↑ {len(outside)} match"
-                           f'{"es" if len(outside) != 1 else ""} played outside the '
-                           "league — see the tab above.")
         else:
             html = "".join(_club_match_html(m, club_id, feed) for m in reversed(league_played))
             st.markdown(html, unsafe_allow_html=True)
 
-    if tab_out is not None:
-        with tab_out:
-            st.markdown('<div class="hint">Played away from the SHPL. These don\'t '
-                        'count towards points, goals, form or the table.</div>',
+    # Non-league games are NOT put in a tab. A third tab is pushed off the edge
+    # of the tab strip on a phone, which is exactly how a CAF tie ended up
+    # invisible. This is a plain section on the page: always on screen, always
+    # under the name of the competition it was actually played in.
+    if outside:
+        st.divider()
+        for comp in dict.fromkeys(m.get("competition") or "Other" for m in outside):
+            games = [m for m in outside if (m.get("competition") or "Other") == comp]
+            st.markdown('<div class="eyebrow"><span class="bar" '
+                        f'style="background:#f4c800"></span>🏆 {comp}</div>',
                         unsafe_allow_html=True)
-            for comp in dict.fromkeys(m.get("competition") or "Other" for m in outside):
-                games = [m for m in outside if (m.get("competition") or "Other") == comp]
-                st.markdown('<div class="eyebrow"><span class="bar" '
-                            f'style="background:#7c8595"></span>{comp}</div>',
-                            unsafe_allow_html=True)
-                st.markdown("".join(_club_match_html(m, club_id, feed) for m in games),
-                            unsafe_allow_html=True)
+            st.markdown('<div class="hint">Played outside the league &mdash; it does '
+                        'not count towards points, goals, form or the table.</div>',
+                        unsafe_allow_html=True)
+            st.markdown("".join(_club_match_html(m, club_id, feed) for m in games),
+                        unsafe_allow_html=True)
     with tab_fix:
         league_up = league_only(upcoming)
         if not league_up:
