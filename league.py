@@ -94,38 +94,75 @@ def _external(name):
             "primary": "#7c8595", "secondary": "#3a4150", "external": True}
 
 
-def build_friendlies(data):
-    """Non-league friendlies, in the same shape as every other match."""
+def build_outside(data):
+    """Matches played OUTSIDE the league, in the same shape as every other match.
+
+    A friendly and a continental qualifier are both "not the league" as far as
+    this site is concerned — neither one moves a point, a goal or a table place
+    — so they share one list and differ only by their `competition` label.
+
+    `"outside"` is the list; `"friendlies"` is still read so an older season
+    file keeps working. A tie settled on penalties carries
+    `"pens": {"cs": 3, "os": 2}`, which decides the winner when the 90 minutes
+    finished level.
+    """
+    raws = list(data.get("outside", [])) + list(data.get("friendlies", []))
     out = []
-    for i, raw in enumerate(data.get("friendlies", []), start=1):
+    for i, raw in enumerate(raws, start=1):
         club = teams.resolve(raw["club"])
         cs, os_ = raw.get("cs"), raw.get("os")
         played = cs is not None and os_ is not None
         at_home = raw.get("home", True)
+        competition = raw.get("competition") or "Friendly"
+
+        pens = raw.get("pens") or {}
+        pcs, pos = pens.get("cs"), pens.get("os")
+        shootout = played and pcs is not None and pos is not None
 
         mine, theirs = _side(club, cs), _external(raw["opponent"])
         theirs["score"] = os_
         if played and cs != os_:
             mine["winner"] = cs > os_
             theirs["winner"] = os_ > cs
+        elif shootout:
+            # Level after the whistle: the shootout says who went through.
+            mine["winner"] = pcs > pos
+            theirs["winner"] = pos > pcs
         home, away = (mine, theirs) if at_home else (theirs, mine)
 
+        detail = ""
+        if played:
+            detail = f"FT ({competition})"
+            if shootout:
+                detail = f"FT, {pcs}-{pos} on penalties"
+
         out.append({
-            "id": f"friendly-{i}",
+            "id": f"outside-{i}",
             "state": "post" if played else "pre",
-            "status_detail": "FT (friendly)" if played else "",
+            "status_detail": detail,
             "start": raw.get("date"),
             "date": raw.get("date"),
             "completed": played,
             "division": club.division,
             "matchday": None,
-            "stage": "friendly",
-            "round": "Friendly",
+            "stage": "outside",
+            "round": competition,
+            "competition": competition,
+            # A short badge for the club page ("CAF"); the full name is too long
+            # to sit in a chip beside HOME/AWAY.
+            "badge": raw.get("badge") or competition,
+            "leg": raw.get("leg", ""),
+            "pens": {"mine": pcs, "theirs": pos} if shootout else None,
             "note": raw.get("note", ""),
             "home": home,
             "away": away,
         })
     return out
+
+
+# The old name still works: nothing should break just because a friendly grew
+# up into a competition.
+build_friendlies = build_outside
 
 
 def _slug(division):
@@ -380,7 +417,7 @@ def build_winprobs(standings, matches):
 
     out = {}
     for m in matches:
-        if m["state"] != "pre" or m["stage"] == "friendly":
+        if m["state"] != "pre" or m["stage"] in ("friendly", "outside"):
             continue
         d = _strength(by_id.get(m["home"]["id"])) - _strength(by_id.get(m["away"]["id"]))
         if m["stage"] == "playoff":

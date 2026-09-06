@@ -96,16 +96,26 @@ country needs nothing but its code (`TR` → 🇹🇷, `ST` → 🇸🇹). Ranki
 and players level on goals share a rank and keep the order you entered them in.
 Which club a player turns out for isn't published anywhere on the site.
 
-### Friendlies
+### Matches outside the league
 
-Matches against clubs from outside the league go in a separate `"friendlies"`
-list. They count for **nothing** — no points, no goals, no form, no place in the
-table — and they show on **one screen only: that club's own page**, under a
-"Friendlies" heading below its league results.
+Matches against clubs from outside the league — a friendly, a cup tie, a
+continental qualifier — go in a separate `"outside"` list. Each one names its
+own `competition`, so a CAF tie is badged as a CAF tie and never as a friendly.
+They count for **nothing** — no points, no goals, no form, no place in the
+table — and they show on **one screen only: that club's own page**, under an
+"Outside the league" heading below its league results.
+
+(The older `"friendlies"` list is still read, so an archived season keeps
+working.)
 
 ```jsonc
-{"club": "Longwood Fugees FC", "opponent": "New Stone Town FC", "home": true,
- "cs": 2, "os": 4, "date": null, "note": "Friendly"}
+{"club": "Longwood Fugees FC", "opponent": "Young Africans",
+ "competition": "CAF Champions League Qualifier",  // named on the club page
+ "badge": "CAF",                                   // short chip beside HOME/AWAY
+ "leg": "Second leg",                              // optional
+ "home": false, "cs": 0, "os": 0,
+ "pens": {"cs": 3, "os": 2},                       // decides a level tie
+ "date": null, "note": "Won 3-2 on penalties to go through"}
 ```
 
 `cs` is the SHPL club's score and `os` the opponent's, so there's no home/away

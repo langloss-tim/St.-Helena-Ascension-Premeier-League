@@ -299,6 +299,10 @@ button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !impor
      border-radius:99px; margin-left:.2rem; vertical-align:middle; }
 .ha.home{ background:rgba(87,198,106,.18); color:#7fe08f; }
 .ha.away{ background:rgba(255,255,255,.08); color:var(--muted); }
+.cm-leg{ font-size:.72rem; font-weight:700; color:var(--muted);
+         letter-spacing:.4px; text-transform:uppercase; }
+.cm-pens{ font-size:.82rem; color:var(--muted); font-weight:700;
+          margin-right:.6rem; white-space:nowrap; }
 .ha.friendly{ background:rgba(124,133,149,.22); color:#c3cad6;
               border:1px solid rgba(255,255,255,.14); }
 
@@ -660,11 +664,16 @@ def clock_component():
                     height=110, scrolling=False)
 
 
+# Every stage that is NOT the league. "friendly" is the older spelling and is
+# still honoured so an archived season keeps rendering.
+NON_LEAGUE_STAGES = ("friendly", "outside")
+
+
 def league_only(matches):
-    """Everything except friendlies. Friendlies count for nothing and belong on
-    exactly one screen — the club's own page — so every other view filters
-    through here."""
-    return [m for m in matches if m.get("stage") != "friendly"]
+    """Everything the league table is built from. A friendly or a continental
+    tie counts for nothing and belongs on exactly one screen — the club's own
+    page — so every other view filters through here."""
+    return [m for m in matches if m.get("stage") not in NON_LEAGUE_STAGES]
 
 
 def render_matches(matches, feed):
@@ -1078,7 +1087,7 @@ def render_club_detail(feed, club_id):
         st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>{chips}</div>',
                     unsafe_allow_html=True)
 
-    friendlies = [m for m in played if m.get("stage") == "friendly"]
+    outside = [m for m in played if m.get("stage") in NON_LEAGUE_STAGES]
     tab_res, tab_fix = st.tabs([f"✅ Results ({len(league_only(played))})",
                                 f"📅 Fixtures ({len(league_only(upcoming))})"])
     with tab_res:
@@ -1088,13 +1097,13 @@ def render_club_detail(feed, club_id):
         else:
             html = "".join(_club_match_html(m, club_id, feed) for m in reversed(league_played))
             st.markdown(html, unsafe_allow_html=True)
-        if friendlies:
+        if outside:
             st.markdown('<div class="eyebrow"><span class="bar" style="background:#7c8595"></span>'
-                        'Friendlies</div>', unsafe_allow_html=True)
-            st.markdown('<div class="hint">Played outside the league. These don\'t count '
-                        'towards points, goals, form or the table.</div>',
+                        'Outside the league</div>', unsafe_allow_html=True)
+            st.markdown('<div class="hint">Played away from the SHPL. These don\'t '
+                        'count towards points, goals, form or the table.</div>',
                         unsafe_allow_html=True)
-            html = "".join(_club_match_html(m, club_id, feed) for m in reversed(friendlies))
+            html = "".join(_club_match_html(m, club_id, feed) for m in reversed(outside))
             st.markdown(html, unsafe_allow_html=True)
     with tab_fix:
         league_up = league_only(upcoming)
@@ -1144,12 +1153,24 @@ def _club_match_html(m, club_id, feed):
         when = _when_label(m)
 
     prep = "vs" if is_home else "at"
-    friendly = ('<span class="ha friendly">FRIENDLY</span>'
-                if m.get("stage") == "friendly" else "")
+    # A non-league match is badged with its OWN competition — a cup tie is not a
+    # friendly and must never be labelled as one.
+    tag = ""
+    if m.get("stage") in NON_LEAGUE_STAGES:
+        label = (m.get("badge") or m.get("competition") or m.get("round")
+                 or "Non-league")
+        tag = f'<span class="ha friendly">{label.upper()}</span>'
+    leg = (f'<span class="cm-leg">{m["leg"]}</span>') if m.get("leg") else ""
+    pens = m.get("pens") or {}
+    pen_note = ""
+    if pens.get("mine") is not None:
+        won = pens["mine"] > pens["theirs"]
+        pen_note = (f'<span class="cm-pens">{"won" if won else "lost"} '
+                    f'{pens["mine"]}&ndash;{pens["theirs"]} on pens</span>')
     return (f'<div class="cmatch" style="border-left-color:{opp["primary"]}">'
-            f'<div class="cm-left"><span class="cm-when">{when}</span>{ha}{friendly}'
+            f'<div class="cm-left"><span class="cm-when">{when}</span>{ha}{tag}{leg}'
             f'<span class="cm-opp">{prep} {dot(opp["primary"])}{opp["name"]}</span></div>'
-            f'<div class="cm-right">{right}</div></div>')
+            f'<div class="cm-right">{pen_note}{right}</div></div>')
 
 
 # --------------------------------------------------------------------------- #

@@ -6,5 +6,35 @@
   "matchdays": [],
   "scorers": [],
   "friendlies": [],
-  "playoffs": []
+  "playoffs": [],
+  "outside": [
+    {
+      "club": "Longwood Fugees FC",
+      "opponent": "Young Africans",
+      "competition": "CAF Champions League Qualifier",
+      "badge": "CAF",
+      "leg": "First leg",
+      "home": true,
+      "cs": 0,
+      "os": 0,
+      "date": null,
+      "note": "Two-legged CAF Champions League qualifier — first leg at Longwood Fugees"
+    },
+    {
+      "club": "Longwood Fugees FC",
+      "opponent": "Young Africans",
+      "competition": "CAF Champions League Qualifier",
+      "badge": "CAF",
+      "leg": "Second leg",
+      "home": false,
+      "cs": 0,
+      "os": 0,
+      "pens": {
+        "cs": 3,
+        "os": 2
+      },
+      "date": null,
+      "note": "0-0 over the two legs; Longwood Fugees won 3-2 on penalties to go through"
+    }
+  ]
 }
