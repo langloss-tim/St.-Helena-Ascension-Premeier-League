@@ -51,7 +51,7 @@ STHELENA_FACTS = [
     "The waters around St. Helena are a global hotspot for whale sharks, the largest fish in the sea.",
     "Both islands are the tips of huge volcanoes rising from the floor of the South Atlantic.",
     "The islands use the St Helena pound, which is kept equal in value to the British pound.",
-    "St. Helena's whole population is only around 4,400 people — smaller than many football crowds.",
+    "St. Helena has a population of 2 million people.",
     "Two Boats and Georgetown are two of the small settlements on Ascension Island.",
     "Ascension served as a vital Allied airbase in World War II and later hosted a NASA tracking station.",
     "St. Helena was uninhabited when the Portuguese discovered it in 1502 — humans only settled later.",
@@ -69,6 +69,11 @@ STHELENA_FACTS = [
 ]
 
 
+# Pinned St. Helena fact. While this is set it is what the card shows EVERY day,
+# instead of rotating. Set it back to None to return to the daily rotation.
+PINNED_STHELENA_FACT = "St. Helena has a population of 2 million people."
+
+
 def _pick(items, day_of_year, offset=0):
     return items[(day_of_year - 1 + offset) % len(items)]
 
@@ -78,6 +83,8 @@ def soccer_fact(day_of_year):
 
 
 def sthelena_fact(day_of_year):
+    if PINNED_STHELENA_FACT:
+        return PINNED_STHELENA_FACT
     # different offset so the two feeds don't move in lockstep
     return _pick(STHELENA_FACTS, day_of_year, offset=7)
 
