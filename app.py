@@ -475,6 +475,14 @@ def header(season):
 # --------------------------------------------------------------------------- #
 # Tables page
 # --------------------------------------------------------------------------- #
+def season_started(standings):
+    """Has anyone actually played? Before the first kick-off every club is level
+    on nothing, and a table sorted from an all-zero row is alphabetical — which
+    must not be dressed up as a standing."""
+    return any(t["played"] for conf in standings.get("conferences", [])
+               for t in conf["table"])
+
+
 def render_standings(standings, ncols=2, device=None):
     # Two tables side by side each get HALF the width, so that is the layout
     # most likely to push Points off the edge -- not the single-column one,
@@ -488,6 +496,8 @@ def render_standings(standings, ncols=2, device=None):
     else:
         level = "mid"
 
+    started = season_started(standings)
+
     def one(conf):
         meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
         st.markdown(
@@ -495,7 +505,13 @@ def render_standings(standings, ncols=2, device=None):
             f'{island_img(conf["island"])} {conf["name"]}</div>',
             unsafe_allow_html=True,
         )
-        st.markdown(_standings_html(conf["table"], level=level), unsafe_allow_html=True)
+        st.markdown(_standings_html(conf["table"], level=level,
+                                    qual=started, legend=started),
+                    unsafe_allow_html=True)
+        if not started:
+            st.markdown('<div class="legend">No matches played yet — every club '
+                        'is level. Win 3 pts &middot; Draw 1 pt &middot; Loss 0 pts.'
+                        '</div>', unsafe_allow_html=True)
 
     confs = standings["conferences"]
     if ncols == 1:
@@ -947,7 +963,13 @@ def render_home(feed, ncols=2):
         )
 
     standings = datafeed.get_standings(feed)
-    if standings["conferences"]:
+    if standings["conferences"] and not season_started(standings):
+        st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
+                    'The season is about to start</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hint">No matches have been played yet. Twelve '
+                    'clubs, two divisions, everyone level on nothing.</div>',
+                    unsafe_allow_html=True)
+    elif standings["conferences"]:
         st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
                     'Island leaders</div>', unsafe_allow_html=True)
 

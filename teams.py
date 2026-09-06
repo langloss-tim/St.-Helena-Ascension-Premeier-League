@@ -31,12 +31,16 @@ _TEAMS = [
      ("Bellboys", "Bell Boys", "Bellboys FC")),
     ("harts",       "Harts United",        ST_HELENA, "#6CACE4", "#041E42",
      ("Harts", "Hearts United", "Harts Utd")),
-    ("fugees",      "Fugees FC",           ST_HELENA, "#B49759", "#0E2B3B",
-     ("Fugees",)),
-    ("laverde",     "La Verde FC",         ST_HELENA, "#17A66B", "#0A2240",
-     ("La Verde", "LaVerde")),
-    ("youngboys",   "STH Young Boys",      ST_HELENA, "#E0553B", "#221F1F",
-     ("Young Boys", "STH Young Boys FC", "Sth Young Boys")),
+    # Renamed 2026-09-06. The former names stay on as aliases so a result can
+    # still be entered with whichever name comes to mind. Note there is no bare
+    # "Longwood" alias: two clubs carry the name and it would be ambiguous.
+    ("fugees",      "Longwood Fugees FC",  ST_HELENA, "#B49759", "#0E2B3B",
+     ("Fugees", "Fugees FC", "Longwood Fugees")),
+    ("haytown",     "Haytown Spurs FC",    ST_HELENA, "#17A66B", "#0A2240",
+     ("Haytown Spurs", "Haytown", "Spurs", "La Verde FC", "La Verde", "LaVerde")),
+    ("wanderers",   "Longwood Wanderers FC", ST_HELENA, "#E0553B", "#221F1F",
+     ("Longwood Wanderers", "Wanderers", "STH Young Boys", "Young Boys",
+      "Sth Young Boys", "STH Young Boys FC")),
 
     # ---------------------- Ascension Division -----------------------
     ("devils",      "77 Devils FC",        ASCENSION, "#E03131", "#101820",
@@ -83,7 +87,13 @@ BY_NAME = {t.name: t for t in TEAMS}
 _LOOKUP = {}
 for _t in TEAMS:
     for _label in (_t.id, _t.name, *_t.aliases):
-        _LOOKUP[_label.lower().replace(".", "").replace("  ", " ").strip()] = _t
+        _key = _label.lower().replace(".", "").replace("  ", " ").strip()
+        _clash = _LOOKUP.get(_key)
+        if _clash is not None and _clash is not _t:
+            raise AssertionError(
+                f"{_label!r} would resolve to two clubs: "
+                f"{_clash.name} and {_t.name}")
+        _LOOKUP[_key] = _t
 
 
 def resolve(label):

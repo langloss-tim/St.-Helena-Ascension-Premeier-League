@@ -17,11 +17,15 @@ from it.
 | Rovers Saint Helena | 77 Devils FC |
 | Bellboys FC | Georgetown United |
 | Harts United | Two Boats United |
-| Fugees FC | 77 Angels |
-| La Verde FC | Island Boyz |
-| STH Young Boys | VC Milan |
+| Longwood Fugees FC | 77 Angels |
+| Haytown Spurs FC | Island Boyz |
+| Longwood Wanderers FC | VC Milan |
 
 Clubs play only inside their own division.
+
+Haytown Spurs were formerly La Verde FC, Longwood Wanderers were STH Young
+Boys, and Longwood Fugees were Fugees FC. The old names still resolve when
+entering a result, so an out-of-date name is corrected rather than rejected.
 
 ## Publishing results
 
@@ -35,10 +39,10 @@ projections and the bracket.
   "division": "St. Helena",        // "St. Helena" or "Ascension"
   "date": "2026-09-06",            // optional; omit or use null if not set yet
   "matches": [
-    {"home": "Harts United", "away": "Fugees FC", "hs": 2, "as": 2},
+    {"home": "Harts United", "away": "Longwood Fugees FC", "hs": 2, "as": 2},
     {"home": "Rovers Saint Helena", "away": "Bellboys FC", "hs": 1, "as": 0,
      "live": true, "minute": "67'"},
-    {"home": "La Verde FC", "away": "STH Young Boys", "hs": null, "as": null}
+    {"home": "Haytown Spurs FC", "away": "Longwood Wanderers FC", "hs": null, "as": null}
   ]
 }
 ```
@@ -100,7 +104,7 @@ table — and they show on **one screen only: that club's own page**, under a
 "Friendlies" heading below its league results.
 
 ```jsonc
-{"club": "Fugees FC", "opponent": "New Stone Town FC", "home": true,
+{"club": "Longwood Fugees FC", "opponent": "New Stone Town FC", "home": true,
  "cs": 2, "os": 4, "date": null, "note": "Friendly"}
 ```
 
