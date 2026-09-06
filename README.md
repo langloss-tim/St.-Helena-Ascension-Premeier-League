@@ -109,13 +109,15 @@ table — and they show on **one screen only: that club's own page**, under an
 working.)
 
 ```jsonc
-{"club": "Longwood Fugees FC", "opponent": "Young Africans",
- "competition": "CAF Champions League Qualifier",  // named on the club page
+{"club": "Longwood Fugees FC", "opponent": "MC Alger",
+ "competition": "CAF Champions League Qualifier",  // headline on the club page
  "badge": "CAF",                                   // short chip beside HOME/AWAY
  "leg": "Second leg",                              // optional
- "home": false, "cs": 0, "os": 0,
- "pens": {"cs": 3, "os": 2},                       // decides a level tie
- "date": null, "note": "Won 3-2 on penalties to go through"}
+ "home": false, "cs": 1, "os": 1,
+ // "pens": {"cs": 3, "os": 2},                    // optional: settles a level
+ //                                                // tie, and the club page
+ //                                                // then reads W, not D
+ "date": null, "note": "Longwood Fugees through 3-1 on aggregate"}
 ```
 
 `cs` is the SHPL club's score and `os` the opponent's, so there's no home/away
