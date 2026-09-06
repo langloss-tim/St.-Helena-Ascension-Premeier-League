@@ -1126,12 +1126,24 @@ def render_club_detail(feed, club_id):
 
 
 def _outcome(m, club_id):
-    """Return 'W'/'D'/'L' for the given club, or None if not decided."""
+    """Return 'W'/'D'/'L' for the given club, or None if not decided.
+
+    A tie settled on penalties is a win for whoever took the shootout — the
+    club went through, and a D beside it reads as though they didn't. Only
+    non-league matches can carry `pens`, so the league table and the form guide
+    are untouched by this.
+    """
     if m["home"]["score"] is None or m["away"]["score"] is None:
         return None
     is_home = m["home"]["id"] == str(club_id)
     mine = m["home"]["score"] if is_home else m["away"]["score"]
     theirs = m["away"]["score"] if is_home else m["home"]["score"]
+    if mine == theirs:
+        # `pens` is recorded from the SHPL club's point of view, not the home
+        # side's, so it needs no home/away flip.
+        pens = m.get("pens") or {}
+        if pens.get("mine") is not None and pens["mine"] != pens["theirs"]:
+            return "W" if pens["mine"] > pens["theirs"] else "L"
     return "W" if mine > theirs else ("L" if mine < theirs else "D")
 
 
