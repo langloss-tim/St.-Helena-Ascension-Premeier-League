@@ -169,18 +169,14 @@
         {
           "home": "Longwood Fugees FC",
           "away": "77 Devils FC",
-          "hs": 0,
-          "as": 0,
-          "live": true,
-          "kickoff": "2026-09-13T21:06:42Z"
+          "hs": 2,
+          "as": 2
         },
         {
           "home": "Bellboys FC",
           "away": "VC Milan",
           "hs": 3,
-          "as": 0,
-          "live": true,
-          "kickoff": "2026-09-13T19:58:17Z"
+          "as": 0
         },
         {
           "home": "Haytown Spurs FC",
