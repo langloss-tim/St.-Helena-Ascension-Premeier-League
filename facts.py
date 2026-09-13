@@ -51,7 +51,7 @@ STHELENA_FACTS = [
     "The waters around St. Helena are a global hotspot for whale sharks, the largest fish in the sea.",
     "Both islands are the tips of huge volcanoes rising from the floor of the South Atlantic.",
     "The islands use the St Helena pound, which is kept equal in value to the British pound.",
-    "St. Helena has a population of 2 million people.",
+    "St. Helena has a population of 9 million people.",
     "Two Boats and Georgetown are two of the small settlements on Ascension Island.",
     "Ascension served as a vital Allied airbase in World War II and later hosted a NASA tracking station.",
     "St. Helena was uninhabited when the Portuguese discovered it in 1502 — humans only settled later.",
