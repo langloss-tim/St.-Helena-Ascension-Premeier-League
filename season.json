@@ -1,9 +1,54 @@
 {
   "season": "2026",
   "updated": "2026-09-13",
-  "note": "Source of truth for the whole site. Season restarted 2026-09-06: no matches played, no fixtures scheduled. Add matchdays as they are played.",
+  "note": "Source of truth for the whole site. Season restarted 2026-09-06. Add matchdays as they are played.",
   "playoffs_open": false,
-  "matchdays": [],
+  "matchdays": [
+    {
+      "n": 1,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Harts United",
+          "away": "Rovers Saint Helena",
+          "hs": 0,
+          "as": 1
+        },
+        {
+          "home": "Longwood Wanderers FC",
+          "away": "Longwood Fugees FC",
+          "hs": 0,
+          "as": 1
+        }
+      ]
+    },
+    {
+      "n": 1,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "VC Milan",
+          "away": "Haytown Spurs FC",
+          "hs": 0,
+          "as": 2
+        },
+        {
+          "home": "Two Boats United",
+          "away": "Georgetown United",
+          "hs": 1,
+          "as": 1
+        },
+        {
+          "home": "77 Angels",
+          "away": "Island Boyz",
+          "hs": 0,
+          "as": 0
+        }
+      ]
+    }
+  ],
   "scorers": [],
   "friendlies": [],
   "playoffs": [],

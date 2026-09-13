@@ -21,7 +21,9 @@ from it.
 | Haytown Spurs FC | Island Boyz |
 | Longwood Wanderers FC | VC Milan |
 
-Clubs play only inside their own division.
+Most games are played inside a division, but a club can meet a side from the
+other division. That result counts in both tables: each club takes its points
+in its own division.
 
 Haytown Spurs were formerly La Verde FC, Longwood Wanderers were STH Young
 Boys, and Longwood Fugees were Fugees FC. The old names still resolve when
