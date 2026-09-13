@@ -63,9 +63,10 @@
           "home": "Harts United",
           "away": "Longwood Fugees FC",
           "hs": 0,
-          "as": 0,
-          "live": true,
-          "kickoff": "2026-09-13T16:03:36Z"
+          "as": 3,
+          "reds": [
+            "Harts United"
+          ]
         },
         {
           "home": "Rovers Saint Helena",
