@@ -71,7 +71,7 @@ STHELENA_FACTS = [
 
 # Pinned St. Helena fact. While this is set it is what the card shows EVERY day,
 # instead of rotating. Set it back to None to return to the daily rotation.
-PINNED_STHELENA_FACT = "St. Helena has a population of 2 million people."
+PINNED_STHELENA_FACT = None
 
 
 def _pick(items, day_of_year, offset=0):
