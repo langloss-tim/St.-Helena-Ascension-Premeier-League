@@ -160,6 +160,29 @@
           "as": 1
         }
       ]
+    },
+    {
+      "n": 4,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Longwood Fugees FC",
+          "away": "77 Devils FC",
+          "hs": 0,
+          "as": 0,
+          "live": true,
+          "kickoff": "2026-09-13T20:58:17Z"
+        },
+        {
+          "home": "Bellboys FC",
+          "away": "VC Milan",
+          "hs": 3,
+          "as": 0,
+          "live": true,
+          "kickoff": "2026-09-13T19:58:17Z"
+        }
+      ]
     }
   ],
   "scorers": [],
