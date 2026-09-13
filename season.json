@@ -1,36 +1,11 @@
 {
   "season": "2026",
-  "updated": "2026-09-06",
+  "updated": "2026-09-13",
   "note": "Source of truth for the whole site. Season restarted 2026-09-06: no matches played, no fixtures scheduled. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [],
   "scorers": [],
   "friendlies": [],
   "playoffs": [],
-  "outside": [
-    {
-      "club": "Longwood Fugees FC",
-      "opponent": "MC Alger",
-      "competition": "CAF Champions League Qualifier",
-      "badge": "CAF",
-      "leg": "First leg",
-      "home": true,
-      "cs": 2,
-      "os": 0,
-      "date": null,
-      "note": "First leg of a two-legged CAF Champions League qualifier"
-    },
-    {
-      "club": "Longwood Fugees FC",
-      "opponent": "MC Alger",
-      "competition": "CAF Champions League Qualifier",
-      "badge": "CAF",
-      "leg": "Second leg",
-      "home": false,
-      "cs": 1,
-      "os": 1,
-      "date": null,
-      "note": "Longwood Fugees through 3-1 on aggregate"
-    }
-  ]
+  "outside": []
 }
