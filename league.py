@@ -15,6 +15,8 @@ A match in season.json looks like:
                       clock runs itself: the card shows however many minutes
                       have passed since then, recomputed on every page load.
                       A literal "minute" still works as an override.
+                      A kickoff still in the future shows the game as
+                      upcoming until that moment, then it goes live by itself.
 
 Friendlies live in their own "friendlies" list. They are played against clubs
 from outside the league, they count for NOTHING — no points, no goals, no form,
@@ -230,6 +232,10 @@ def _one_match(raw, division, matchday, idx, block_date, stage, round_name):
     hs, as_ = raw.get("hs"), raw.get("as")
     played = hs is not None and as_ is not None
     live = bool(raw.get("live")) and played
+    if live and _live_minute(raw) == "0'":
+        # A kickoff still in the future: the game is upcoming, and turns live
+        # on its own once the clock reaches it — nothing to edit at kickoff.
+        live = played = False
 
     if live:
         state, completed = "in", False
