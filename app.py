@@ -717,16 +717,17 @@ def render_matches(matches, feed):
             st.info("No results yet this season.")
         else:
             days = len({_group_key(m) for m in past})
-            st.caption(f"{len(past)} matches played across {days} matchdays this season")
+            st.caption(f"{len(past)} {'match' if len(past) == 1 else 'matches'} played across "
+                       f"{days} {'matchday' if days == 1 else 'matchdays'} this season")
             _render_day_groups(past, feed, show_prob=False, newest_first=True)
 
 def _group_key(m):
     """Matches are grouped by matchday, not by calendar date — a matchday is
     how this league is actually scheduled, and fixtures often arrive before a
-    date is set."""
+    date is set. Both divisions share one Matchday N group."""
     if m.get("stage") == "playoff":
         return f"playoff|{m.get('round') or 'Playoffs'}"
-    return f"{m.get('division') or ''}|{m.get('matchday') or 0}"
+    return f"md|{m.get('matchday') or 0}"
 
 
 def _group_sort(key):
@@ -745,9 +746,7 @@ def _group_label(key):
     kind, rest = key.split("|", 1)
     if kind == "playoff":
         return f"🏆 {rest}"
-    meta = ISLAND_META.get(kind, {"flag": ""})
-    name = teams.DIVISION_NAME.get(kind, kind)
-    return f'{meta["flag"]} {name} · Matchday {rest}'
+    return f"Matchday {rest}"
 
 
 def _group_label_html(key):
@@ -757,8 +756,7 @@ def _group_label_html(key):
     kind, rest = key.split("|", 1)
     if kind == "playoff":
         return f"🏆 {rest}"
-    name = teams.DIVISION_NAME.get(kind, kind)
-    return f'{island_img(kind)} {name} · Matchday {rest}'
+    return f"Matchday {rest}"
 
 
 def _day_label(m):
@@ -1319,8 +1317,8 @@ def _search_box(search_feed):
 
     club_hits = [t for t in teams.TEAMS if low in t.name.lower()][:6]
 
-    # Matchday search is token-based, so "matchday 3", "md3" and "ascension 3"
-    # all land on the right group of fixtures.
+    # Matchday search is token-based, so "matchday 3" and "md3" both land on
+    # the right group of fixtures.
     words = low.replace(",", " ").replace("md", "matchday ").split()
     group_hits, seen = [], set()
     for m in (league_only(datafeed.get_matches(search_feed)) if search_feed else []):
