@@ -210,6 +210,56 @@
           "as": 0
         }
       ]
+    },
+    {
+      "n": 5,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Harts United",
+          "away": "VC Milan",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "Longwood Wanderers FC",
+          "away": "Haytown Spurs FC",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "Bellboys FC",
+          "away": "77 Angels",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "Bellboys FC",
+          "away": "Georgetown United",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "Two Boats United",
+          "away": "Longwood Fugees FC",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "77 Devils FC",
+          "away": "Island Boyz",
+          "hs": null,
+          "as": null
+        }
+      ]
     }
   ],
   "scorers": [],
