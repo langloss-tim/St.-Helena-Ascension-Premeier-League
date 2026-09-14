@@ -187,11 +187,9 @@
         {
           "home": "Rovers Saint Helena",
           "away": "Two Boats United",
-          "hs": 0,
-          "as": 0,
-          "date": "2026-09-14",
-          "live": true,
-          "kickoff": "2026-09-14T20:09:54Z"
+          "hs": 1,
+          "as": 1,
+          "date": "2026-09-14"
         }
       ]
     },
