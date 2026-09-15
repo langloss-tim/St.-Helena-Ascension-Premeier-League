@@ -1085,7 +1085,9 @@ def render_club_detail(feed, club_id):
         st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>{chips}</div>',
                     unsafe_allow_html=True)
 
-    outside = [m for m in played if m.get("stage") in NON_LEAGUE_STAGES]
+    # Upcoming non-league games belong here too — the club page is the only
+    # screen they ever appear on, so leaving them out hides them entirely.
+    outside = [m for m in matches if m.get("stage") in NON_LEAGUE_STAGES]
 
     tab_res, tab_fix = st.tabs([f"✅ Results ({len(league_only(played))})",
                                 f"📅 Fixtures ({len(league_only(upcoming))})"])
@@ -1109,7 +1111,7 @@ def render_club_detail(feed, club_id):
             st.markdown('<div class="eyebrow"><span class="bar" '
                         f'style="background:#f4c800"></span>🏆 {comp}</div>',
                         unsafe_allow_html=True)
-            st.markdown('<div class="hint">Played outside the league &mdash; it does '
+            st.markdown('<div class="hint">Outside the league &mdash; it does '
                         'not count towards points, goals, form or the table.</div>',
                         unsafe_allow_html=True)
             st.markdown("".join(_club_match_html(m, club_id, feed) for m in games),
@@ -1155,6 +1157,8 @@ def _club_match_html(m, club_id, feed):
     is_home = m["home"]["id"] == str(club_id)
     opp = m["away"] if is_home else m["home"]
     ha = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
+    if m.get("venue_known") is False:
+        ha = ""  # home or away not announced yet
     played = m["state"] in ("in", "post")
 
     if played:
@@ -1163,6 +1167,11 @@ def _club_match_html(m, club_id, feed):
         o = _outcome(m, club_id)
         ocls = {"W": "w", "D": "d", "L": "l"}.get(o, "")
         right = f'<span class="cm-score">{mine} – {theirs}</span><span class="formchip {ocls}">{o or "–"}</span>'
+        when = _when_label(m)
+    elif m.get("stage") in NON_LEAGUE_STAGES:
+        # The SHPL model only rates league games; a non-league fixture never
+        # gets a projection, so don't promise one.
+        right = '<span class="cm-pred muted">Upcoming</span>'
         when = _when_label(m)
     else:
         wp = datafeed.get_win_probabilities(feed, m["id"])

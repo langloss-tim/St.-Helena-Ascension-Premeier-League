@@ -265,5 +265,15 @@
   "scorers": [],
   "friendlies": [],
   "playoffs": [],
-  "outside": []
+  "outside": [
+    {
+      "club": "Longwood Fugees FC",
+      "opponent": "Kelli Town",
+      "competition": "CAF",
+      "badge": "CAF",
+      "home": null,
+      "cs": null,
+      "os": null
+    }
+  ]
 }

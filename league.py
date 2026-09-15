@@ -130,7 +130,7 @@ def build_outside(data):
             # Level after the whistle: the shootout says who went through.
             mine["winner"] = pcs > pos
             theirs["winner"] = pos > pcs
-        home, away = (mine, theirs) if at_home else (theirs, mine)
+        home, away = (mine, theirs) if at_home is not False else (theirs, mine)
 
         detail = ""
         if played:
@@ -154,6 +154,8 @@ def build_outside(data):
             # to sit in a chip beside HOME/AWAY.
             "badge": raw.get("badge") or competition,
             "leg": raw.get("leg", ""),
+            # "home": null means home/away hasn't been announced yet.
+            "venue_known": raw.get("home", True) is not None,
             "pens": {"mine": pcs, "theirs": pos} if shootout else None,
             "note": raw.get("note", ""),
             "home": home,
