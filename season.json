@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "updated": "2026-09-14",
+  "updated": "2026-09-18",
   "note": "Source of truth for the whole site. Season restarted 2026-09-06. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [
@@ -219,26 +219,26 @@
         {
           "home": "Harts United",
           "away": "VC Milan",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 1
         },
         {
           "home": "Longwood Wanderers FC",
           "away": "Haytown Spurs FC",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         },
         {
           "home": "Bellboys FC",
           "away": "77 Angels",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 2
         },
         {
           "home": "Rovers Saint Helena",
           "away": "Georgetown United",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 0
         }
       ]
     },
@@ -256,8 +256,52 @@
         {
           "home": "77 Devils FC",
           "away": "Island Boyz",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 1
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Longwood Fugees FC",
+          "away": "Bellboys FC",
+          "hs": 1,
+          "as": 3
+        },
+        {
+          "home": "Longwood Wanderers FC",
+          "away": "Two Boats United",
+          "hs": 0,
+          "as": 0
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "division": "Ascension",
+      "date": null,
+      "matches": [
+        {
+          "home": "77 Devils FC",
+          "away": "Rovers Saint Helena",
+          "hs": 1,
+          "as": 0
+        },
+        {
+          "home": "Georgetown United",
+          "away": "Harts United",
+          "hs": 2,
+          "as": 2
+        },
+        {
+          "home": "77 Angels",
+          "away": "Island Boyz",
+          "hs": 0,
+          "as": 0
         }
       ]
     }
