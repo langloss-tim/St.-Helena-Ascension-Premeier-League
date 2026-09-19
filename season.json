@@ -74,8 +74,8 @@
         {
           "home": "Haytown Spurs FC",
           "away": "Longwood Wanderers FC",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 1
         }
       ]
     },
