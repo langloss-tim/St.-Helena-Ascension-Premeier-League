@@ -68,8 +68,8 @@
         {
           "home": "Harts United",
           "away": "Bellboys FC",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 2
         },
         {
           "home": "Haytown Spurs FC",
