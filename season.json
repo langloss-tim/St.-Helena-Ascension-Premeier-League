@@ -93,8 +93,8 @@
         {
           "home": "Georgetown United",
           "away": "Island Boyz",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 1
         },
         {
           "home": "Two Boats United",
