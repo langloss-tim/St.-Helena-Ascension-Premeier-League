@@ -60,13 +60,13 @@
       "date": null,
       "matches": [
         {
-          "home": "Harts United",
+          "home": "Rovers Saint Helena",
           "away": "Longwood Fugees FC",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 1
         },
         {
-          "home": "Rovers Saint Helena",
+          "home": "Harts United",
           "away": "Bellboys FC",
           "hs": null,
           "as": null
