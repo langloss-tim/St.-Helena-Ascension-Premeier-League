@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "updated": "2026-09-18",
+  "updated": "2026-09-19",
   "note": "Source of truth for the whole site. Season restarted 2026-09-06. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [
@@ -62,23 +62,20 @@
         {
           "home": "Harts United",
           "away": "Longwood Fugees FC",
-          "hs": 0,
-          "as": 3,
-          "reds": [
-            "Harts United"
-          ]
+          "hs": null,
+          "as": null
         },
         {
           "home": "Rovers Saint Helena",
           "away": "Bellboys FC",
-          "hs": 3,
-          "as": 3
+          "hs": null,
+          "as": null
         },
         {
           "home": "Haytown Spurs FC",
           "away": "Longwood Wanderers FC",
-          "hs": 1,
-          "as": 1
+          "hs": null,
+          "as": null
         }
       ]
     },
@@ -90,224 +87,20 @@
         {
           "home": "77 Devils FC",
           "away": "77 Angels",
-          "hs": 3,
-          "as": 1
+          "hs": null,
+          "as": null
         },
         {
           "home": "Georgetown United",
           "away": "Island Boyz",
-          "hs": 0,
-          "as": 1
+          "hs": null,
+          "as": null
         },
         {
           "home": "Two Boats United",
           "away": "VC Milan",
-          "hs": 3,
-          "as": 0
-        }
-      ]
-    },
-    {
-      "n": 3,
-      "division": "St. Helena",
-      "date": null,
-      "matches": [
-        {
-          "home": "Longwood Fugees FC",
-          "away": "VC Milan",
-          "hs": 2,
-          "as": 0,
-          "reds": [
-            "VC Milan",
-            "VC Milan"
-          ]
-        },
-        {
-          "home": "Haytown Spurs FC",
-          "away": "Harts United",
-          "hs": 1,
-          "as": 1
-        },
-        {
-          "home": "Rovers Saint Helena",
-          "away": "Longwood Wanderers FC",
-          "hs": 2,
-          "as": 1
-        },
-        {
-          "home": "Bellboys FC",
-          "away": "Georgetown United",
-          "hs": 3,
-          "as": 1
-        }
-      ]
-    },
-    {
-      "n": 3,
-      "division": "Ascension",
-      "date": null,
-      "matches": [
-        {
-          "home": "77 Angels",
-          "away": "Island Boyz",
-          "hs": 0,
-          "as": 0
-        },
-        {
-          "home": "77 Devils FC",
-          "away": "Two Boats United",
-          "hs": 1,
-          "as": 1
-        }
-      ]
-    },
-    {
-      "n": 4,
-      "division": "St. Helena",
-      "date": null,
-      "matches": [
-        {
-          "home": "Longwood Fugees FC",
-          "away": "77 Devils FC",
-          "hs": 2,
-          "as": 2
-        },
-        {
-          "home": "Bellboys FC",
-          "away": "VC Milan",
-          "hs": 3,
-          "as": 0
-        },
-        {
-          "home": "Haytown Spurs FC",
-          "away": "Harts United",
-          "hs": 1,
-          "as": 1
-        },
-        {
-          "home": "Rovers Saint Helena",
-          "away": "Two Boats United",
-          "hs": 1,
-          "as": 1
-        }
-      ]
-    },
-    {
-      "n": 4,
-      "division": "Ascension",
-      "date": null,
-      "matches": [
-        {
-          "home": "Georgetown United",
-          "away": "Island Boyz",
-          "hs": 1,
-          "as": 0
-        },
-        {
-          "home": "77 Angels",
-          "away": "Longwood Wanderers FC",
-          "hs": 0,
-          "as": 0
-        }
-      ]
-    },
-    {
-      "n": 5,
-      "division": "St. Helena",
-      "date": null,
-      "matches": [
-        {
-          "home": "Harts United",
-          "away": "VC Milan",
-          "hs": 2,
-          "as": 1
-        },
-        {
-          "home": "Longwood Wanderers FC",
-          "away": "Haytown Spurs FC",
-          "hs": 1,
-          "as": 0
-        },
-        {
-          "home": "Bellboys FC",
-          "away": "77 Angels",
-          "hs": 2,
-          "as": 2
-        },
-        {
-          "home": "Rovers Saint Helena",
-          "away": "Georgetown United",
-          "hs": 0,
-          "as": 0
-        }
-      ]
-    },
-    {
-      "n": 5,
-      "division": "Ascension",
-      "date": null,
-      "matches": [
-        {
-          "home": "Two Boats United",
-          "away": "Longwood Fugees FC",
-          "hs": 0,
-          "as": 2
-        },
-        {
-          "home": "77 Devils FC",
-          "away": "Island Boyz",
-          "hs": 0,
-          "as": 1
-        }
-      ]
-    },
-    {
-      "n": 6,
-      "division": "St. Helena",
-      "date": null,
-      "matches": [
-        {
-          "home": "Longwood Fugees FC",
-          "away": "Bellboys FC",
-          "hs": 1,
-          "as": 3
-        },
-        {
-          "home": "Longwood Wanderers FC",
-          "away": "Two Boats United",
-          "hs": 0,
-          "as": 0
-        },
-        {
-          "home": "Haytown Spurs FC",
-          "away": "VC Milan",
-          "hs": 1,
-          "as": 0
-        }
-      ]
-    },
-    {
-      "n": 6,
-      "division": "Ascension",
-      "date": null,
-      "matches": [
-        {
-          "home": "77 Devils FC",
-          "away": "Rovers Saint Helena",
-          "hs": 1,
-          "as": 0
-        },
-        {
-          "home": "Georgetown United",
-          "away": "Harts United",
-          "hs": 2,
-          "as": 2
-        },
-        {
-          "home": "77 Angels",
-          "away": "Island Boyz",
-          "hs": 0,
-          "as": 0
+          "hs": null,
+          "as": null
         }
       ]
     }
@@ -315,15 +108,5 @@
   "scorers": [],
   "friendlies": [],
   "playoffs": [],
-  "outside": [
-    {
-      "club": "Longwood Fugees FC",
-      "opponent": "Kelli Town",
-      "competition": "CAF",
-      "badge": "CAF",
-      "home": null,
-      "cs": null,
-      "os": null
-    }
-  ]
+  "outside": []
 }
