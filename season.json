@@ -99,8 +99,8 @@
         {
           "home": "Two Boats United",
           "away": "VC Milan",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         }
       ]
     }
