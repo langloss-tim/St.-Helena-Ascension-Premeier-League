@@ -126,6 +126,15 @@ working.)
 confusion — set `"home": false` if the club travelled. The opponent is just a
 name; it needs no entry in `teams.py` and never gets one.
 
+### National team
+
+The **National Team** page reads `national.json` — the squad (`pos` is GK, DF,
+MF or FW) and every game. It is separate from the league: nothing in it touches
+the tables, form or projections. A score is always Saint Helena first (`gf`)
+and the opponent second (`ga`), with `"home": true/false` for the venue; leave
+both scores `null` for a game still to be played, and add `"reds": 1` for a
+Saint Helena sending-off. `python national.py` checks the file.
+
 ### Archiving a season
 
 Copy `season.json` to `season-<year>.json`, list the year in `seasons.json`,
@@ -141,7 +150,8 @@ sidebar once more than one season exists.
 | `league.py` | Turns `season.json` into tables, form and projections. |
 | `feed.py` | Loads the current season or an archived one. |
 | `bracket.py` | Builds the playoff bracket. |
-| `app.py` | The Streamlit site — Home, Tables, Matches, Clubs, Playoffs. |
+| `national.json` / `national.py` | The national team's squad and games. |
+| `app.py` | The Streamlit site — Home, Tables, Matches, Clubs, National Team, Playoffs. |
 | `facts.py` | Daily soccer / St. Helena facts on the Home page. |
 
 ## Projections

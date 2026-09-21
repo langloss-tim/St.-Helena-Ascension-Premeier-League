@@ -1,0 +1,41 @@
+{
+  "team": "Saint Helena",
+  "code": "sh",
+  "updated": "2026-09-21",
+  "note": "The national team page. Scores are Saint Helena's goals first (gf) and the opponent's second (ga), home or away. Null scores = upcoming. No dates.",
+  "players": [
+    {"pos": "GK", "name": "Mpho Bagley"},
+    {"pos": "GK", "name": "Christo Crowie"},
+    {"pos": "GK", "name": "Rico Yon"},
+    {"pos": "DF", "name": "David Betrand"},
+    {"pos": "DF", "name": "Ethan Montholon"},
+    {"pos": "DF", "name": "Charles Gourgaud"},
+    {"pos": "DF", "name": "Jean-Luc Bonaparte"},
+    {"pos": "DF", "name": "Jacob Archambault"},
+    {"pos": "DF", "name": "Michel Dancoisne"},
+    {"pos": "DF", "name": "Simon Rosseau"},
+    {"pos": "DF", "name": "Raymond St. Denis"},
+    {"pos": "MF", "name": "Thomas Le Page"},
+    {"pos": "MF", "name": "Louis Novarrez"},
+    {"pos": "MF", "name": "Christian Morel"},
+    {"pos": "MF", "name": "Robert Richard"},
+    {"pos": "MF", "name": "Pierre du Pont"},
+    {"pos": "MF", "name": "Joseph Vigo"},
+    {"pos": "MF", "name": "Obina Okali"},
+    {"pos": "MF", "name": "Ganiyu Mbuemba"},
+    {"pos": "FW", "name": "Zubeyir Buzlu"},
+    {"pos": "FW", "name": "Chidi Adico"},
+    {"pos": "FW", "name": "Emeka Nwosu"},
+    {"pos": "FW", "name": "Babajibe Adebayo"}
+  ],
+  "games": [
+    {"opponent": "Mayotte", "code": "yt", "home": true, "gf": 1, "ga": 0, "reds": 1},
+    {"opponent": "Eswatini", "code": "sz", "home": true, "gf": 5, "ga": 0},
+    {"opponent": "Réunion", "code": "re", "home": true, "gf": 0, "ga": 0},
+    {"opponent": "South Africa", "code": "za", "home": false, "gf": 1, "ga": 3},
+    {"opponent": "Zimbabwe", "code": "zw", "home": false, "gf": 1, "ga": 0},
+    {"opponent": "Namibia", "code": "na", "home": true, "gf": null, "ga": null},
+    {"opponent": "Congo", "code": "cg", "home": false, "gf": null, "ga": null},
+    {"opponent": "Comoros", "code": "km", "home": false, "gf": null, "ga": null}
+  ]
+}

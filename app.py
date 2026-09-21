@@ -26,6 +26,7 @@ import streamlit.components.v1 as components
 import bracket
 import facts
 import feed as datafeed
+import national
 import teams
 
 st.set_page_config(
@@ -424,6 +425,17 @@ div[data-testid="stButton"] > button{ font-size:1.25rem !important; font-weight:
    padding-top:.35rem; }
 .brk-final{ margin-bottom:1rem; }
 .brk-final .steam{ font-size:1.5rem; }
+
+/* National team */
+.nt-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr));
+   gap:.6rem; margin-bottom:1.6rem; }
+.nt-player{ display:flex; align-items:center; gap:.7rem; border:1px solid var(--line);
+   border-radius:13px; padding:.75rem 1rem; background:var(--panel);
+   font-size:1.25rem; font-weight:600; }
+.nt-pos{ font-size:.85rem; font-weight:800; letter-spacing:.5px; color:var(--muted);
+   border:1px solid var(--line); border-radius:7px; padding:.1rem .4rem; }
+.nt-next{ font-size:1.2rem; color:var(--muted); margin:-.4rem 0 1.4rem; }
+.nt-next b{ color:var(--ink); }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -1280,10 +1292,141 @@ def _series_html(s, big=False):
             f'{team_row(s["b"], s["winner"] == "B")}'
             f'<div class="smeta">{meta}</div></div>')
 
+
+# --------------------------------------------------------------------------- #
+# National team
+# --------------------------------------------------------------------------- #
+# Its own data (national.json) and its own page. Nothing here feeds the league
+# tables, form or projections. The page opens on a rundown of the squad and the
+# games, with a button into each; `nt_view` remembers which one is open.
+@st.cache_data(ttl=15, show_spinner=False)
+def load_national():
+    return national.load()
+
+
+def _nt_stats(stats):
+    cells = "".join(f'<div class="stat"><div class="v">{v}</div><div class="k">{k}</div></div>'
+                    for v, k in stats)
+    return f'<div class="statrow">{cells}</div>'
+
+
+def _nt_eyebrow(text, color="#e4572e"):
+    return (f'<div class="eyebrow"><span class="bar" style="background:{color}"></span>'
+            f'{text}</div>')
+
+
+def _nt_where(g):
+    return "vs" if g["home"] else "at"
+
+
+def _nt_game_html(g):
+    ha = ('<span class="ha home">HOME</span>' if g["home"]
+          else '<span class="ha away">AWAY</span>')
+    opp = f'{flag_img(g.get("code"), label=g["opponent"])} {g["opponent"]}'
+    reds = "".join('<span class="redcard" title="Saint Helena player sent off"></span>'
+                   for _ in range(g.get("reds", 0)))
+    o = national.outcome(g)
+    if o:
+        ocls = {"W": "w", "D": "d", "L": "l"}[o]
+        right = (f'{reds}<span class="cm-score">{g["gf"]} – {g["ga"]}</span>'
+                 f'<span class="formchip {ocls}">{o}</span>')
+    else:
+        right = '<span class="cm-pred muted">Upcoming</span>'
+    return (f'<div class="cmatch" style="border-left-color:#e4572e">'
+            f'<div class="cm-left">{ha}<span class="cm-opp">{_nt_where(g)} {opp}</span></div>'
+            f'<div class="cm-right">{right}</div></div>')
+
+
+def render_national():
+    try:
+        data = load_national()
+    except (OSError, ValueError) as e:
+        st.error(f"The national team page could not be loaded: {e}")
+        return
+
+    view = st.session_state.get("nt_view")
+    if view:
+        if st.button("← Back to the national team"):
+            st.session_state.nt_view = None
+            st.rerun()
+
+    team = data.get("team", "Saint Helena")
+    st.markdown(
+        f'<div class="club-hero" style="border-left-color:#e4572e">'
+        f'<div class="club-hero-name">{flag_img(data.get("code"), label=team)} {team}</div>'
+        f'<div class="club-hero-isl">National team</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    squad = national.squad_by_position(data)
+    rec = national.record(data)
+
+    if view == "players":
+        st.markdown(_nt_eyebrow(f"👥 Players ({len(data.get('players', []))})"),
+                    unsafe_allow_html=True)
+        for code, label, names in squad:
+            if not names:
+                continue
+            st.markdown(f'<div class="formlabel" style="margin:.4rem 0 .7rem">'
+                        f'{label} ({len(names)})</div>', unsafe_allow_html=True)
+            cards = "".join(f'<div class="nt-player"><span class="nt-pos">{code}</span>{n}</div>'
+                            for n in names)
+            st.markdown(f'<div class="nt-grid">{cards}</div>', unsafe_allow_html=True)
+        return
+
+    if view == "games":
+        played, upcoming = national.played(data), national.upcoming(data)
+        st.markdown(_nt_eyebrow(f"✅ Results ({len(played)})"), unsafe_allow_html=True)
+        if played:
+            st.markdown("".join(_nt_game_html(g) for g in played), unsafe_allow_html=True)
+        else:
+            st.info("No games played yet.")
+        st.markdown(_nt_eyebrow(f"📅 Upcoming ({len(upcoming)})", "#3d9be0"),
+                    unsafe_allow_html=True)
+        if upcoming:
+            st.markdown("".join(_nt_game_html(g) for g in upcoming), unsafe_allow_html=True)
+        else:
+            st.info("No upcoming games.")
+        return
+
+    # Rundown -------------------------------------------------------------- #
+    st.markdown(_nt_eyebrow("👥 Squad"), unsafe_allow_html=True)
+    st.markdown(_nt_stats([(len(data.get("players", [])), "Players")]
+                          + [(len(names), label) for _, label, names in squad]),
+                unsafe_allow_html=True)
+
+    st.markdown(_nt_eyebrow("⚽ Games", "#3d9be0"), unsafe_allow_html=True)
+    st.markdown(_nt_stats([
+        (rec["played"], "Played"), (rec["wins"], "Won"), (rec["draws"], "Drawn"),
+        (rec["losses"], "Lost"), (f'{rec["gf"]}–{rec["ga"]}', "Goals"),
+        (rec["clean_sheets"], "Clean sheets"), (rec["upcoming"], "Upcoming"),
+    ]), unsafe_allow_html=True)
+    played = national.played(data)
+    if played:
+        chips = "".join(f'<span class="formchip {national.outcome(g).lower()}">'
+                        f'{national.outcome(g)}</span>' for g in played[-5:])
+        st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>'
+                    f'{chips}</div>', unsafe_allow_html=True)
+    nxt = national.upcoming(data)
+    if nxt:
+        g = nxt[0]
+        st.markdown(f'<div class="nt-next">Next up: <b>{_nt_where(g)} '
+                    f'{flag_img(g.get("code"), label=g["opponent"])} {g["opponent"]}</b></div>',
+                    unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    if c1.button("👥 Players", key="nt_players", use_container_width=True, type="primary"):
+        st.session_state.nt_view = "players"
+        st.rerun()
+    if c2.button("📅 Games", key="nt_games", use_container_width=True, type="primary"):
+        st.session_state.nt_view = "games"
+        st.rerun()
+
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-PAGES = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🥇 Playoffs"]
+PAGES = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🌍 National Team",
+         "🥇 Playoffs"]
 
 
 def nav_items(playoffs_open):
@@ -1507,6 +1650,8 @@ def main():
         st.session_state.selected_club = None
     if page != "⚽ Matches":
         st.session_state.focus_group = None
+    if page != "🌍 National Team":
+        st.session_state.nt_view = None
 
     if page == "🏠 Home":
         render_home(feed, ncols)
@@ -1528,6 +1673,8 @@ def main():
         render_matches(datafeed.get_matches(feed), feed)
     elif page == "🥇 Playoffs":
         render_playoffs(feed)
+    elif page == "🌍 National Team":
+        render_national()
     else:  # Clubs
         if st.session_state.get("selected_club"):
             render_club_detail(feed, st.session_state.selected_club)
