@@ -133,7 +133,9 @@ MF or FW) and every game. It is separate from the league: nothing in it touches
 the tables, form or projections. A score is always Saint Helena first (`gf`)
 and the opponent second (`ga`), with `"home": true/false` for the venue; leave
 both scores `null` for a game still to be played, and add `"reds": 1` for a
-Saint Helena sending-off. `python national.py` checks the file.
+Saint Helena sending-off. Each player has `stats` (Saint Helena only): `saves`
+(goalkeepers), `goals`, `assists`, `yellows`, `reds` — `null` shows as a dash.
+Tap a player on the Players screen to see them. `python national.py` checks the file.
 
 ### Archiving a season
 

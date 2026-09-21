@@ -2,40 +2,299 @@
   "team": "Saint Helena",
   "code": "sh",
   "updated": "2026-09-21",
-  "note": "The national team page. Scores are Saint Helena's goals first (gf) and the opponent's second (ga), home or away. Null scores = upcoming. No dates.",
+  "note": "The national team page. Scores are Saint Helena's goals first (gf) and the opponent's second (ga), home or away. Null scores = upcoming. No dates. Player stats are for Saint Helena only; a null stat = not given yet (shown as a dash).",
   "players": [
-    {"pos": "GK", "name": "Mpho Bagley"},
-    {"pos": "GK", "name": "Christo Crowie"},
-    {"pos": "GK", "name": "Rico Yon"},
-    {"pos": "DF", "name": "David Betrand"},
-    {"pos": "DF", "name": "Ethan Montholon"},
-    {"pos": "DF", "name": "Charles Gourgaud"},
-    {"pos": "DF", "name": "Jean-Luc Bonaparte"},
-    {"pos": "DF", "name": "Jacob Archambault"},
-    {"pos": "DF", "name": "Michel Dancoisne"},
-    {"pos": "DF", "name": "Simon Rosseau"},
-    {"pos": "DF", "name": "Raymond St. Denis"},
-    {"pos": "MF", "name": "Thomas Le Page"},
-    {"pos": "MF", "name": "Louis Novarrez"},
-    {"pos": "MF", "name": "Christian Morel"},
-    {"pos": "MF", "name": "Robert Richard"},
-    {"pos": "MF", "name": "Pierre du Pont"},
-    {"pos": "MF", "name": "Joseph Vigo"},
-    {"pos": "MF", "name": "Obina Okali"},
-    {"pos": "MF", "name": "Ganiyu Mbuemba"},
-    {"pos": "FW", "name": "Zubeyir Buzlu"},
-    {"pos": "FW", "name": "Chidi Adico"},
-    {"pos": "FW", "name": "Emeka Nwosu"},
-    {"pos": "FW", "name": "Babajibe Adebayo"}
+    {
+      "pos": "GK",
+      "name": "Mpho Bagley",
+      "stats": {
+        "saves": 29,
+        "goals": 0,
+        "assists": 0,
+        "yellows": 2,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "GK",
+      "name": "Christo Crowie",
+      "stats": {
+        "saves": 17,
+        "goals": 0,
+        "assists": 0,
+        "yellows": 1,
+        "reds": 1
+      }
+    },
+    {
+      "pos": "GK",
+      "name": "Rico Yon",
+      "stats": {
+        "saves": 0,
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "David Betrand",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 1,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Ethan Montholon",
+      "stats": {
+        "goals": 0,
+        "assists": 2,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Charles Gourgaud",
+      "stats": {
+        "goals": 0,
+        "assists": 2,
+        "yellows": 1,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Jean-Luc Bonaparte",
+      "stats": {
+        "goals": 2,
+        "assists": 1,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Jacob Archambault",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Michel Dancoisne",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 1,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Simon Rosseau",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 1,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Raymond St. Denis",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Thomas Le Page",
+      "stats": {
+        "goals": 2,
+        "assists": 3,
+        "yellows": 1,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Louis Novarrez",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Christian Morel",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Robert Richard",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 1,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Pierre du Pont",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Joseph Vigo",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Obina Okali",
+      "stats": {
+        "goals": 2,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Ganiyu Mbuemba",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 1,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "FW",
+      "name": "Zubeyir Buzlu",
+      "stats": {
+        "goals": 2,
+        "assists": 0,
+        "yellows": 3,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "FW",
+      "name": "Chidi Adico",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "FW",
+      "name": "Emeka Nwosu",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "FW",
+      "name": "Babajibe Adebayo",
+      "stats": {
+        "goals": 0,
+        "assists": 0,
+        "yellows": 0,
+        "reds": 0
+      }
+    }
   ],
   "games": [
-    {"opponent": "Mayotte", "code": "yt", "home": true, "gf": 1, "ga": 0, "reds": 1},
-    {"opponent": "Eswatini", "code": "sz", "home": true, "gf": 5, "ga": 0},
-    {"opponent": "Réunion", "code": "re", "home": true, "gf": 0, "ga": 0},
-    {"opponent": "South Africa", "code": "za", "home": false, "gf": 1, "ga": 3},
-    {"opponent": "Zimbabwe", "code": "zw", "home": false, "gf": 1, "ga": 0},
-    {"opponent": "Namibia", "code": "na", "home": true, "gf": null, "ga": null},
-    {"opponent": "Congo", "code": "cg", "home": false, "gf": null, "ga": null},
-    {"opponent": "Comoros", "code": "km", "home": false, "gf": null, "ga": null}
+    {
+      "opponent": "Mayotte",
+      "code": "yt",
+      "home": true,
+      "gf": 1,
+      "ga": 0,
+      "reds": 1
+    },
+    {
+      "opponent": "Eswatini",
+      "code": "sz",
+      "home": true,
+      "gf": 5,
+      "ga": 0
+    },
+    {
+      "opponent": "Réunion",
+      "code": "re",
+      "home": true,
+      "gf": 0,
+      "ga": 0
+    },
+    {
+      "opponent": "South Africa",
+      "code": "za",
+      "home": false,
+      "gf": 1,
+      "ga": 3
+    },
+    {
+      "opponent": "Zimbabwe",
+      "code": "zw",
+      "home": false,
+      "gf": 1,
+      "ga": 0
+    },
+    {
+      "opponent": "Namibia",
+      "code": "na",
+      "home": true,
+      "gf": null,
+      "ga": null
+    },
+    {
+      "opponent": "Congo",
+      "code": "cg",
+      "home": false,
+      "gf": null,
+      "ga": null
+    },
+    {
+      "opponent": "Comoros",
+      "code": "km",
+      "home": false,
+      "gf": null,
+      "ga": null
+    }
   ]
 }

@@ -427,11 +427,6 @@ div[data-testid="stButton"] > button{ font-size:1.25rem !important; font-weight:
 .brk-final .steam{ font-size:1.5rem; }
 
 /* National team */
-.nt-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr));
-   gap:.6rem; margin-bottom:1.6rem; }
-.nt-player{ display:flex; align-items:center; gap:.7rem; border:1px solid var(--line);
-   border-radius:13px; padding:.75rem 1rem; background:var(--panel);
-   font-size:1.25rem; font-weight:600; }
 .nt-pos{ font-size:.85rem; font-weight:800; letter-spacing:.5px; color:var(--muted);
    border:1px solid var(--line); border-radius:7px; padding:.1rem .4rem; }
 .nt-next{ font-size:1.2rem; color:var(--muted); margin:-.4rem 0 1.4rem; }
@@ -1345,7 +1340,13 @@ def render_national():
         return
 
     view = st.session_state.get("nt_view")
-    if view:
+    by_name = {p["name"]: p for p in data.get("players", [])}
+    player = by_name.get(st.session_state.get("nt_player")) if view == "players" else None
+    if player:
+        if st.button("← Back to all players"):
+            st.session_state.nt_player = None
+            st.rerun()
+    elif view:
         if st.button("← Back to the national team"):
             st.session_state.nt_view = None
             st.rerun()
@@ -1361,17 +1362,33 @@ def render_national():
     squad = national.squad_by_position(data)
     rec = national.record(data)
 
+    if player:
+        label = dict(national.POSITIONS)[player["pos"]][:-1]  # "Goalkeepers" -> "Goalkeeper"
+        st.markdown(_nt_eyebrow(f'<span class="nt-pos">{player["pos"]}</span> '
+                                f'{player["name"]}'), unsafe_allow_html=True)
+        st.markdown(f'<div class="hint">{label} · stats for {team} only</div>',
+                    unsafe_allow_html=True)
+        st.markdown(_nt_stats([("–" if v is None else v, k)
+                               for k, v in national.player_stats(player)]),
+                    unsafe_allow_html=True)
+        return
+
     if view == "players":
         st.markdown(_nt_eyebrow(f"👥 Players ({len(data.get('players', []))})"),
+                    unsafe_allow_html=True)
+        st.markdown('<div class="hint">Tap a player to see their stats.</div>',
                     unsafe_allow_html=True)
         for code, label, names in squad:
             if not names:
                 continue
             st.markdown(f'<div class="formlabel" style="margin:.4rem 0 .7rem">'
                         f'{label} ({len(names)})</div>', unsafe_allow_html=True)
-            cards = "".join(f'<div class="nt-player"><span class="nt-pos">{code}</span>{n}</div>'
-                            for n in names)
-            st.markdown(f'<div class="nt-grid">{cards}</div>', unsafe_allow_html=True)
+            cols = st.columns(3)
+            for i, n in enumerate(names):
+                if cols[i % 3].button(n, key=f"ntp_{n}", use_container_width=True):
+                    st.session_state.nt_player = n
+                    st.rerun()
+            st.write("")
         return
 
     if view == "games":
@@ -1652,6 +1669,8 @@ def main():
         st.session_state.focus_group = None
     if page != "🌍 National Team":
         st.session_state.nt_view = None
+    if st.session_state.get("nt_view") != "players":
+        st.session_state.nt_player = None
 
     if page == "🏠 Home":
         render_home(feed, ncols)

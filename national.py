@@ -31,6 +31,9 @@ def load(path=PATH):
     for p in data.get("players", []):
         if p.get("pos") not in _POS_CODES:
             raise DataError(f"unknown position {p.get('pos')!r} for {p.get('name')!r}")
+        for k, v in (p.get("stats") or {}).items():
+            if k not in dict(STAT_LABELS) or not (v is None or (isinstance(v, int) and v >= 0)):
+                raise DataError(f"bad stat {k}={v!r} for {p.get('name')!r}")
     for g in data.get("games", []):
         gf, ga = g.get("gf"), g.get("ga")
         if (gf is None) != (ga is None):
@@ -61,6 +64,18 @@ def squad_by_position(data):
             for code, label in POSITIONS]
 
 
+STAT_LABELS = [("saves", "Saves"), ("goals", "Goals"), ("assists", "Assists"),
+               ("yellows", "Yellow cards"), ("reds", "Red cards")]
+
+
+def player_stats(player):
+    """[(label, value)] in display order. Saves appear only where recorded
+    (the goalkeepers); a stat given as null stays None so the page can show a
+    dash rather than a zero nobody said."""
+    stats = player.get("stats") or {}
+    return [(label, stats[key]) for key, label in STAT_LABELS if key in stats]
+
+
 def record(data):
     games = played(data)
     res = [outcome(g) for g in games]
@@ -80,6 +95,9 @@ if __name__ == "__main__":
     d = load()
     for code, label, names in squad_by_position(d):
         print(f"{label} ({len(names)}): {', '.join(names)}")
+    for p in d["players"]:
+        print(f"  {p['name']}: " + ", ".join(f"{k} {'-' if v is None else v}"
+                                          for k, v in player_stats(p)))
     r = record(d)
     print(f"\nP{r['played']} W{r['wins']} D{r['draws']} L{r['losses']} "
           f"{r['gf']}-{r['ga']}, {r['clean_sheets']} clean sheets, "
