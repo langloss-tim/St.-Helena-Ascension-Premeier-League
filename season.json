@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "updated": "2026-09-19",
+  "updated": "2026-09-26",
   "note": "Source of truth for the whole site. Season restarted 2026-09-06. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [
@@ -101,6 +101,19 @@
           "away": "VC Milan",
           "hs": 1,
           "as": 0
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "division": "St. Helena",
+      "date": null,
+      "matches": [
+        {
+          "home": "Bellboys FC",
+          "away": "Rovers Saint Helena",
+          "hs": 5,
+          "as": 2
         }
       ]
     }
