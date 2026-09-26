@@ -110,10 +110,10 @@
       "date": null,
       "matches": [
         {
-          "home": "Bellboys FC",
-          "away": "Rovers Saint Helena",
-          "hs": 5,
-          "as": 2
+          "home": "Rovers Saint Helena",
+          "away": "Bellboys FC",
+          "hs": 2,
+          "as": 5
         }
       ]
     }
