@@ -1,7 +1,7 @@
 {
   "team": "Saint Helena",
   "code": "sh",
-  "updated": "2026-09-21",
+  "updated": "2026-09-26",
   "note": "The national team page. Scores are Saint Helena's goals first (gf) and the opponent's second (ga), home or away. Null scores = upcoming. No dates. Player stats are for Saint Helena only; a null stat = not given yet (shown as a dash).",
   "players": [
     {
@@ -201,7 +201,7 @@
       "pos": "FW",
       "name": "Zubeyir Buzlu",
       "stats": {
-        "goals": 2,
+        "goals": 3,
         "assists": 0,
         "yellows": 3,
         "reds": 0
@@ -279,8 +279,8 @@
       "opponent": "Namibia",
       "code": "na",
       "home": true,
-      "gf": null,
-      "ga": null
+      "gf": 1,
+      "ga": 0
     },
     {
       "opponent": "Congo",
