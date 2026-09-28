@@ -1,33 +1,23 @@
-# BFL
+# Barbados Premier League
 
-A fan site for the BFL — twelve clubs playing across the islands of
-St. Helena and Ascension.
+A fan site for the Barbados Premier League — twelve clubs in one table.
 
-Live at **https://bfl.streamlit.app** — deployed on Streamlit Cloud from this repo's `main` branch.
+Live at **https://sthapl.streamlit.app** — deployed on Streamlit Cloud from this repo's `main` branch.
 
-The league is its own competition. It doesn't shadow any other league and it
-isn't wired to any outside sports feed: **`season.json` is the league**, and
-every table, form guide, projection and playoff bracket on the site is computed
-from it.
+The league is its own competition. It isn't wired to any outside sports feed:
+**`season.json` is the league**, and every table, form guide, projection and
+playoff bracket on the site is computed from it.
 
 ## The clubs
 
-| St. Helena Division 🇸🇭 | Ascension Division 🇦🇨 |
+| | |
 | --- | --- |
-| Rovers Saint Helena | 77 Devils FC |
-| Bellboys FC | Georgetown United |
-| Harts United | Two Boats United |
-| Longwood Fugees FC | 77 Angels |
-| Haytown Spurs FC | Island Boyz |
-| Longwood Wanderers FC | VC Milan |
-
-Most games are played inside a division, but a club can meet a side from the
-other division. That result counts in both tables: each club takes its points
-in its own division.
-
-Haytown Spurs were formerly La Verde FC, Longwood Wanderers were STH Young
-Boys, and Longwood Fugees were Fugees FC. The old names still resolve when
-entering a result, so an out-of-date name is corrected rather than rejected.
+| Weymouth Wales FC | Fitts Village FC |
+| Bagetelle FC | Green United |
+| Britton's Hill United | Blackspurs FC |
+| Ellerton FC | Atlas United |
+| Wotton FC | Kings Park Rangers FC |
+| St. Andrew's Lions FC | Spartens FC |
 
 ## Publishing results
 
@@ -38,13 +28,12 @@ projections and the bracket.
 ```jsonc
 {
   "n": 5,                          // matchday number
-  "division": "St. Helena",        // "St. Helena" or "Ascension"
-  "date": "2026-09-06",            // optional; omit or use null if not set yet
+  "date": null,                    // optional; omit or use null if not set yet
   "matches": [
-    {"home": "Harts United", "away": "Longwood Fugees FC", "hs": 2, "as": 2},
-    {"home": "Rovers Saint Helena", "away": "Bellboys FC", "hs": 1, "as": 0,
+    {"home": "Weymouth Wales FC", "away": "Green United", "hs": 2, "as": 2},
+    {"home": "Wotton FC", "away": "Atlas United", "hs": 1, "as": 0,
      "live": true, "minute": "67'"},
-    {"home": "Haytown Spurs FC", "away": "Longwood Wanderers FC", "hs": null, "as": null}
+    {"home": "Ellerton FC", "away": "Spartens FC", "hs": null, "as": null}
   ]
 }
 ```
@@ -54,33 +43,29 @@ projections and the bracket.
   the model's win projection.
 * **`"live": true`** — in progress. It appears on the Live tab with `minute`
   on the card, and stays out of the table until it's final.
-* Club names can be written short (`"Harts"`, `"Rovers"`) — `teams.py` knows
+* Club names can be written short (`"Weymouth"`, `"Lions"`) — `teams.py` knows
   the aliases. An unknown name fails loudly rather than inventing a club.
 
 Bump `"updated"` when you publish, so the sidebar shows the right date.
 
 ### Playoffs
 
-Top five in each division qualify:
+The top four qualify:
 
 ```
-WILD CARD       #4 v #5           winner takes the last place
-SEMI-FINAL 1    #1 v WC winner
+SEMI-FINAL 1    #1 v #4
 SEMI-FINAL 2    #2 v #3
-DIVISION FINAL  SF1 winner v SF2 winner
-GRAND FINAL     St. Helena champion v Ascension champion
+FINAL           SF1 winner v SF2 winner
 ```
 
 Every tie is a single game. Add postseason games to the `"playoffs"` list:
 
 ```jsonc
-{"round": "Wild Card", "division": "Ascension",
- "home": "Two Boats United", "away": "VC Milan", "hs": 3, "as": 1}
+{"round": "Semi-Final", "home": "Green United", "away": "Atlas United", "hs": 3, "as": 1}
 ```
 
-Rounds: `Wild Card`, `Semi-Final`, `Division Final`, `Grand Final` (the Grand
-Final needs no `division`). The bracket resolves round by round, so a slot is
-only named once the tie before it has actually been won. The Playoffs tab
+Rounds: `Semi-Final`, `Final`. The bracket resolves round by round, so a slot
+is only named once the tie before it has actually been won. The Playoffs tab
 unlocks as soon as a playoff game exists, or when you set
 `"playoffs_open": true`.
 
@@ -90,7 +75,7 @@ The Golden Boot chart is a `"scorers"` list. It shows in full on the Tables page
 and as a top three on the Home page, laid out **name → goals → country flag**.
 
 ```jsonc
-{"name": "Ronan Legg", "goals": 6, "country": "Saint Helena", "code": "SH"}
+{"name": "Player Name", "goals": 6, "country": "Barbados", "code": "BB"}
 ```
 
 `code` is the two-letter country code; the flag emoji is built from it, so a new
@@ -111,7 +96,7 @@ table — and they show on **one screen only: that club's own page**, under an
 working.)
 
 ```jsonc
-{"club": "Longwood Fugees FC", "opponent": "MC Alger",
+{"club": "Weymouth Wales FC", "opponent": "Opponent FC",
  "competition": "CAF Champions League Qualifier",  // headline on the club page
  "badge": "CAF",                                   // short chip beside HOME/AWAY
  "leg": "Second leg",                              // optional
@@ -119,10 +104,10 @@ working.)
  // "pens": {"cs": 3, "os": 2},                    // optional: settles a level
  //                                                // tie, and the club page
  //                                                // then reads W, not D
- "date": null, "note": "Longwood Fugees through 3-1 on aggregate"}
+ "date": null, "note": "Weymouth Wales through 3-1 on aggregate"}
 ```
 
-`cs` is the BFL club's score and `os` the opponent's, so there's no home/away
+`cs` is the league club's score and `os` the opponent's, so there's no home/away
 confusion — set `"home": false` if the club travelled. The opponent is just a
 name; it needs no entry in `teams.py` and never gets one.
 
@@ -148,7 +133,7 @@ sidebar once more than one season exists.
 | File | What it does |
 | --- | --- |
 | `season.json` | **The data.** Every result, fixture and playoff game. |
-| `teams.py` | The twelve clubs — divisions, colours, name aliases. |
+| `teams.py` | The twelve clubs — colours, name aliases. |
 | `league.py` | Turns `season.json` into tables, form and projections. |
 | `feed.py` | Loads the current season or an archived one. |
 | `bracket.py` | Builds the playoff bracket. |
@@ -168,5 +153,5 @@ as a rough read.
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
-python league.py      # prints both tables in the terminal
+python league.py      # prints the table in the terminal
 ```

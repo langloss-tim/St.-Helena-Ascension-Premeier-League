@@ -1,8 +1,8 @@
 """
-BFL — Streamlit app.
+Barbados Premier League — Streamlit app.
 
-A fan site for a South Atlantic island league: twelve clubs across the
-St. Helena and Ascension divisions. The competition is its own — it doesn't
+A fan site for a Caribbean island league: twelve clubs in one table.
+The competition is its own — it doesn't
 shadow any other league, and it isn't wired to any outside sports feed.
 
 Everything on every page (tables, form, results, fixtures, projections and the
@@ -30,19 +30,18 @@ import national
 import teams
 
 st.set_page_config(
-    page_title="BFL",
+    page_title="Barbados Premier League",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# St. Helena is UTC+0 all year.
+# Barbados is UTC-4 all year.
 # Times shown American-style in US Eastern; a world clock (Home) covers other zones.
 LOCAL_TZ = ZoneInfo("America/New_York")
 
 ISLAND_META = {
-    teams.ST_HELENA: {"flag": "🇸🇭", "code": "sh", "accent": "#e4572e"},
-    teams.ASCENSION: {"flag": "🇦🇨", "code": "ac", "accent": "#3d9be0"},
+    teams.BARBADOS: {"flag": "🇧🇧", "code": "bb", "accent": "#ffc726"},
 }
 
 
@@ -128,8 +127,7 @@ WMO = {
     95: ("⛈️", "Thunderstorm"), 96: ("⛈️", "Thunderstorm"), 99: ("⛈️", "Thunderstorm"),
 }
 WEATHER_LOCATIONS = [
-    ("St. Helena", "🇸🇭", "sh", -15.93, -5.72),
-    ("Ascension", "🇦🇨", "ac", -7.93, -14.42),
+    ("Bridgetown", "🇧🇧", "bb", 13.10, -59.62),
 ]
 
 
@@ -476,8 +474,8 @@ def dot(color):
 # Header
 # --------------------------------------------------------------------------- #
 def header(season):
-    st.markdown('<p class="hero-title">BFL</p>', unsafe_allow_html=True)
-    sub = "St. Helena &amp; Ascension · South Atlantic football"
+    st.markdown('<p class="hero-title">Barbados Premier League</p>', unsafe_allow_html=True)
+    sub = "🇧🇧 Barbados · Caribbean football"
     if season:
         sub += f" · {season} season"
     st.markdown(f'<p class="hero-sub">{sub}</p>', unsafe_allow_html=True)
@@ -502,7 +500,8 @@ def render_standings(standings, ncols=2, device=None):
     # Points is the column people came to read. Form is always shown -- it just
     # gets smaller (letters, then dots) -- so GF/GA are the only columns that
     # drop, and that happens only on a phone.
-    if ncols == 1:
+    if ncols == 1 or len(standings["conferences"]) == 1:
+        ncols = 1
         level = "min" if device == "📱 Phone" else "full"
     else:
         level = "mid"
@@ -562,12 +561,10 @@ def _standings_html(rows, level="full", gfga=None, qual=True, island=False,
     for r in rows:
         classes = []
         if qual:
-            if r["rank"] <= 3:
+            if r["rank"] <= 4:
                 classes.append("qual")
-            elif r["rank"] <= 5:
-                classes.append("wildcard")
-            if r["rank"] == 5:
-                classes.append("cutoff")  # last club still alive for the playoffs
+            if r["rank"] == 4:
+                classes.append("cutoff")  # last club into the playoffs
         cls = f' class="{" ".join(classes)}"' if classes else ""
 
         # A two-letter division pill, not the island flag: the flags are inlined
@@ -598,8 +595,7 @@ def _standings_html(rows, level="full", gfga=None, qual=True, island=False,
             '<b class="d">Draw 1 pt</b> · <b class="l">Loss 0 pts</b></span><br>'
             'Ranked on points, then goal difference, then goals scored.<br>'
             'Form = last five matches, oldest first.<br>'
-            '<b>Green</b> = straight into the semi-finals · '
-            '<b class="wc">Amber</b> = 4th and 5th meet in the Wild Card game'
+            '<b>Green</b> = top four, into the playoff semi-finals'
             '</div>') if legend else ""
     return '<div class="tblwrap">' + head + "".join(body) + "</tbody></table></div>" + foot
 
@@ -634,7 +630,7 @@ CLOCK_HTML = r"""
   .clockrow{ display:flex; gap:.6rem; overflow-x:auto; padding-bottom:.3rem; }
   .clk{ flex:0 0 auto; min-width:120px; border:1px solid rgba(255,255,255,.09); border-radius:12px;
         background:#161b26; padding:.6rem .8rem; }
-  .clk.sh{ border-left:4px solid #e4572e; }
+  .clk.sh{ border-left:4px solid #ffc726; }
   .cl-l{ font-size:.8rem; color:#8b93a1; white-space:nowrap; }
   .cl-l span{ background:rgba(255,255,255,.08); padding:.02rem .3rem; border-radius:5px; margin-left:.2rem; }
   .cl-l img.flagimg{ width:1.6em; height:auto; vertical-align:-.25em; border-radius:2px;
@@ -644,7 +640,7 @@ CLOCK_HTML = r"""
 <div class="clockrow" id="clocks"></div>
 <script>
   const ZONES = [
-    {label:"<img class='flagimg' src='__SH_FLAG__' alt='🇸🇭'> St. Helena", tz:"Atlantic/St_Helena", abbr:"GMT", sh:true},
+    {label:"<img class='flagimg' src='__SH_FLAG__' alt='🇧🇧'> Barbados", tz:"America/Barbados", abbr:"AST", sh:true},
     {label:"Eastern", tz:"America/New_York", abbr:"ET"},
     {label:"Central", tz:"America/Chicago", abbr:"CT"},
     {label:"Mountain", tz:"America/Denver", abbr:"MT"},
@@ -667,7 +663,7 @@ CLOCK_HTML = r"""
 def clock_component():
     # The clock is an iframe with its own document, so it cannot call
     # flag_img() -- the source is substituted in on the way out.
-    components.html(CLOCK_HTML.replace("__SH_FLAG__", flag_src("sh")),
+    components.html(CLOCK_HTML.replace("__SH_FLAG__", flag_src("bb")),
                     height=110, scrolling=False)
 
 
@@ -731,7 +727,7 @@ def render_matches(matches, feed):
 def _group_key(m):
     """Matches are grouped by matchday, not by calendar date — a matchday is
     how this league is actually scheduled, and fixtures often arrive before a
-    date is set. Both divisions share one Matchday N group."""
+    date is set."""
     if m.get("stage") == "playoff":
         return f"playoff|{m.get('round') or 'Playoffs'}"
     return f"md|{m.get('matchday') or 0}"
@@ -740,7 +736,7 @@ def _group_key(m):
 def _group_sort(key):
     kind, rest = key.split("|", 1)
     if kind == "playoff":
-        order = {"Wild Card": 1, "Semi-Final": 2, "Division Final": 3, "Grand Final": 4}
+        order = {"Semi-Final": 1, "Final": 2}
         return (2, order.get(rest, 9), rest)
     try:
         n = int(rest)
@@ -873,7 +869,7 @@ def _winbar_html(m, feed):
         f'<span>{m["home"]["name"]} · {h}%</span>'
         f'<span class="mid">Draw {d}%</span>'
         f'<span>{a}% · {m["away"]["name"]}</span></div>'
-        '<div class="note">BFL model projection · from form so far</div></div>'
+        '<div class="note">BPL model projection · from form so far</div></div>'
     )
 
 
@@ -981,11 +977,11 @@ def render_home(feed, ncols=2):
         st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
                     'The season is about to start</div>', unsafe_allow_html=True)
         st.markdown('<div class="hint">No matches have been played yet. Twelve '
-                    'clubs, two divisions, everyone level on nothing.</div>',
+                    'clubs, one table, everyone level on nothing.</div>',
                     unsafe_allow_html=True)
     elif standings["conferences"]:
         st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
-                    'Island leaders</div>', unsafe_allow_html=True)
+                    'League leaders</div>', unsafe_allow_html=True)
 
         def leader(conf):
             meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
@@ -1070,7 +1066,7 @@ def render_club_detail(feed, club_id):
                 break
     if row:
         stats = [
-            (f"#{row['rank']}", f"in {team.island}"), (row["points"], "Points"),
+            (f"#{row['rank']}", "in the table"), (row["points"], "Points"),
             (row["played"], "Played"), (row["wins"], "Won"),
             (row["draws"], "Drawn"), (row["losses"], "Lost"),
             (f"{row['gd']:+d}", "Goal diff"),
@@ -1146,7 +1142,7 @@ def _outcome(m, club_id):
     mine = m["home"]["score"] if is_home else m["away"]["score"]
     theirs = m["away"]["score"] if is_home else m["home"]["score"]
     if mine == theirs:
-        # `pens` is recorded from the BFL club's point of view, not the home
+        # `pens` is recorded from the league club's point of view, not the home
         # side's, so it needs no home/away flip.
         pens = m.get("pens") or {}
         if pens.get("mine") is not None and pens["mine"] != pens["theirs"]:
@@ -1176,7 +1172,7 @@ def _club_match_html(m, club_id, feed):
         right = f'<span class="cm-score">{mine} – {theirs}</span><span class="formchip {ocls}">{o or "–"}</span>'
         when = _when_label(m)
     elif m.get("stage") in NON_LEAGUE_STAGES:
-        # The BFL model only rates league games; a non-league fixture never
+        # The league model only rates league games; a non-league fixture never
         # gets a projection, so don't promise one.
         right = '<span class="cm-pred muted">Upcoming</span>'
         when = _when_label(m)
@@ -1224,34 +1220,23 @@ def render_playoffs(feed):
     else:
         st.markdown('<div class="hint">🔮 Projected bracket. Seeding is provisional until the '
                     'league season ends, then it fills in game by game once the playoffs '
-                    'begin.<br><b>Wild Card</b> 4th v 5th · the winner takes the last place, '
-                    'then <b>1st v Wild Card winner</b> and <b>2nd v 3rd</b>, and those winners '
-                    'meet in the Division Final.</div>', unsafe_allow_html=True)
+                    'begin.<br>The top four qualify: <b>1st v 4th</b> and <b>2nd v 3rd</b> '
+                    'in the semi-finals, and the winners meet in the Final.</div>',
+                    unsafe_allow_html=True)
 
-    for div in brk["divisions"]:
-        meta = ISLAND_META.get(div["island"], {"flag": "", "accent": "#888"})
-        st.markdown(
-            f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-            f'{meta["flag"]} {div["name"]}</div>', unsafe_allow_html=True)
-        cols = (
-            ("Wild Card", [div["wc"]]),
-            ("Semi-Finals", div["sf"]),
-            ("Division Final", [div["df"]]),
-        )
-        col_html = "".join(
-            f'<div class="brk-col"><div class="brk-h">{title}</div>'
-            + "".join(_series_html(x) for x in series) + '</div>'
-            for title, series in cols
-        )
-        st.markdown(f'<div class="brk-cols">{col_html}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="eyebrow"><span class="bar" style="background:#ffc726"></span>'
+                'Semi-Finals</div>', unsafe_allow_html=True)
+    col_html = ('<div class="brk-col">'
+                + "".join(_series_html(x) for x in brk["sf"]) + '</div>')
+    st.markdown(f'<div class="brk-cols">{col_html}</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
-                '🏆 Grand Final</div>', unsafe_allow_html=True)
+                '🏆 Final</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="brk-final">{_series_html(brk["final"], big=True)}</div>',
                 unsafe_allow_html=True)
     if brk["champion"]:
         st.markdown(f'<div class="champline">🏆 <b>{brk["champion"]["name"]}</b> '
-                    'are champions of the BFL.</div>',
+                    'are champions of the Barbados Premier League.</div>',
                     unsafe_allow_html=True)
 
 def _series_html(s, big=False):
@@ -1538,8 +1523,8 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
     st.session_state.setdefault("page", "🏠 Home")
     season = None
     with st.sidebar:
-        st.markdown('<div class="side-title">⚽ BFL</div>', unsafe_allow_html=True)
-        st.markdown('<div class="side-sub">St. Helena &amp; Ascension</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-title">⚽ BPL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-sub">Barbados Premier League</div>', unsafe_allow_html=True)
         st.divider()
         _search_box(search_feed)
         st.divider()
@@ -1581,7 +1566,7 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
 
 
 def device_prompt():
-    st.markdown('<p class="hero-title">⚽ BFL</p>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-title">⚽ Barbados Premier League</p>', unsafe_allow_html=True)
     st.markdown('<p class="hero-sub">First — what are you viewing this on? '
                 'This sizes everything to fit your screen.</p>', unsafe_allow_html=True)
     st.write("")
@@ -1676,12 +1661,10 @@ def main():
         render_home(feed, ncols)
     elif page == "🏆 Tables":
         hint = ("Final standings for this archived season." if season is not None
-                else "Both divisions, updated as each matchday is played.")
+                else "One table of twelve, updated as each matchday is played.")
         st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
         if standings["conferences"]:
             render_standings(standings, ncols, device)
-            st.divider()
-            render_overall(feed, device)
         else:
             st.warning("Standings could not be loaded.")
         render_scorers(feed)
@@ -1702,7 +1685,7 @@ def main():
 
     st.divider()
     st.markdown(
-        '<div class="foot">BFL · St. Helena &amp; Ascension divisions · results published by the league.</div>',
+        '<div class="foot">Barbados Premier League · results published by the league.</div>',
         unsafe_allow_html=True,
     )
 

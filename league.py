@@ -1,13 +1,13 @@
 """
-The BFL engine.
+The Barbados Premier League engine.
 
-Everything the site shows is computed here from season.json: the division
-tables, each club's form, and the model's win projection for a fixture that
+Everything the site shows is computed here from season.json: the league
+table, each club's form, and the model's win projection for a fixture that
 hasn't been played yet. There is no external feed — the results file is the
 league.
 
 A match in season.json looks like:
-    {"home": "Bellboys FC", "away": "Harts United", "hs": 3, "as": 2}
+    {"home": "Weymouth Wales FC", "away": "Green United", "hs": 3, "as": 2}
 
   * hs/as present  -> played (full time)
   * hs/as null     -> upcoming fixture
@@ -88,7 +88,7 @@ def _count_reds(raw, home, away):
 
 
 def _external(name):
-    """A club from outside the BFL. It has no id in teams.py and never will —
+    """A club from outside the league. It has no id in teams.py and never will —
     it exists only to be named on the other half of a friendly."""
     tid = "ext-" + re.sub(r"[^a-z0-9]+", "", str(name).lower())
     return {"id": tid, "name": str(name), "score": None, "winner": False,
@@ -170,14 +170,14 @@ build_friendlies = build_outside
 
 
 def _slug(division):
-    return "sth" if division == teams.ST_HELENA else "asc"
+    return "bpl"
 
 
 def build_matches(data):
     """Flatten season.json into the match list the UI renders."""
     out = []
     for block in data.get("matchdays", []):
-        division = teams.resolve_division(block["division"])
+        division = teams.resolve_division(block.get("division"))
         n = block.get("n")
         for i, raw in enumerate(block.get("matches", []), start=1):
             out.append(_one_match(raw, division, n, i, block.get("date"),
@@ -186,8 +186,7 @@ def build_matches(data):
     out.extend(build_friendlies(data))
 
     for i, raw in enumerate(data.get("playoffs", []), start=1):
-        division = (teams.resolve_division(raw["division"])
-                    if raw.get("division") else None)
+        division = teams.resolve_division(raw.get("division"))
         out.append(_one_match(raw, division, None, i, raw.get("date"),
                               stage="playoff", round_name=raw.get("round", "")))
     return out
@@ -444,7 +443,7 @@ def build_winprobs(standings, matches):
         away = round(100.0 - home - draw, 1)
         out[m["id"]] = {
             "home_pct": home, "draw_pct": draw, "away_pct": away,
-            "source": "BFL model",
+            "source": "BPL model",
         }
     return out
 

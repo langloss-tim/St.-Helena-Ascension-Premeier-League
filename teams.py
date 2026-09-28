@@ -1,60 +1,52 @@
 """
-BFL — clubs.
+Barbados Premier League — clubs.
 
-The BFL is its own competition. Nothing here mirrors another league: the
-twelve clubs below, their divisions and their colours are the whole roster,
-and every result comes from season.json (see league.py).
+The Barbados Premier League is its own competition. The twelve clubs below and
+their colours are the whole roster, and every result comes from season.json
+(see league.py).
 
-Two divisions of six:
-  St. Helena Division  🇸🇭
-  Ascension Division   🇦🇨
+One table of twelve. There are no divisions.
 """
 
-# Division constants (also used as the island label in the UI).
-ST_HELENA = "St. Helena"
-ASCENSION = "Ascension"
+# The whole league is one table. The UI still speaks of a "division" in a few
+# places; there is exactly one.
+BARBADOS = "Barbados"
 
 DIVISION_NAME = {
-    ST_HELENA: "St. Helena Division",
-    ASCENSION: "Ascension Division",
+    BARBADOS: "Barbados Premier League",
 }
 
 # One row per club:
 #   id, name, division, primary, secondary, aliases
 # `aliases` exist so results can be entered with the short name people
-# actually say ("Harts", "Rovers") and still land on the right club.
+# actually say ("Weymouth", "Lions") and still land on the right club.
 _TEAMS = [
-    # ---------------------- St. Helena Division ----------------------
-    ("rovers",      "Rovers Saint Helena", ST_HELENA, "#ECE83A", "#1D1D1B",
-     ("Rovers", "Rovers St Helena", "Rovers St. Helena", "Saint Helena Rovers")),
-    ("bellboys",    "Bellboys FC",         ST_HELENA, "#F7B5CD", "#231F20",
-     ("Bellboys", "Bell Boys", "Bellboys FC")),
-    ("harts",       "Harts United",        ST_HELENA, "#6CACE4", "#041E42",
-     ("Harts", "Hearts United", "Harts Utd")),
-    # Renamed 2026-09-06. The former names stay on as aliases so a result can
-    # still be entered with whichever name comes to mind. Note there is no bare
-    # "Longwood" alias: two clubs carry the name and it would be ambiguous.
-    ("fugees",      "Longwood Fugees FC",  ST_HELENA, "#B49759", "#0E2B3B",
-     ("Fugees", "Fugees FC", "Longwood Fugees")),
-    ("haytown",     "Haytown Spurs FC",    ST_HELENA, "#17A66B", "#0A2240",
-     ("Haytown Spurs", "Haytown", "Spurs", "La Verde FC", "La Verde", "LaVerde")),
-    ("wanderers",   "Longwood Wanderers FC", ST_HELENA, "#E0553B", "#221F1F",
-     ("Longwood Wanderers", "Wanderers", "STH Young Boys", "Young Boys",
-      "Sth Young Boys", "STH Young Boys FC")),
-
-    # ---------------------- Ascension Division -----------------------
-    ("devils",      "77 Devils FC",        ASCENSION, "#E03131", "#101820",
-     ("77 Devils", "Devils")),
-    ("georgetown",  "Georgetown United",   ASCENSION, "#0F4C81", "#F4C800",
-     ("Georgetown", "Georgetown Utd")),
-    ("twoboats",    "Two Boats United",    ASCENSION, "#F4A300", "#B30838",
-     ("Two Boats", "Two Boats Utd", "2 Boats United")),
-    ("angels",      "77 Angels",           ASCENSION, "#EFE9D8", "#B99A3C",
-     ("77 Angels FC", "Angels", "77 Angles")),
-    ("islandboyz",  "Island Boyz",         ASCENSION, "#22B8CF", "#0B3A44",
-     ("Island Boys", "Island Boyz FC")),
-    ("vcmilan",     "VC Milan",            ASCENSION, "#8E1537", "#101820",
-     ("Milan", "VC Milan FC")),
+    ("weymouth",    "Weymouth Wales FC",       BARBADOS, "#C8102E", "#FFFFFF",
+     ("Weymouth Wales", "Weymouth", "Wales")),
+    ("bagatelle",   "Bagetelle FC",            BARBADOS, "#1E6B3A", "#F2C200",
+     ("Bagetelle", "Bagatelle", "Bagatelle FC")),
+    ("brittonshill", "Britton's Hill United",  BARBADOS, "#1F4E9E", "#FFFFFF",
+     ("Britton's Hill", "Brittons Hill", "Brittons Hill United", "Britton\u2019s Hill United",
+      "Britton's Hill Utd")),
+    ("ellerton",    "Ellerton FC",             BARBADOS, "#F28C28", "#1D1D1B",
+     ("Ellerton",)),
+    ("wotton",      "Wotton FC",               BARBADOS, "#7A2E8E", "#F4C800",
+     ("Wotton",)),
+    ("lions",       "St. Andrew's Lions FC",   BARBADOS, "#E3B505", "#0E2B3B",
+     ("St. Andrew's Lions", "St Andrews Lions", "St Andrew's Lions", "Saint Andrew's Lions",
+      "St. Andrew\u2019s Lions FC", "Lions")),
+    ("fitts",       "Fitts Village FC",        BARBADOS, "#22B8CF", "#0B3A44",
+     ("Fitts Village", "Fitts")),
+    ("green",       "Green United",            BARBADOS, "#17A66B", "#0A2240",
+     ("Green Utd", "Green")),
+    ("blackspurs",  "Blackspurs FC",           BARBADOS, "#2B2B2B", "#E8E8E8",
+     ("Blackspurs", "Black Spurs")),
+    ("atlas",       "Atlas United",            BARBADOS, "#8E1537", "#F4F4F4",
+     ("Atlas", "Atlas Utd")),
+    ("kingspark",   "Kings Park Rangers FC",   BARBADOS, "#6CACE4", "#041E42",
+     ("Kings Park Rangers", "Kings Park", "King's Park Rangers", "Rangers")),
+    ("spartans",    "Spartens FC",             BARBADOS, "#B49759", "#1D1D1B",
+     ("Spartens", "Spartans", "Spartans FC")),
 ]
 
 
@@ -69,7 +61,7 @@ class Team:
         self.secondary = secondary
         self.aliases = tuple(aliases)
 
-    # The rest of the app talks about "islands"; a division is one island.
+    # The rest of the app talks about "islands"; there is one: Barbados.
     @property
     def island(self):
         return self.division
@@ -107,17 +99,18 @@ def resolve(label):
 
 
 
-# Division labels accepted in season.json.
+# Division labels accepted in season.json. There is only one, and a block may
+# leave "division" out entirely.
 _DIVISION_LOOKUP = {
-    "st. helena": ST_HELENA, "st helena": ST_HELENA, "saint helena": ST_HELENA,
-    "st. helena division": ST_HELENA, "saint helena division": ST_HELENA,
-    "sth": ST_HELENA,
-    "ascension": ASCENSION, "ascension division": ASCENSION, "asc": ASCENSION,
+    "barbados": BARBADOS, "barbados premier league": BARBADOS, "bpl": BARBADOS,
+    "league": BARBADOS,
 }
 
 
 def resolve_division(label):
-    """Accept any reasonable spelling of a division name."""
+    """Accept any reasonable spelling of the division name (or none at all)."""
+    if label is None or str(label).strip() == "":
+        return BARBADOS
     key = str(label).lower().strip()
     d = _DIVISION_LOOKUP.get(key)
     if d is None:
@@ -134,10 +127,8 @@ def display_name(tid, fallback=""):
     return t.name if t else fallback
 
 
-ISLANDS = [ST_HELENA, ASCENSION]
+ISLANDS = [BARBADOS]
 DIVISIONS = ISLANDS
 
 assert len(TEAMS) == 12, f"expected 12 clubs, got {len(TEAMS)}"
 assert len(BY_ID) == 12, "duplicate club id"
-assert sum(1 for t in TEAMS if t.division == ST_HELENA) == 6
-assert sum(1 for t in TEAMS if t.division == ASCENSION) == 6
