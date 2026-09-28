@@ -1,5 +1,5 @@
 """
-The SHPL postseason bracket.
+The BFL postseason bracket.
 
 Per division (top five qualify):
 

@@ -1,5 +1,5 @@
 """
-The SHPL engine.
+The BFL engine.
 
 Everything the site shows is computed here from season.json: the division
 tables, each club's form, and the model's win projection for a fixture that
@@ -88,7 +88,7 @@ def _count_reds(raw, home, away):
 
 
 def _external(name):
-    """A club from outside the SHPL. It has no id in teams.py and never will —
+    """A club from outside the BFL. It has no id in teams.py and never will —
     it exists only to be named on the other half of a friendly."""
     tid = "ext-" + re.sub(r"[^a-z0-9]+", "", str(name).lower())
     return {"id": tid, "name": str(name), "score": None, "winner": False,
@@ -444,7 +444,7 @@ def build_winprobs(standings, matches):
         away = round(100.0 - home - draw, 1)
         out[m["id"]] = {
             "home_pct": home, "draw_pct": draw, "away_pct": away,
-            "source": "SHPL model",
+            "source": "BFL model",
         }
     return out
 

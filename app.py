@@ -1,5 +1,5 @@
 """
-St. Helena Premier League — Streamlit app.
+BFL — Streamlit app.
 
 A fan site for a South Atlantic island league: twelve clubs across the
 St. Helena and Ascension divisions. The competition is its own — it doesn't
@@ -30,7 +30,7 @@ import national
 import teams
 
 st.set_page_config(
-    page_title="St. Helena Premier League",
+    page_title="BFL",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -476,7 +476,7 @@ def dot(color):
 # Header
 # --------------------------------------------------------------------------- #
 def header(season):
-    st.markdown('<p class="hero-title">St.&nbsp;Helena Premier League</p>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-title">BFL</p>', unsafe_allow_html=True)
     sub = "St. Helena &amp; Ascension · South Atlantic football"
     if season:
         sub += f" · {season} season"
@@ -873,7 +873,7 @@ def _winbar_html(m, feed):
         f'<span>{m["home"]["name"]} · {h}%</span>'
         f'<span class="mid">Draw {d}%</span>'
         f'<span>{a}% · {m["away"]["name"]}</span></div>'
-        '<div class="note">SHPL model projection · from form so far</div></div>'
+        '<div class="note">BFL model projection · from form so far</div></div>'
     )
 
 
@@ -1146,7 +1146,7 @@ def _outcome(m, club_id):
     mine = m["home"]["score"] if is_home else m["away"]["score"]
     theirs = m["away"]["score"] if is_home else m["home"]["score"]
     if mine == theirs:
-        # `pens` is recorded from the SHPL club's point of view, not the home
+        # `pens` is recorded from the BFL club's point of view, not the home
         # side's, so it needs no home/away flip.
         pens = m.get("pens") or {}
         if pens.get("mine") is not None and pens["mine"] != pens["theirs"]:
@@ -1176,7 +1176,7 @@ def _club_match_html(m, club_id, feed):
         right = f'<span class="cm-score">{mine} – {theirs}</span><span class="formchip {ocls}">{o or "–"}</span>'
         when = _when_label(m)
     elif m.get("stage") in NON_LEAGUE_STAGES:
-        # The SHPL model only rates league games; a non-league fixture never
+        # The BFL model only rates league games; a non-league fixture never
         # gets a projection, so don't promise one.
         right = '<span class="cm-pred muted">Upcoming</span>'
         when = _when_label(m)
@@ -1251,7 +1251,7 @@ def render_playoffs(feed):
                 unsafe_allow_html=True)
     if brk["champion"]:
         st.markdown(f'<div class="champline">🏆 <b>{brk["champion"]["name"]}</b> '
-                    'are champions of the St. Helena Premier League.</div>',
+                    'are champions of the BFL.</div>',
                     unsafe_allow_html=True)
 
 def _series_html(s, big=False):
@@ -1538,8 +1538,8 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
     st.session_state.setdefault("page", "🏠 Home")
     season = None
     with st.sidebar:
-        st.markdown('<div class="side-title">⚽ SHPL</div>', unsafe_allow_html=True)
-        st.markdown('<div class="side-sub">St. Helena Premier League</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-title">⚽ BFL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-sub">St. Helena &amp; Ascension</div>', unsafe_allow_html=True)
         st.divider()
         _search_box(search_feed)
         st.divider()
@@ -1581,7 +1581,7 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
 
 
 def device_prompt():
-    st.markdown('<p class="hero-title">⚽ St.&nbsp;Helena Premier League</p>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-title">⚽ BFL</p>', unsafe_allow_html=True)
     st.markdown('<p class="hero-sub">First — what are you viewing this on? '
                 'This sizes everything to fit your screen.</p>', unsafe_allow_html=True)
     st.write("")
@@ -1702,7 +1702,7 @@ def main():
 
     st.divider()
     st.markdown(
-        '<div class="foot">St. Helena Premier League · St. Helena &amp; Ascension divisions · results published by the league.</div>',
+        '<div class="foot">BFL · St. Helena &amp; Ascension divisions · results published by the league.</div>',
         unsafe_allow_html=True,
     )
 

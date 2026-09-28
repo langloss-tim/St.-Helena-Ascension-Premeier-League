@@ -1,9 +1,9 @@
-# St. Helena Premier League
+# BFL
 
-A fan site for the SHPL — twelve clubs playing across the islands of
+A fan site for the BFL — twelve clubs playing across the islands of
 St. Helena and Ascension.
 
-Live at **https://sthapl.streamlit.app** — deployed on Streamlit Cloud from this repo's `main` branch.
+Live at **https://bfl.streamlit.app** — deployed on Streamlit Cloud from this repo's `main` branch.
 
 The league is its own competition. It doesn't shadow any other league and it
 isn't wired to any outside sports feed: **`season.json` is the league**, and
@@ -122,7 +122,7 @@ working.)
  "date": null, "note": "Longwood Fugees through 3-1 on aggregate"}
 ```
 
-`cs` is the SHPL club's score and `os` the opponent's, so there's no home/away
+`cs` is the BFL club's score and `os` the opponent's, so there's no home/away
 confusion — set `"home": false` if the club travelled. The opponent is just a
 name; it needs no entry in `teams.py` and never gets one.
 

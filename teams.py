@@ -1,7 +1,7 @@
 """
-St. Helena Premier League — clubs.
+BFL — clubs.
 
-The SHPL is its own competition. Nothing here mirrors another league: the
+The BFL is its own competition. Nothing here mirrors another league: the
 twelve clubs below, their divisions and their colours are the whole roster,
 and every result comes from season.json (see league.py).
 
