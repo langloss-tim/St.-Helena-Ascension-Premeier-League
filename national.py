@@ -5,7 +5,7 @@ This sits beside the league, not inside it. Nothing here touches season.json,
 the tables, the Golden Boot or the projections, and nothing in league.py reads
 this file.
 
-A score is always written Saint Helena first: `gf` is Saint Helena's goals and
+A score is always written national team first: `gf` is the team's goals and
 `ga` the opponent's, whether the game was at home or away. Both null means the
 game hasn't been played yet.
 

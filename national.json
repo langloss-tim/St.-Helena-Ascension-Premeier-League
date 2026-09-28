@@ -1,300 +1,383 @@
 {
-  "team": "Saint Helena",
-  "code": "sh",
-  "updated": "2026-09-26",
-  "note": "The national team page. Scores are Saint Helena's goals first (gf) and the opponent's second (ga), home or away. Null scores = upcoming. No dates. Player stats are for Saint Helena only; a null stat = not given yet (shown as a dash).",
+  "team": "Barbados",
+  "code": "bb",
+  "coach": "Kent Hall",
+  "updated": "2026-09-28",
+  "note": "The real Barbados men's national team (the Bajan Tridents), every senior game since January 2026. Scores are Barbados first (gf) and the opponent second (ga). Null scores = upcoming. Squad = the September 2026 Nations League squad plus the players called up only in March. Stats are Barbados 2026 games only; null = not confirmed by a source (shown as a dash). Dates are stored but not shown.",
   "players": [
     {
       "pos": "GK",
-      "name": "Mpho Bagley",
+      "name": "Jamal Blackman",
       "stats": {
-        "saves": 29,
+        "saves": null,
         "goals": 0,
-        "assists": 0,
-        "yellows": 2,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "GK",
-      "name": "Christo Crowie",
+      "name": "Jireh Malcolm",
       "stats": {
-        "saves": 17,
+        "saves": null,
         "goals": 0,
-        "assists": 0,
-        "yellows": 1,
-        "reds": 1
+        "assists": null,
+        "yellows": null,
+        "reds": 0
       }
     },
     {
       "pos": "GK",
-      "name": "Rico Yon",
+      "name": "Kaliq Lashley",
       "stats": {
-        "saves": 0,
+        "saves": null,
         "goals": 0,
-        "assists": 0,
-        "yellows": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "GK",
+      "name": "Shaquan Phillips",
+      "stats": {
+        "saves": null,
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "David Betrand",
+      "name": "Ajani Banton",
       "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 1,
+        "goals": 1,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "Ethan Montholon",
+      "name": "Jacob Gollop",
       "stats": {
         "goals": 0,
-        "assists": 2,
-        "yellows": 0,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "Charles Gourgaud",
+      "name": "Mario Williams",
       "stats": {
         "goals": 0,
-        "assists": 2,
-        "yellows": 1,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "Jean-Luc Bonaparte",
+      "name": "Raquan Clarke",
       "stats": {
-        "goals": 2,
-        "assists": 1,
-        "yellows": 0,
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "Jacob Archambault",
+      "name": "Shay Prescod",
       "stats": {
         "goals": 0,
-        "assists": 0,
-        "yellows": 0,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "Michel Dancoisne",
+      "name": "Tyrique Bailey-Edwards",
       "stats": {
         "goals": 0,
-        "assists": 0,
-        "yellows": 1,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "Simon Rosseau",
+      "name": "Ackeel Applewhaite",
       "stats": {
         "goals": 0,
-        "assists": 0,
-        "yellows": 1,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "DF",
-      "name": "Raymond St. Denis",
+      "name": "Carl Hinkson",
       "stats": {
         "goals": 0,
-        "assists": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "DF",
+      "name": "Ethan Taylor",
+      "stats": {
+        "goals": 0,
+        "assists": null,
         "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "MF",
-      "name": "Thomas Le Page",
+      "name": "Andre Applewhaite",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Darico King",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Davion Thorne",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Jaheim Neblett",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Jaylan Gilkes",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Lamar Catlyn",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Omani Leacock",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Sheran Hoyte",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Zachary Applewhite",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Rashad Jules",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Nadre Butcher",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Nicoli Brathwaite",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "MF",
+      "name": "Leon Elliott",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "FW",
+      "name": "Colin Griffith",
+      "stats": {
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
+        "reds": 0
+      }
+    },
+    {
+      "pos": "FW",
+      "name": "Jaron Oughterson",
       "stats": {
         "goals": 2,
-        "assists": 3,
-        "yellows": 1,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
-      "pos": "MF",
-      "name": "Louis Novarrez",
-      "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 0,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Christian Morel",
-      "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 0,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Robert Richard",
-      "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 1,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Pierre du Pont",
-      "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 0,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Joseph Vigo",
-      "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 0,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Obina Okali",
+      "pos": "FW",
+      "name": "Niall Reid-Stephen",
       "stats": {
         "goals": 2,
-        "assists": 0,
-        "yellows": 0,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Ganiyu Mbuemba",
-      "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 1,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "FW",
-      "name": "Zubeyir Buzlu",
+      "name": "Ross Bourne",
       "stats": {
-        "goals": 3,
-        "assists": 0,
-        "yellows": 3,
+        "goals": 0,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "FW",
-      "name": "Chidi Adico",
+      "name": "Tajio James",
       "stats": {
         "goals": 0,
-        "assists": 0,
-        "yellows": 0,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     },
     {
       "pos": "FW",
-      "name": "Emeka Nwosu",
+      "name": "Thierry Gale",
       "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 0,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "FW",
-      "name": "Babajibe Adebayo",
-      "stats": {
-        "goals": 0,
-        "assists": 0,
-        "yellows": 0,
+        "goals": 2,
+        "assists": null,
+        "yellows": null,
         "reds": 0
       }
     }
   ],
   "games": [
     {
-      "opponent": "Mayotte",
-      "code": "yt",
-      "home": true,
+      "date": "2026-03-26",
+      "opponent": "Saint Martin",
+      "code": "mf",
+      "home": false,
+      "neutral": true,
       "gf": 1,
+      "ga": 3,
+      "competition": "CONCACAF Series (friendly)"
+    },
+    {
+      "date": "2026-03-29",
+      "opponent": "St. Vincent and the Grenadines",
+      "code": "vc",
+      "home": false,
+      "neutral": true,
+      "gf": 2,
+      "ga": 3,
+      "competition": "CONCACAF Series (friendly)"
+    },
+    {
+      "date": "2026-09-25",
+      "opponent": "Saint Lucia",
+      "code": "lc",
+      "home": false,
+      "gf": 2,
       "ga": 0,
-      "reds": 1
+      "competition": "CONCACAF Nations League B"
     },
     {
-      "opponent": "Eswatini",
-      "code": "sz",
-      "home": true,
-      "gf": 5,
-      "ga": 0
-    },
-    {
-      "opponent": "Réunion",
-      "code": "re",
-      "home": true,
-      "gf": 0,
-      "ga": 0
-    },
-    {
-      "opponent": "South Africa",
-      "code": "za",
+      "date": "2026-09-28",
+      "opponent": "Guadeloupe",
+      "code": "gp",
       "home": false,
-      "gf": 1,
-      "ga": 3
+      "neutral": true,
+      "gf": 2,
+      "ga": 2,
+      "competition": "CONCACAF Nations League B"
     },
     {
-      "opponent": "Zimbabwe",
-      "code": "zw",
-      "home": false,
-      "gf": 1,
-      "ga": 0
-    },
-    {
-      "opponent": "Namibia",
-      "code": "na",
+      "date": "2026-10-05",
+      "opponent": "Bermuda",
+      "code": "bm",
       "home": true,
-      "gf": 1,
-      "ga": 0
-    },
-    {
-      "opponent": "Congo",
-      "code": "cg",
-      "home": false,
       "gf": null,
-      "ga": null
-    },
-    {
-      "opponent": "Comoros",
-      "code": "km",
-      "home": false,
-      "gf": null,
-      "ga": null
+      "ga": null,
+      "competition": "CONCACAF Nations League B"
     }
   ]
 }

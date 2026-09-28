@@ -113,13 +113,15 @@ name; it needs no entry in `teams.py` and never gets one.
 
 ### National team
 
-The **National Team** page reads `national.json` — the squad (`pos` is GK, DF,
-MF or FW) and every game. It is separate from the league: nothing in it touches
-the tables, form or projections. A score is always Saint Helena first (`gf`)
-and the opponent second (`ga`), with `"home": true/false` for the venue; leave
-both scores `null` for a game still to be played, and add `"reds": 1` for a
-Saint Helena sending-off. Each player has `stats` (Saint Helena only): `saves`
-(goalkeepers), `goals`, `assists`, `yellows`, `reds` — `null` shows as a dash.
+The **National Team** page reads `national.json` — the real Barbados men's
+national team: the squad (`pos` is GK, DF, MF or FW) and every senior game since
+January 2026. It is separate from the league: nothing in it touches the tables,
+form or projections. A score is always Barbados first (`gf`) and the opponent
+second (`ga`), with `"home": true/false` for the venue (add `"neutral": true`
+for a game at a neutral ground) and a `competition` label; leave both scores
+`null` for a game still to be played, and add `"reds": 1` for a Barbados
+sending-off. Each player has `stats` for 2026: `saves` (goalkeepers), `goals`,
+`assists`, `yellows`, `reds` — `null` (not confirmed) shows as a dash.
 Tap a player on the Players screen to see them. `python national.py` checks the file.
 
 ### Archiving a season
@@ -139,7 +141,7 @@ sidebar once more than one season exists.
 | `bracket.py` | Builds the playoff bracket. |
 | `national.json` / `national.py` | The national team's squad and games. |
 | `app.py` | The Streamlit site — Home, Tables, Matches, Clubs, National Team, Playoffs. |
-| `facts.py` | Daily soccer / St. Helena facts on the Home page. |
+| `facts.py` | Daily soccer / Barbados facts on the Home page. |
 
 ## Projections
 
