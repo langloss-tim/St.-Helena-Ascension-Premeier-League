@@ -3,7 +3,92 @@
   "updated": "2026-09-28",
   "note": "Source of truth for the whole site. Barbados Premier League — new clubs and a fresh season from 2026-09-28. Add matchdays as they are played.",
   "playoffs_open": false,
-  "matchdays": [],
+  "matchdays": [
+    {
+      "n": 1,
+      "date": null,
+      "matches": [
+        {
+          "home": "Weymouth Wales FC",
+          "away": "Fitts Village FC",
+          "hs": 1,
+          "as": 0
+        },
+        {
+          "home": "St. Andrew's Lions FC",
+          "away": "Green United",
+          "hs": 2,
+          "as": 1
+        },
+        {
+          "home": "Atlas United",
+          "away": "Bagetelle FC",
+          "hs": 0,
+          "as": 0
+        },
+        {
+          "home": "Ellerton FC",
+          "away": "Britton's Hill United",
+          "hs": 2,
+          "as": 3
+        },
+        {
+          "home": "Wotton FC",
+          "away": "Kings Park Rangers FC",
+          "hs": 1,
+          "as": 1
+        },
+        {
+          "home": "Spartens FC",
+          "away": "Blackspurs FC",
+          "hs": 1,
+          "as": 2
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "date": null,
+      "matches": [
+        {
+          "home": "Green United",
+          "away": "Weymouth Wales FC",
+          "hs": 0,
+          "as": 1
+        },
+        {
+          "home": "Britton's Hill United",
+          "away": "St. Andrew's Lions FC",
+          "hs": 2,
+          "as": 2
+        },
+        {
+          "home": "Bagetelle FC",
+          "away": "Ellerton FC",
+          "hs": 0,
+          "as": 0
+        },
+        {
+          "home": "Fitts Village FC",
+          "away": "Kings Park Rangers FC",
+          "hs": 1,
+          "as": 1
+        },
+        {
+          "home": "Wotton FC",
+          "away": "Spartens FC",
+          "hs": 3,
+          "as": 3
+        },
+        {
+          "home": "Blackspurs FC",
+          "away": "Atlas United",
+          "hs": 2,
+          "as": 3
+        }
+      ]
+    }
+  ],
   "scorers": [],
   "friendlies": [],
   "playoffs": [],
