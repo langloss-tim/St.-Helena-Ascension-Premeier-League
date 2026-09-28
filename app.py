@@ -943,8 +943,8 @@ def render_home(feed, ncols=2):
         f'<div class="factcard"><div class="factlabel">⚽ Soccer fact of the day</div>'
         f'<div class="facttext">{facts.soccer_fact(day)}</div></div>'
         f'<div class="factcard sh"><div class="factlabel sh">'
-        f'{flag_img("sh", "🇸🇭", "St. Helena")} St. Helena fact of the day</div>'
-        f'<div class="facttext">{facts.sthelena_fact(day)}</div></div>'
+        f'{flag_img("bb", "🇧🇧", "Barbados")} Barbados fact of the day</div>'
+        f'<div class="facttext">{facts.barbados_fact(day)}</div></div>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -1296,14 +1296,19 @@ def _nt_eyebrow(text, color="#e4572e"):
 
 
 def _nt_where(g):
+    if g.get("neutral"):
+        return "vs"
     return "vs" if g["home"] else "at"
 
 
-def _nt_game_html(g):
-    ha = ('<span class="ha home">HOME</span>' if g["home"]
-          else '<span class="ha away">AWAY</span>')
+def _nt_game_html(g, team="Barbados"):
+    if g.get("neutral"):
+        ha = '<span class="ha">NEUTRAL</span>'
+    else:
+        ha = ('<span class="ha home">HOME</span>' if g["home"]
+              else '<span class="ha away">AWAY</span>')
     opp = f'{flag_img(g.get("code"), label=g["opponent"])} {g["opponent"]}'
-    reds = "".join('<span class="redcard" title="Saint Helena player sent off"></span>'
+    reds = "".join(f'<span class="redcard" title="{team} player sent off"></span>'
                    for _ in range(g.get("reds", 0)))
     o = national.outcome(g)
     if o:
@@ -1312,8 +1317,10 @@ def _nt_game_html(g):
                  f'<span class="formchip {ocls}">{o}</span>')
     else:
         right = '<span class="cm-pred muted">Upcoming</span>'
-    return (f'<div class="cmatch" style="border-left-color:#e4572e">'
-            f'<div class="cm-left">{ha}<span class="cm-opp">{_nt_where(g)} {opp}</span></div>'
+    comp = (f'<span class="cm-pred muted" style="margin-left:.5rem">{g["competition"]}</span>'
+            if g.get("competition") else "")
+    return (f'<div class="cmatch" style="border-left-color:#ffc726">'
+            f'<div class="cm-left">{ha}<span class="cm-opp">{_nt_where(g)} {opp}</span>{comp}</div>'
             f'<div class="cm-right">{right}</div></div>')
 
 
@@ -1336,9 +1343,9 @@ def render_national():
             st.session_state.nt_view = None
             st.rerun()
 
-    team = data.get("team", "Saint Helena")
+    team = data.get("team", "Barbados")
     st.markdown(
-        f'<div class="club-hero" style="border-left-color:#e4572e">'
+        f'<div class="club-hero" style="border-left-color:#ffc726">'
         f'<div class="club-hero-name">{flag_img(data.get("code"), label=team)} {team}</div>'
         f'<div class="club-hero-isl">National team</div></div>',
         unsafe_allow_html=True,
@@ -1380,13 +1387,13 @@ def render_national():
         played, upcoming = national.played(data), national.upcoming(data)
         st.markdown(_nt_eyebrow(f"✅ Results ({len(played)})"), unsafe_allow_html=True)
         if played:
-            st.markdown("".join(_nt_game_html(g) for g in played), unsafe_allow_html=True)
+            st.markdown("".join(_nt_game_html(g, team) for g in played), unsafe_allow_html=True)
         else:
             st.info("No games played yet.")
         st.markdown(_nt_eyebrow(f"📅 Upcoming ({len(upcoming)})", "#3d9be0"),
                     unsafe_allow_html=True)
         if upcoming:
-            st.markdown("".join(_nt_game_html(g) for g in upcoming), unsafe_allow_html=True)
+            st.markdown("".join(_nt_game_html(g, team) for g in upcoming), unsafe_allow_html=True)
         else:
             st.info("No upcoming games.")
         return

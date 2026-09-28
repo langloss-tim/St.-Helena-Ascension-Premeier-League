@@ -1,5 +1,4 @@
-"""Two rotating 'fact of the day' feeds — one about soccer, one about St. Helena
-& Ascension. Each is picked deterministically from the day of the year, using a
+"""Two rotating 'fact of the day' feeds — one about soccer, one about Barbados. Each is picked deterministically from the day of the year, using a
 different offset so both change every day and don't line up with each other."""
 
 SOCCER_FACTS = [
@@ -35,43 +34,43 @@ SOCCER_FACTS = [
     "The offside rule has existed, in some form, since the very first written laws of football in 1863.",
 ]
 
-STHELENA_FACTS = [
-    "St. Helena is one of the most remote inhabited places on Earth — roughly 1,900 km from the nearest mainland, Africa.",
-    "Napoleon Bonaparte was exiled to St. Helena in 1815 and died there in 1821, at Longwood House.",
-    "Jonathan, a giant tortoise living on St. Helena, is the oldest known land animal alive — hatched around 1832.",
-    "Until the airport opened in 2016, the only way to reach St. Helena was a multi-day voyage on the RMS St Helena mail ship.",
-    "Jacob's Ladder, a staircase in the capital Jamestown, climbs 699 steep steps up the valley wall.",
-    "The St Helena plover, known locally as the 'wirebird', is the island's national bird and lives nowhere else on Earth.",
-    "Ascension Island, about 1,300 km northwest of St. Helena, is one of the world's most important green turtle nesting sites.",
-    "Charles Darwin visited both islands aboard HMS Beagle in 1836.",
-    "Ascension's Green Mountain has a man-made cloud forest, deliberately planted in the 1800s with Darwin's involvement.",
-    "St. Helena, Ascension and Tristan da Cunha together form a single British Overseas Territory.",
-    "St. Helena's capital, Jamestown, is squeezed into a narrow, steep-sided volcanic valley.",
-    "Ascension Island has no native population — everyone there lives and works on assignment.",
-    "The waters around St. Helena are a global hotspot for whale sharks, the largest fish in the sea.",
-    "Both islands are the tips of huge volcanoes rising from the floor of the South Atlantic.",
-    "The islands use the St Helena pound, which is kept equal in value to the British pound.",
-    "St. Helena has a population of 9 million people.",
-    "Two Boats and Georgetown are two of the small settlements on Ascension Island.",
-    "Ascension served as a vital Allied airbase in World War II and later hosted a NASA tracking station.",
-    "St. Helena was uninhabited when the Portuguese discovered it in 1502 — humans only settled later.",
-    "The island's flag features the wirebird, its unique and endangered native bird.",
-    "Half Tree Hollow is one of the most populated districts on St. Helena, perched above Jamestown.",
-    "Longwood, on St. Helena, takes its name from the estate where Napoleon spent his final years.",
-    "St. Helena grows its own coffee, descended from seeds brought to the island in 1733 — it's prized worldwide.",
-    "Ascension's beaches glow at night during turtle season as hatchlings scramble for the sea.",
-    "The RMS St Helena was one of the last working ocean-going Royal Mail Ships in the world.",
-    "St. Helena has its own time zone, Greenwich Mean Time, all year round.",
-    "The island's rugged terrain means roads twist through dramatic hairpins and sheer drops.",
-    "Ascension's 'Devil's Riding School' is a striking volcanic crater in a barren, Mars-like landscape.",
-    "Endemic plants like the St Helena gumwood, the national tree, grow nowhere else on the planet.",
-    "Because it's so isolated, St. Helena is a haven for rare wildlife found in no other place on Earth.",
+BARBADOS_FACTS = [
+    "Barbados became a republic on 30 November 2021, exactly 55 years after independence, with Dame Sandra Mason as its first president.",
+    "Rihanna was born and raised in Barbados and was named a National Hero of the country in 2021.",
+    "George Washington's only trip abroad was to Barbados in 1751 — the house he stayed in is now a museum.",
+    "Mount Gay, with records dating back to 1703, is often called the oldest rum brand still in existence.",
+    "The grapefruit first appeared in Barbados in the 1700s as a natural cross — early on it was called the 'forbidden fruit'.",
+    "The flag's broken trident stands for Barbados breaking away from its colonial past.",
+    "Barbados is the easternmost island of the Caribbean, sitting out in the Atlantic Ocean.",
+    "Kensington Oval in Bridgetown hosted the Cricket World Cup final in 2007 and the T20 World Cup final in 2024.",
+    "Bajan cricket great Sir Garfield Sobers hit six sixes in a single over in 1968 — the first player ever to do it.",
+    "Crop Over began in the 1780s to celebrate the end of the sugar cane harvest and ends with Grand Kadooment Day.",
+    "The national dish of Barbados is cou-cou and flying fish.",
+    "Flying fish are so linked to Barbados that one is pictured on the island's coins.",
+    "Harrison's Cave is a crystal-filled limestone cave that visitors tour by tram.",
+    "Most of Barbados is made of coral limestone, which naturally filters the island's drinking water.",
+    "The highest point in Barbados is Mount Hillaby, at about 1,100 feet.",
+    "People from Barbados are called Bajans.",
+    "Barbados covers about 166 square miles — smaller than New York City.",
+    "The Barbados House of Assembly first met in 1639, making it one of the oldest parliaments in the Americas.",
+    "Barbados won independence from Britain on 30 November 1966, with Errol Barrow as its first Prime Minister.",
+    "A British Airways Concorde is kept on display at Grantley Adams International Airport.",
+    "Speightstown, the second-largest town, was nicknamed 'Little Bristol' for its old trade with Bristol, England.",
+    "Barbados' green monkeys are descended from monkeys brought over from West Africa in the 1600s.",
+    "The Barbados national football team is nicknamed the Bajan Tridents.",
+    "Hawksbill and leatherback turtles nest on the beaches of Barbados.",
+    "Traditional Bajan chattel houses were built of wood so workers could take their homes apart and move them.",
+    "The Barbados dollar has been fixed at two to one US dollar since 1975.",
+    "Mia Mottley became the first woman Prime Minister of Barbados in 2018.",
+    "Historic Bridgetown and its Garrison were named a UNESCO World Heritage Site in 2011.",
+    "The 'Soup Bowl' at Bathsheba, on the rugged Atlantic coast, is one of the Caribbean's best-known surf spots.",
+    "The national flower of Barbados is the Pride of Barbados, a bright red and yellow bloom.",
 ]
 
 
-# Pinned St. Helena fact. While this is set it is what the card shows EVERY day,
+# Pinned Barbados fact. While this is set it is what the card shows EVERY day,
 # instead of rotating. Set it back to None to return to the daily rotation.
-PINNED_STHELENA_FACT = None
+PINNED_BARBADOS_FACT = None
 
 
 def _pick(items, day_of_year, offset=0):
@@ -82,11 +81,11 @@ def soccer_fact(day_of_year):
     return _pick(SOCCER_FACTS, day_of_year)
 
 
-def sthelena_fact(day_of_year):
-    if PINNED_STHELENA_FACT:
-        return PINNED_STHELENA_FACT
+def barbados_fact(day_of_year):
+    if PINNED_BARBADOS_FACT:
+        return PINNED_BARBADOS_FACT
     # different offset so the two feeds don't move in lockstep
-    return _pick(STHELENA_FACTS, day_of_year, offset=7)
+    return _pick(BARBADOS_FACTS, day_of_year, offset=7)
 
 
 # Backwards-compatible alias
