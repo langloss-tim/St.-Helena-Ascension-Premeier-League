@@ -1,6 +1,6 @@
 {
   "season": "2026",
-  "updated": "2026-09-28",
+  "updated": "2026-10-02",
   "note": "Source of truth for the whole site. Barbados Premier League — new clubs and a fresh season from 2026-09-28. Add matchdays as they are played.",
   "playoffs_open": false,
   "matchdays": [
@@ -92,5 +92,33 @@
   "scorers": [],
   "friendlies": [],
   "playoffs": [],
-  "outside": []
+  "outside": [
+    {
+      "club": "Weymouth Wales FC",
+      "opponent": "Mount Pleasant FA",
+      "home": true,
+      "cs": 0,
+      "os": 0,
+      "competition": "CFU Club Championship",
+      "badge": "CFU"
+    },
+    {
+      "club": "Weymouth Wales FC",
+      "opponent": "Doc's United",
+      "home": true,
+      "cs": 3,
+      "os": 0,
+      "competition": "CFU Club Championship",
+      "badge": "CFU"
+    },
+    {
+      "club": "Weymouth Wales FC",
+      "opponent": "Defence Force",
+      "home": true,
+      "cs": 5,
+      "os": 0,
+      "competition": "CFU Club Championship",
+      "badge": "CFU"
+    }
+  ]
 }

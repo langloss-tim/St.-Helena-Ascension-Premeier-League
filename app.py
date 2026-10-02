@@ -670,6 +670,8 @@ def clock_component():
 # Every stage that is NOT the league. "friendly" is the older spelling and is
 # still honoured so an archived season keeps rendering.
 NON_LEAGUE_STAGES = ("friendly", "outside")
+# What the league's own button says on a club page, beside its cup buttons.
+LEAGUE_BUTTON = "WFL"
 
 
 def league_only(matches):
@@ -1056,6 +1058,35 @@ def render_club_detail(feed, club_id):
         unsafe_allow_html=True,
     )
 
+    matches = [m for m in datafeed.get_matches(feed)
+               if m["home"]["id"] == str(club_id) or m["away"]["id"] == str(club_id)]
+    # Upcoming non-league games belong here too — the club page is the only
+    # screen they ever appear on, so leaving them out hides them entirely.
+    outside = [m for m in matches if m.get("stage") in NON_LEAGUE_STAGES]
+
+    # A club that plays outside the league gets one button per competition —
+    # the league first, then each cup — and the page shows only the one picked.
+    # The pick remembers its club, so opening another club starts fresh.
+    if outside:
+        comps = [LEAGUE_BUTTON] + list(dict.fromkeys(
+            m.get("competition") or "Other" for m in outside))
+        picked = st.session_state.get("club_comp")
+        comp = picked[1] if picked and picked[0] == str(club_id) else None
+        cols = st.columns(len(comps))
+        for col, name in zip(cols, comps):
+            if col.button(name, key=f"comp_{club_id}_{name}", use_container_width=True,
+                          type="primary" if name == comp else "secondary"):
+                st.session_state.club_comp = (str(club_id), name)
+                st.rerun()
+        if comp not in comps:
+            st.markdown('<div class="hint">Pick a competition to see this club’s matches.</div>',
+                        unsafe_allow_html=True)
+            return
+        if comp != LEAGUE_BUTTON:
+            _render_club_cup(feed, club_id, comp,
+                             [m for m in outside if (m.get("competition") or "Other") == comp])
+            return
+
     # Standings summary
     standings = datafeed.get_standings(feed)
     row = None
@@ -1075,9 +1106,7 @@ def render_club_detail(feed, club_id):
                         for v, k in stats)
         st.markdown(f'<div class="statrow">{cells}</div>', unsafe_allow_html=True)
 
-    # This club's matches
-    matches = [m for m in datafeed.get_matches(feed)
-               if m["home"]["id"] == str(club_id) or m["away"]["id"] == str(club_id)]
+    # This club's league matches
     played = [m for m in matches if m["state"] in ("in", "post")]
     upcoming = [m for m in matches if m["state"] == "pre"]
 
@@ -1087,10 +1116,6 @@ def render_club_detail(feed, club_id):
         chips = "".join(_form_chip(m, club_id) for m in last5)
         st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>{chips}</div>',
                     unsafe_allow_html=True)
-
-    # Upcoming non-league games belong here too — the club page is the only
-    # screen they ever appear on, so leaving them out hides them entirely.
-    outside = [m for m in matches if m.get("stage") in NON_LEAGUE_STAGES]
 
     tab_res, tab_fix = st.tabs([f"✅ Results ({len(league_only(played))})",
                                 f"📅 Fixtures ({len(league_only(upcoming))})"])
@@ -1103,22 +1128,6 @@ def render_club_detail(feed, club_id):
             html = "".join(_club_match_html(m, club_id, feed) for m in reversed(league_played))
             st.markdown(html, unsafe_allow_html=True)
 
-    # Non-league games are NOT put in a tab. A third tab is pushed off the edge
-    # of the tab strip on a phone, which is exactly how a CAF tie ended up
-    # invisible. This is a plain section on the page: always on screen, always
-    # under the name of the competition it was actually played in.
-    if outside:
-        st.divider()
-        for comp in dict.fromkeys(m.get("competition") or "Other" for m in outside):
-            games = [m for m in outside if (m.get("competition") or "Other") == comp]
-            st.markdown('<div class="eyebrow"><span class="bar" '
-                        f'style="background:#f4c800"></span>🏆 {comp}</div>',
-                        unsafe_allow_html=True)
-            st.markdown('<div class="hint">Outside the league &mdash; it does '
-                        'not count towards points, goals, form or the table.</div>',
-                        unsafe_allow_html=True)
-            st.markdown("".join(_club_match_html(m, club_id, feed) for m in games),
-                        unsafe_allow_html=True)
     with tab_fix:
         league_up = league_only(upcoming)
         if not league_up:
@@ -1126,6 +1135,38 @@ def render_club_detail(feed, club_id):
         else:
             html = "".join(_club_match_html(m, club_id, feed) for m in league_up)
             st.markdown(html, unsafe_allow_html=True)
+
+
+def _render_club_cup(feed, club_id, comp, games):
+    """One cup competition on a club page: its own record, then every game.
+
+    Non-league games are NOT put in a tab. A tab past the second is pushed off
+    the edge of the tab strip on a phone, which is how a CAF tie once ended up
+    invisible — so this is a plain list, latest result first, then fixtures.
+    """
+    st.markdown('<div class="eyebrow"><span class="bar" '
+                f'style="background:#f4c800"></span>🏆 {comp}</div>',
+                unsafe_allow_html=True)
+    played = [m for m in games if m["state"] == "post"]
+    results = [_outcome(m, club_id) for m in played]
+    gf = ga = 0
+    for m in played:
+        mine, theirs = ((m["home"], m["away"]) if m["home"]["id"] == str(club_id)
+                        else (m["away"], m["home"]))
+        gf += mine["score"] or 0
+        ga += theirs["score"] or 0
+    stats = [(len(played), "Played"), (results.count("W"), "Won"),
+             (results.count("D"), "Drawn"), (results.count("L"), "Lost"),
+             (gf, "Scored"), (ga, "Conceded")]
+    cells = "".join(f'<div class="stat"><div class="v">{v}</div><div class="k">{k}</div></div>'
+                    for v, k in stats)
+    st.markdown(f'<div class="statrow">{cells}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="hint">Outside the {LEAGUE_BUTTON} &mdash; it does '
+                'not count towards points, goals, form or the table.</div>',
+                unsafe_allow_html=True)
+    order = played[::-1] + [m for m in games if m["state"] != "post"]
+    st.markdown("".join(_club_match_html(m, club_id, feed) for m in order),
+                unsafe_allow_html=True)
 
 
 def _outcome(m, club_id):
