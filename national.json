@@ -1,383 +1,348 @@
 {
-  "team": "Barbados",
-  "code": "bb",
-  "coach": "Kent Hall",
-  "updated": "2026-09-28",
-  "note": "The real Barbados men's national team (the Bajan Tridents), every senior game since January 2026. Scores are Barbados first (gf) and the opponent second (ga). Null scores = upcoming. Squad = the September 2026 Nations League squad plus the players called up only in March. Stats are Barbados 2026 games only; null = not confirmed by a source (shown as a dash). Dates are stored but not shown.",
-  "players": [
-    {
-      "pos": "GK",
-      "name": "Jamal Blackman",
-      "stats": {
-        "saves": null,
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "GK",
-      "name": "Jireh Malcolm",
-      "stats": {
-        "saves": null,
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "GK",
-      "name": "Kaliq Lashley",
-      "stats": {
-        "saves": null,
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "GK",
-      "name": "Shaquan Phillips",
-      "stats": {
-        "saves": null,
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Ajani Banton",
-      "stats": {
-        "goals": 1,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Jacob Gollop",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Mario Williams",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Raquan Clarke",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Shay Prescod",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Tyrique Bailey-Edwards",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Ackeel Applewhaite",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Carl Hinkson",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "DF",
-      "name": "Ethan Taylor",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Andre Applewhaite",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Darico King",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Davion Thorne",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Jaheim Neblett",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Jaylan Gilkes",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Lamar Catlyn",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Omani Leacock",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Sheran Hoyte",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Zachary Applewhite",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Rashad Jules",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Nadre Butcher",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Nicoli Brathwaite",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "MF",
-      "name": "Leon Elliott",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "FW",
-      "name": "Colin Griffith",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "FW",
-      "name": "Jaron Oughterson",
-      "stats": {
-        "goals": 2,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "FW",
-      "name": "Niall Reid-Stephen",
-      "stats": {
-        "goals": 2,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "FW",
-      "name": "Ross Bourne",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "FW",
-      "name": "Tajio James",
-      "stats": {
-        "goals": 0,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    },
-    {
-      "pos": "FW",
-      "name": "Thierry Gale",
-      "stats": {
-        "goals": 2,
-        "assists": null,
-        "yellows": null,
-        "reds": 0
-      }
-    }
-  ],
-  "games": [
-    {
-      "date": "2026-03-26",
-      "opponent": "Saint Martin",
-      "code": "mf",
-      "home": false,
-      "neutral": true,
-      "gf": 1,
-      "ga": 3,
-      "competition": "CONCACAF Series (friendly)"
-    },
-    {
-      "date": "2026-03-29",
-      "opponent": "St. Vincent and the Grenadines",
-      "code": "vc",
-      "home": false,
-      "neutral": true,
-      "gf": 2,
-      "ga": 3,
-      "competition": "CONCACAF Series (friendly)"
-    },
-    {
-      "date": "2026-09-25",
-      "opponent": "Saint Lucia",
-      "code": "lc",
-      "home": false,
-      "gf": 2,
-      "ga": 0,
-      "competition": "CONCACAF Nations League B"
-    },
-    {
-      "date": "2026-09-28",
-      "opponent": "Guadeloupe",
-      "code": "gp",
-      "home": false,
-      "neutral": true,
-      "gf": 2,
-      "ga": 2,
-      "competition": "CONCACAF Nations League B"
-    },
-    {
-      "date": "2026-10-05",
-      "opponent": "Bermuda",
-      "code": "bm",
-      "home": true,
-      "gf": null,
-      "ga": null,
-      "competition": "CONCACAF Nations League B"
-    }
-  ]
+ "team": "Curaçao",
+ "code": "cw",
+ "coach": "Dick Advocaat",
+ "updated": "2026-10-03",
+ "note": "The Curaçao men's national team, every senior game since January 2026. Scores are Curaçao first (gf) and the opponent second (ga). Null scores = upcoming. Real results EXCEPT two the site owner set by hand: Germany 1-2 (really 1-7) and Scotland 1-0 (really 1-4). Squad = the September 2026 Nations League call-up plus Hendrik Leito (MF, added by the site owner). Stats are Curaçao 2026 games only; null = not confirmed (shown as a dash). Dates are stored but not shown.",
+ "players": [
+  {
+   "pos": "GK",
+   "name": "Eloy Room",
+   "stats": {
+    "saves": null,
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "GK",
+   "name": "Tyrick Bodak",
+   "stats": {
+    "saves": null,
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "GK",
+   "name": "Kiyani Zeggen",
+   "stats": {
+    "saves": null,
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "DF",
+   "name": "Juriën Gaari",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "DF",
+   "name": "Sherel Floranus",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "DF",
+   "name": "Joshua Brenet",
+   "stats": {
+    "goals": 1,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "DF",
+   "name": "Jurich Carolina",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "DF",
+   "name": "Armando Obispo",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "DF",
+   "name": "Shurandy Sambo",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "DF",
+   "name": "Kyano Penso",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "MF",
+   "name": "Leandro Bacuna",
+   "stats": {
+    "goals": 1,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "MF",
+   "name": "Juninho Bacuna",
+   "stats": {
+    "goals": 3,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "MF",
+   "name": "Livano Comenencia",
+   "stats": {
+    "goals": 3,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "MF",
+   "name": "Ar'jany Martha",
+   "stats": {
+    "goals": 1,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "MF",
+   "name": "Tyrese Noslin",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "MF",
+   "name": "Nicky Souren",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "MF",
+   "name": "Hendrik Leito",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "FW",
+   "name": "Kenji Gorré",
+   "stats": {
+    "goals": 4,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "FW",
+   "name": "Jeremy Antonisse",
+   "stats": {
+    "goals": 1,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "FW",
+   "name": "Jearl Margaritha",
+   "stats": {
+    "goals": 0,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "FW",
+   "name": "Jürgen Locadia",
+   "stats": {
+    "goals": 1,
+    "assists": null,
+    "yellows": null,
+    "reds": 1
+   }
+  },
+  {
+   "pos": "FW",
+   "name": "Tahith Chong",
+   "stats": {
+    "goals": 2,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  },
+  {
+   "pos": "FW",
+   "name": "Jordi Paulina",
+   "stats": {
+    "goals": 1,
+    "assists": null,
+    "yellows": null,
+    "reds": 0
+   }
+  }
+ ],
+ "games": [
+  {
+   "date": "2026-03-27",
+   "opponent": "China",
+   "code": "cn",
+   "home": false,
+   "neutral": true,
+   "gf": 0,
+   "ga": 2,
+   "competition": "FIFA Series"
+  },
+  {
+   "date": "2026-03-31",
+   "opponent": "Australia",
+   "code": "au",
+   "home": false,
+   "gf": 1,
+   "ga": 5,
+   "competition": "FIFA Series"
+  },
+  {
+   "date": "2026-05-30",
+   "opponent": "Scotland",
+   "code": "gb-sct",
+   "home": false,
+   "gf": 1,
+   "ga": 0,
+   "competition": "Friendly",
+   "reds": 1
+  },
+  {
+   "date": "2026-06-06",
+   "opponent": "Aruba",
+   "code": "aw",
+   "home": true,
+   "gf": 4,
+   "ga": 0,
+   "competition": "Friendly"
+  },
+  {
+   "date": "2026-06-14",
+   "opponent": "Germany",
+   "code": "de",
+   "home": false,
+   "neutral": true,
+   "gf": 1,
+   "ga": 2,
+   "competition": "FIFA World Cup, Group E"
+  },
+  {
+   "date": "2026-06-20",
+   "opponent": "Ecuador",
+   "code": "ec",
+   "home": false,
+   "neutral": true,
+   "gf": 0,
+   "ga": 0,
+   "competition": "FIFA World Cup, Group E"
+  },
+  {
+   "date": "2026-06-25",
+   "opponent": "Ivory Coast",
+   "code": "ci",
+   "home": false,
+   "neutral": true,
+   "gf": 0,
+   "ga": 2,
+   "competition": "FIFA World Cup, Group E"
+  },
+  {
+   "date": "2026-09-24",
+   "opponent": "Costa Rica",
+   "code": "cr",
+   "home": false,
+   "gf": 4,
+   "ga": 3,
+   "competition": "CONCACAF Nations League A"
+  },
+  {
+   "date": "2026-09-27",
+   "opponent": "Nicaragua",
+   "code": "ni",
+   "home": true,
+   "gf": 6,
+   "ga": 1,
+   "competition": "CONCACAF Nations League A"
+  },
+  {
+   "date": "2026-10-01",
+   "opponent": "Trinidad and Tobago",
+   "code": "tt",
+   "home": true,
+   "gf": 1,
+   "ga": 0,
+   "competition": "CONCACAF Nations League A"
+  },
+  {
+   "date": "2026-10-04",
+   "opponent": "Trinidad and Tobago",
+   "code": "tt",
+   "home": false,
+   "gf": null,
+   "ga": null,
+   "competition": "CONCACAF Nations League A"
+  }
+ ]
 }

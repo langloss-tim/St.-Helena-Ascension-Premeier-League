@@ -1,19 +1,20 @@
 """
-Barbados Premier League — clubs.
+Curaçao Promé Divishon — clubs.
 
-The Barbados Premier League is its own competition. The twelve clubs below and
+The Curaçao Promé Divishon is its own competition. The ten clubs below (the
+2025-26 top flight) and
 their colours are the whole roster, and every result comes from season.json
 (see league.py).
 
-One table of twelve. There are no divisions.
+One table of ten. There are no divisions.
 """
 
 # The whole league is one table. The UI still speaks of a "division" in a few
 # places; there is exactly one.
-BARBADOS = "Barbados"
+CURACAO = "Curaçao"
 
 DIVISION_NAME = {
-    BARBADOS: "Barbados Premier League",
+    CURACAO: "Curaçao Promé Divishon",
 }
 
 # One row per club:
@@ -21,32 +22,27 @@ DIVISION_NAME = {
 # `aliases` exist so results can be entered with the short name people
 # actually say ("Weymouth", "Lions") and still land on the right club.
 _TEAMS = [
-    ("weymouth",    "Weymouth Wales FC",       BARBADOS, "#C8102E", "#FFFFFF",
-     ("Weymouth Wales", "Weymouth", "Wales")),
-    ("bagatelle",   "Bagetelle FC",            BARBADOS, "#1E6B3A", "#F2C200",
-     ("Bagetelle", "Bagatelle", "Bagatelle FC")),
-    ("brittonshill", "Britton's Hill United",  BARBADOS, "#1F4E9E", "#FFFFFF",
-     ("Britton's Hill", "Brittons Hill", "Britton's", "Brittons", "Brittons Hill United", "Britton\u2019s Hill United",
-      "Britton's Hill Utd")),
-    ("ellerton",    "Ellerton FC",             BARBADOS, "#F28C28", "#1D1D1B",
-     ("Ellerton",)),
-    ("wotton",      "Wotton FC",               BARBADOS, "#7A2E8E", "#F4C800",
-     ("Wotton",)),
-    ("lions",       "St. Andrew's Lions FC",   BARBADOS, "#E3B505", "#0E2B3B",
-     ("St. Andrew's Lions", "St Andrews Lions", "St Andrew's Lions", "Saint Andrew's Lions",
-      "St. Andrew\u2019s Lions FC", "St. Andrew Lions", "St Andrew Lions", "Lions")),
-    ("fitts",       "Fitts Village FC",        BARBADOS, "#22B8CF", "#0B3A44",
-     ("Fitts Village", "Fitts")),
-    ("green",       "Green United",            BARBADOS, "#17A66B", "#0A2240",
-     ("Green Utd", "Green")),
-    ("blackspurs",  "Blackspurs FC",           BARBADOS, "#2B2B2B", "#E8E8E8",
-     ("Blackspurs", "Black Spurs")),
-    ("atlas",       "Atlas United",            BARBADOS, "#8E1537", "#F4F4F4",
-     ("Atlas", "Atlas Utd")),
-    ("kingspark",   "Kings Park Rangers FC",   BARBADOS, "#6CACE4", "#041E42",
-     ("Kings Park Rangers", "Kings Park", "King's Park Rangers", "KPR", "Rangers")),
-    ("spartans",    "Spartens FC",             BARBADOS, "#B49759", "#1D1D1B",
-     ("Spartens", "Spartans", "Spartans FC")),
+    ("scherpenheuvel", "RKSV Scherpenheuvel",  CURACAO, "#D0021B", "#FFFFFF",
+     ("Scherpenheuvel", "Scherpenheuvel FC")),
+    ("jongholland", "CRKSV Jong Holland",      CURACAO, "#1F4FA3", "#D0021B",
+     ("Jong Holland", "Jong Holland FC")),
+    ("victoryboys", "SV Victory Boys",         CURACAO, "#1E8F3E", "#FFFFFF",
+     ("Victory Boys", "Victory Boys Bandariba", "Victory")),
+    ("jongcolombia", "CRKSV Jong Colombia",    CURACAO, "#F2C500", "#1C3F94",
+     ("Jong Colombia", "Colombia")),
+    ("inter",       "CVV Inter Willemstad",    CURACAO, "#0B5D2E", "#FFFFFF",
+     ("Inter Willemstad", "Inter", "CVV Inter")),
+    ("dominguito",  "RKSV Centro Dominguito",  CURACAO, "#8E1B1B", "#FFFFFF",
+     ("Centro Dominguito", "Dominguito")),
+    ("bandaabou",   "UD Banda Abou",           CURACAO, "#F28C28", "#FFFFFF",
+     ("Banda Abou", "UNDEBA", "UnDeBa Banda Abou", "UnDeBa")),
+    ("barber",      "CSD Barber",              CURACAO, "#7CB342", "#C62828",
+     ("Barber", "Centro Social Deportivo Barber")),
+    # Colours not published anywhere we could find — placeholder sky blue.
+    ("salina",      "SC Atletiko Salina",      CURACAO, "#00A3E0", "#FFFFFF",
+     ("Atletiko Salina", "SC Atlétiko Saliña", "Atlétiko Saliña", "Salina")),
+    ("subt",        "SV SUBT",                 CURACAO, "#0D2C8C", "#F4C800",
+     ("SUBT",)),
 ]
 
 
@@ -61,7 +57,7 @@ class Team:
         self.secondary = secondary
         self.aliases = tuple(aliases)
 
-    # The rest of the app talks about "islands"; there is one: Barbados.
+    # The rest of the app talks about "islands"; there is one: Curaçao.
     @property
     def island(self):
         return self.division
@@ -102,15 +98,16 @@ def resolve(label):
 # Division labels accepted in season.json. There is only one, and a block may
 # leave "division" out entirely.
 _DIVISION_LOOKUP = {
-    "barbados": BARBADOS, "barbados premier league": BARBADOS, "bpl": BARBADOS,
-    "league": BARBADOS,
+    "curaçao": CURACAO, "curacao": CURACAO, "promé divishon": CURACAO,
+    "prome divishon": CURACAO, "cpd": CURACAO,
+    "league": CURACAO,
 }
 
 
 def resolve_division(label):
     """Accept any reasonable spelling of the division name (or none at all)."""
     if label is None or str(label).strip() == "":
-        return BARBADOS
+        return CURACAO
     key = str(label).lower().strip()
     d = _DIVISION_LOOKUP.get(key)
     if d is None:
@@ -127,8 +124,8 @@ def display_name(tid, fallback=""):
     return t.name if t else fallback
 
 
-ISLANDS = [BARBADOS]
+ISLANDS = [CURACAO]
 DIVISIONS = ISLANDS
 
-assert len(TEAMS) == 12, f"expected 12 clubs, got {len(TEAMS)}"
-assert len(BY_ID) == 12, "duplicate club id"
+assert len(TEAMS) == 10, f"expected 10 clubs, got {len(TEAMS)}"
+assert len(BY_ID) == 10, "duplicate club id"

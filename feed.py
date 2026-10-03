@@ -92,7 +92,7 @@ def get_standings(feed):
 
 
 def get_overall(feed):
-    """All twelve clubs in one table, ranked like the division tables.
+    """All ten clubs in one table, ranked like the division tables.
 
     Derived on demand rather than stored in the feed, so an archived season
     saved before this table existed still gets one."""

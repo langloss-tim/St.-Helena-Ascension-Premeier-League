@@ -1,5 +1,5 @@
 """
-The Barbados Premier League engine.
+The Curaçao Promé Divishon engine.
 
 Everything the site shows is computed here from season.json: the league
 table, each club's form, and the model's win projection for a fixture that
@@ -170,7 +170,7 @@ build_friendlies = build_outside
 
 
 def _slug(division):
-    return "bpl"
+    return "cpd"
 
 
 def build_matches(data):
@@ -338,7 +338,7 @@ def build_standings(data, matches):
 
 
 def build_overall(standings):
-    """All twelve clubs in one table, ranked by exactly the rule the division
+    """All ten clubs in one table, ranked by exactly the rule the division
     tables use: points, then goal difference, then goals scored, then wins,
     then name.
 
@@ -443,7 +443,7 @@ def build_winprobs(standings, matches):
         away = round(100.0 - home - draw, 1)
         out[m["id"]] = {
             "home_pct": home, "draw_pct": draw, "away_pct": away,
-            "source": "BPL model",
+            "source": "CPD model",
         }
     return out
 

@@ -1,7 +1,7 @@
 {
   "season": "2026",
-  "updated": "2026-10-02",
-  "note": "Source of truth for the whole site. Barbados Premier League — new clubs and a fresh season from 2026-09-28. Add matchdays as they are played.",
+  "updated": "2026-10-03",
+  "note": "Source of truth for the whole site. Curaçao Promé Divishon — ten clubs, each plays every other club twice (home and away), 18 matchdays. Matchdays 1-4 simulated 2026-10-03; the rest are upcoming fixtures.",
   "playoffs_open": false,
   "matchdays": [
     {
@@ -9,40 +9,34 @@
       "date": null,
       "matches": [
         {
-          "home": "Weymouth Wales FC",
-          "away": "Fitts Village FC",
-          "hs": 1,
-          "as": 0
-        },
-        {
-          "home": "St. Andrew's Lions FC",
-          "away": "Green United",
-          "hs": 2,
-          "as": 1
-        },
-        {
-          "home": "Atlas United",
-          "away": "Bagetelle FC",
+          "home": "RKSV Scherpenheuvel",
+          "away": "SV SUBT",
           "hs": 0,
-          "as": 0
-        },
-        {
-          "home": "Ellerton FC",
-          "away": "Britton's Hill United",
-          "hs": 2,
-          "as": 3
-        },
-        {
-          "home": "Wotton FC",
-          "away": "Kings Park Rangers FC",
-          "hs": 1,
           "as": 1
         },
         {
-          "home": "Spartens FC",
-          "away": "Blackspurs FC",
-          "hs": 1,
+          "home": "SC Atletiko Salina",
+          "away": "CRKSV Jong Holland",
+          "hs": 0,
+          "as": 1
+        },
+        {
+          "home": "SV Victory Boys",
+          "away": "CSD Barber",
+          "hs": 2,
+          "as": 1
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "CRKSV Jong Colombia",
+          "hs": 4,
           "as": 2
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "RKSV Centro Dominguito",
+          "hs": 0,
+          "as": 1
         }
       ]
     },
@@ -51,40 +45,610 @@
       "date": null,
       "matches": [
         {
-          "home": "Green United",
-          "away": "Weymouth Wales FC",
-          "hs": 0,
-          "as": 1
-        },
-        {
-          "home": "Britton's Hill United",
-          "away": "St. Andrew's Lions FC",
-          "hs": 2,
-          "as": 2
-        },
-        {
-          "home": "Bagetelle FC",
-          "away": "Ellerton FC",
-          "hs": 0,
-          "as": 0
-        },
-        {
-          "home": "Fitts Village FC",
-          "away": "Kings Park Rangers FC",
+          "home": "SC Atletiko Salina",
+          "away": "RKSV Scherpenheuvel",
           "hs": 1,
           "as": 1
         },
         {
-          "home": "Wotton FC",
-          "away": "Spartens FC",
-          "hs": 3,
+          "home": "SV SUBT",
+          "away": "CSD Barber",
+          "hs": 1,
+          "as": 0
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "CRKSV Jong Holland",
+          "hs": 1,
+          "as": 2
+        },
+        {
+          "home": "SV Victory Boys",
+          "away": "RKSV Centro Dominguito",
+          "hs": 0,
+          "as": 0
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "CRKSV Jong Colombia",
+          "hs": 1,
+          "as": 2
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "CSD Barber",
+          "hs": 0,
+          "as": 0
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "SC Atletiko Salina",
+          "hs": 1,
+          "as": 0
+        },
+        {
+          "home": "SV SUBT",
+          "away": "RKSV Centro Dominguito",
+          "hs": 2,
+          "as": 1
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "CRKSV Jong Holland",
+          "hs": 1,
           "as": 3
         },
         {
-          "home": "Blackspurs FC",
-          "away": "Atlas United",
-          "hs": 2,
+          "home": "SV Victory Boys",
+          "away": "CRKSV Jong Colombia",
+          "hs": 3,
           "as": 3
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "date": null,
+      "matches": [
+        {
+          "home": "UD Banda Abou",
+          "away": "RKSV Scherpenheuvel",
+          "hs": 1,
+          "as": 0
+        },
+        {
+          "home": "CSD Barber",
+          "away": "RKSV Centro Dominguito",
+          "hs": 1,
+          "as": 1
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "SC Atletiko Salina",
+          "hs": 0,
+          "as": 1
+        },
+        {
+          "home": "SV SUBT",
+          "away": "CRKSV Jong Colombia",
+          "hs": 1,
+          "as": 3
+        },
+        {
+          "home": "SV Victory Boys",
+          "away": "CRKSV Jong Holland",
+          "hs": 5,
+          "as": 3
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "RKSV Centro Dominguito",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CSD Barber",
+          "away": "CRKSV Jong Colombia",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV Victory Boys",
+          "away": "SC Atletiko Salina",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV SUBT",
+          "away": "CRKSV Jong Holland",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "date": null,
+      "matches": [
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "RKSV Scherpenheuvel",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "CRKSV Jong Colombia",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV Victory Boys",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CSD Barber",
+          "away": "CRKSV Jong Holland",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV SUBT",
+          "away": "SC Atletiko Salina",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 7,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "CRKSV Jong Colombia",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV Victory Boys",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "CRKSV Jong Holland",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV SUBT",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CSD Barber",
+          "away": "SC Atletiko Salina",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 8,
+      "date": null,
+      "matches": [
+        {
+          "home": "SV Victory Boys",
+          "away": "RKSV Scherpenheuvel",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "CRKSV Jong Holland",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV SUBT",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "SC Atletiko Salina",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CSD Barber",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 9,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "CRKSV Jong Holland",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV SUBT",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "SC Atletiko Salina",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CSD Barber",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 10,
+      "date": null,
+      "matches": [
+        {
+          "home": "SV SUBT",
+          "away": "RKSV Scherpenheuvel",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "SC Atletiko Salina",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CSD Barber",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 11,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "SC Atletiko Salina",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CSD Barber",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 12,
+      "date": null,
+      "matches": [
+        {
+          "home": "CSD Barber",
+          "away": "RKSV Scherpenheuvel",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SC Atletiko Salina",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 13,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "UD Banda Abou",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "CSD Barber",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SC Atletiko Salina",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 14,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Centro Dominguito",
+          "away": "RKSV Scherpenheuvel",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "CSD Barber",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SC Atletiko Salina",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 15,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "CVV Inter Willemstad",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "RKSV Centro Dominguito",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "CSD Barber",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SC Atletiko Salina",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 16,
+      "date": null,
+      "matches": [
+        {
+          "home": "CRKSV Jong Colombia",
+          "away": "RKSV Scherpenheuvel",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "RKSV Centro Dominguito",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SC Atletiko Salina",
+          "away": "CSD Barber",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 17,
+      "date": null,
+      "matches": [
+        {
+          "home": "RKSV Scherpenheuvel",
+          "away": "SV Victory Boys",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "CRKSV Jong Colombia",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SC Atletiko Salina",
+          "away": "RKSV Centro Dominguito",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "CSD Barber",
+          "hs": null,
+          "as": null
+        }
+      ]
+    },
+    {
+      "n": 18,
+      "date": null,
+      "matches": [
+        {
+          "home": "CRKSV Jong Holland",
+          "away": "RKSV Scherpenheuvel",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SV Victory Boys",
+          "away": "SV SUBT",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "SC Atletiko Salina",
+          "away": "CRKSV Jong Colombia",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "CVV Inter Willemstad",
+          "away": "CSD Barber",
+          "hs": null,
+          "as": null
+        },
+        {
+          "home": "UD Banda Abou",
+          "away": "RKSV Centro Dominguito",
+          "hs": null,
+          "as": null
         }
       ]
     }
@@ -92,33 +656,5 @@
   "scorers": [],
   "friendlies": [],
   "playoffs": [],
-  "outside": [
-    {
-      "club": "Weymouth Wales FC",
-      "opponent": "Mount Pleasant FA",
-      "home": true,
-      "cs": 0,
-      "os": 0,
-      "competition": "CFU Club Championship",
-      "badge": "CFU"
-    },
-    {
-      "club": "Weymouth Wales FC",
-      "opponent": "Doc's United",
-      "home": true,
-      "cs": 3,
-      "os": 0,
-      "competition": "CFU Club Championship",
-      "badge": "CFU"
-    },
-    {
-      "club": "Weymouth Wales FC",
-      "opponent": "Defence Force",
-      "home": true,
-      "cs": 5,
-      "os": 0,
-      "competition": "CFU Club Championship",
-      "badge": "CFU"
-    }
-  ]
+  "outside": []
 }

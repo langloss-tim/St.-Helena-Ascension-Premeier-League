@@ -1,7 +1,7 @@
 """
-Barbados Premier League — Streamlit app.
+Curaçao Promé Divishon — Streamlit app.
 
-A fan site for a Caribbean island league: twelve clubs in one table.
+A fan site for a Caribbean island league: ten clubs in one table.
 The competition is its own — it doesn't
 shadow any other league, and it isn't wired to any outside sports feed.
 
@@ -13,6 +13,7 @@ Run locally:  streamlit run app.py
 """
 
 import base64
+import re
 import json
 from datetime import date, datetime, timedelta
 from functools import lru_cache
@@ -30,18 +31,18 @@ import national
 import teams
 
 st.set_page_config(
-    page_title="Barbados Premier League",
+    page_title="Curaçao Promé Divishon",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Barbados is UTC-4 all year.
+# Curaçao is UTC-4 all year.
 # Times shown American-style in US Eastern; a world clock (Home) covers other zones.
 LOCAL_TZ = ZoneInfo("America/New_York")
 
 ISLAND_META = {
-    teams.BARBADOS: {"flag": "🇧🇧", "code": "bb", "accent": "#ffc726"},
+    teams.CURACAO: {"flag": "🇨🇼", "code": "cw", "accent": "#f9e814"},
 }
 
 
@@ -71,7 +72,9 @@ def flag_src(code):
     isn't usable. Cached because the same handful of flags is rebuilt on every
     rerun and base64 of a file on disk is pure repeat work."""
     code = (code or "").strip().lower()
-    if len(code) != 2 or not code.isalpha():
+    # Two letters, or a UK home nation like "gb-sct" (Scotland has no
+    # two-letter code of its own).
+    if not re.fullmatch(r"[a-z]{2}(-[a-z]{3})?", code):
         return ""
     try:
         raw = (FLAG_DIR / f"{code}.png").read_bytes()
@@ -127,7 +130,7 @@ WMO = {
     95: ("⛈️", "Thunderstorm"), 96: ("⛈️", "Thunderstorm"), 99: ("⛈️", "Thunderstorm"),
 }
 WEATHER_LOCATIONS = [
-    ("Bridgetown", "🇧🇧", "bb", 13.10, -59.62),
+    ("Willemstad", "🇨🇼", "cw", 12.11, -68.93),
 ]
 
 
@@ -474,8 +477,8 @@ def dot(color):
 # Header
 # --------------------------------------------------------------------------- #
 def header(season):
-    st.markdown('<p class="hero-title">Barbados Premier League</p>', unsafe_allow_html=True)
-    sub = "🇧🇧 Barbados · Caribbean football"
+    st.markdown('<p class="hero-title">Curaçao Promé Divishon</p>', unsafe_allow_html=True)
+    sub = "🇨🇼 Curaçao · Caribbean football"
     if season:
         sub += f" · {season} season"
     st.markdown(f'<p class="hero-sub">{sub}</p>', unsafe_allow_html=True)
@@ -568,7 +571,7 @@ def _standings_html(rows, level="full", gfga=None, qual=True, island=False,
         cls = f' class="{" ".join(classes)}"' if classes else ""
 
         # A two-letter division pill, not the island flag: the flags are inlined
-        # base64 PNGs, and repeating one on all twelve rows put 130KB of data
+        # base64 PNGs, and repeating one on all ten rows put 130KB of data
         # URI into a single table. The pill is tinted with the island's accent.
         badge = ""
         if island:
@@ -611,7 +614,7 @@ def render_overall(feed, device=None):
     if not table:
         return
     st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
-                'Overall &mdash; all twelve clubs</div>', unsafe_allow_html=True)
+                'Overall &mdash; all ten clubs</div>', unsafe_allow_html=True)
     st.markdown(_standings_html(table,
                                 level=("min" if device == "📱 Phone" else "full"),
                                 gfga=False, qual=False, island=True, legend=False),
@@ -640,7 +643,7 @@ CLOCK_HTML = r"""
 <div class="clockrow" id="clocks"></div>
 <script>
   const ZONES = [
-    {label:"<img class='flagimg' src='__SH_FLAG__' alt='🇧🇧'> Barbados", tz:"America/Barbados", abbr:"AST", sh:true},
+    {label:"<img class='flagimg' src='__SH_FLAG__' alt='🇨🇼'> Curaçao", tz:"America/Curacao", abbr:"AST", sh:true},
     {label:"Eastern", tz:"America/New_York", abbr:"ET"},
     {label:"Central", tz:"America/Chicago", abbr:"CT"},
     {label:"Mountain", tz:"America/Denver", abbr:"MT"},
@@ -663,7 +666,7 @@ CLOCK_HTML = r"""
 def clock_component():
     # The clock is an iframe with its own document, so it cannot call
     # flag_img() -- the source is substituted in on the way out.
-    components.html(CLOCK_HTML.replace("__SH_FLAG__", flag_src("bb")),
+    components.html(CLOCK_HTML.replace("__SH_FLAG__", flag_src("cw")),
                     height=110, scrolling=False)
 
 
@@ -671,7 +674,7 @@ def clock_component():
 # still honoured so an archived season keeps rendering.
 NON_LEAGUE_STAGES = ("friendly", "outside")
 # What the league's own button says on a club page, beside its cup buttons.
-LEAGUE_BUTTON = "WFL"
+LEAGUE_BUTTON = "CPD"
 
 
 def league_only(matches):
@@ -871,7 +874,7 @@ def _winbar_html(m, feed):
         f'<span>{m["home"]["name"]} · {h}%</span>'
         f'<span class="mid">Draw {d}%</span>'
         f'<span>{a}% · {m["away"]["name"]}</span></div>'
-        '<div class="note">BPL model projection · from form so far</div></div>'
+        '<div class="note">CPD model projection · from form so far</div></div>'
     )
 
 
@@ -945,8 +948,8 @@ def render_home(feed, ncols=2):
         f'<div class="factcard"><div class="factlabel">⚽ Soccer fact of the day</div>'
         f'<div class="facttext">{facts.soccer_fact(day)}</div></div>'
         f'<div class="factcard sh"><div class="factlabel sh">'
-        f'{flag_img("bb", "🇧🇧", "Barbados")} Barbados fact of the day</div>'
-        f'<div class="facttext">{facts.barbados_fact(day)}</div></div>'
+        f'{flag_img("cw", "🇨🇼", "Curaçao")} Curaçao fact of the day</div>'
+        f'<div class="facttext">{facts.curacao_fact(day)}</div></div>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -978,7 +981,7 @@ def render_home(feed, ncols=2):
     if standings["conferences"] and not season_started(standings):
         st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
                     'The season is about to start</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hint">No matches have been played yet. Twelve '
+        st.markdown('<div class="hint">No matches have been played yet. Ten '
                     'clubs, one table, everyone level on nothing.</div>',
                     unsafe_allow_html=True)
     elif standings["conferences"]:
@@ -1277,7 +1280,7 @@ def render_playoffs(feed):
                 unsafe_allow_html=True)
     if brk["champion"]:
         st.markdown(f'<div class="champline">🏆 <b>{brk["champion"]["name"]}</b> '
-                    'are champions of the Barbados Premier League.</div>',
+                    'are champions of the Curaçao Promé Divishon.</div>',
                     unsafe_allow_html=True)
 
 def _series_html(s, big=False):
@@ -1342,7 +1345,7 @@ def _nt_where(g):
     return "vs" if g["home"] else "at"
 
 
-def _nt_game_html(g, team="Barbados"):
+def _nt_game_html(g, team="Curaçao"):
     if g.get("neutral"):
         ha = '<span class="ha">NEUTRAL</span>'
     else:
@@ -1384,7 +1387,7 @@ def render_national():
             st.session_state.nt_view = None
             st.rerun()
 
-    team = data.get("team", "Barbados")
+    team = data.get("team", "Curaçao")
     st.markdown(
         f'<div class="club-hero" style="border-left-color:#ffc726">'
         f'<div class="club-hero-name">{flag_img(data.get("code"), label=team)} {team}</div>'
@@ -1571,8 +1574,8 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
     st.session_state.setdefault("page", "🏠 Home")
     season = None
     with st.sidebar:
-        st.markdown('<div class="side-title">⚽ BPL</div>', unsafe_allow_html=True)
-        st.markdown('<div class="side-sub">Barbados Premier League</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-title">⚽ CPD</div>', unsafe_allow_html=True)
+        st.markdown('<div class="side-sub">Curaçao Promé Divishon</div>', unsafe_allow_html=True)
         st.divider()
         _search_box(search_feed)
         st.divider()
@@ -1614,7 +1617,7 @@ def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
 
 
 def device_prompt():
-    st.markdown('<p class="hero-title">⚽ Barbados Premier League</p>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-title">⚽ Curaçao Promé Divishon</p>', unsafe_allow_html=True)
     st.markdown('<p class="hero-sub">First — what are you viewing this on? '
                 'This sizes everything to fit your screen.</p>', unsafe_allow_html=True)
     st.write("")
@@ -1709,7 +1712,7 @@ def main():
         render_home(feed, ncols)
     elif page == "🏆 Tables":
         hint = ("Final standings for this archived season." if season is not None
-                else "One table of twelve, updated as each matchday is played.")
+                else "One table of ten, updated as each matchday is played.")
         st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
         if standings["conferences"]:
             render_standings(standings, ncols, device)
@@ -1733,7 +1736,7 @@ def main():
 
     st.divider()
     st.markdown(
-        '<div class="foot">Barbados Premier League · results published by the league.</div>',
+        '<div class="foot">Curaçao Promé Divishon · results published by the league.</div>',
         unsafe_allow_html=True,
     )
 

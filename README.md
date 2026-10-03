@@ -1,6 +1,6 @@
-# Barbados Premier League
+# Curaçao Promé Divishon
 
-A fan site for the Barbados Premier League — twelve clubs in one table.
+A fan site for the Curaçao Promé Divishon — ten clubs in one table.
 
 Live at **https://sthapl.streamlit.app** — deployed on Streamlit Cloud from this repo's `main` branch.
 
@@ -75,7 +75,7 @@ The Golden Boot chart is a `"scorers"` list. It shows in full on the Tables page
 and as a top three on the Home page, laid out **name → goals → country flag**.
 
 ```jsonc
-{"name": "Player Name", "goals": 6, "country": "Barbados", "code": "BB"}
+{"name": "Player Name", "goals": 6, "country": "Curaçao", "code": "CW"}
 ```
 
 `code` is the two-letter country code; the flag emoji is built from it, so a new
@@ -113,13 +113,13 @@ name; it needs no entry in `teams.py` and never gets one.
 
 ### National team
 
-The **National Team** page reads `national.json` — the real Barbados men's
+The **National Team** page reads `national.json` — the Curaçao men's
 national team: the squad (`pos` is GK, DF, MF or FW) and every senior game since
 January 2026. It is separate from the league: nothing in it touches the tables,
-form or projections. A score is always Barbados first (`gf`) and the opponent
+form or projections. A score is always Curaçao first (`gf`) and the opponent
 second (`ga`), with `"home": true/false` for the venue (add `"neutral": true`
 for a game at a neutral ground) and a `competition` label; leave both scores
-`null` for a game still to be played, and add `"reds": 1` for a Barbados
+`null` for a game still to be played, and add `"reds": 1` for a Curaçao
 sending-off. Each player has `stats` for 2026: `saves` (goalkeepers), `goals`,
 `assists`, `yellows`, `reds` — `null` (not confirmed) shows as a dash.
 Tap a player on the Players screen to see them. `python national.py` checks the file.
@@ -135,13 +135,13 @@ sidebar once more than one season exists.
 | File | What it does |
 | --- | --- |
 | `season.json` | **The data.** Every result, fixture and playoff game. |
-| `teams.py` | The twelve clubs — colours, name aliases. |
+| `teams.py` | The ten clubs — colours, name aliases. |
 | `league.py` | Turns `season.json` into tables, form and projections. |
 | `feed.py` | Loads the current season or an archived one. |
 | `bracket.py` | Builds the playoff bracket. |
 | `national.json` / `national.py` | The national team's squad and games. |
 | `app.py` | The Streamlit site — Home, Tables, Matches, Clubs, National Team, Playoffs. |
-| `facts.py` | Daily soccer / Barbados facts on the Home page. |
+| `facts.py` | Daily soccer / Curaçao facts on the Home page. |
 
 ## Projections
 

@@ -1,7 +1,7 @@
 """
-The Barbados Premier League postseason bracket.
+The Curaçao Promé Divishon postseason bracket.
 
-One table of twelve; the top four qualify:
+One table of ten; the top four qualify:
 
     SEMI-FINAL 1   #1  v  #4
     SEMI-FINAL 2   #2  v  #3
