@@ -3,7 +3,7 @@
  "code": "cw",
  "coach": "Dick Advocaat",
  "updated": "2026-10-03",
- "note": "The Curaçao men's national team, every senior game since January 2026. Scores are Curaçao first (gf) and the opponent second (ga). Null scores = upcoming. Real results EXCEPT two the site owner set by hand: Germany 1-2 (really 1-7) and Scotland 1-0 (really 1-4). Squad = the September 2026 Nations League call-up plus Hendrik Leito (MF, added by the site owner). Stats are Curaçao 2026 games only; null = not confirmed (shown as a dash). Dates are stored but not shown.",
+ "note": "The Curaçao men's national team, every senior game since January 2026 except the March FIFA Series games v China and Australia, which the site owner removed. Scores are Curaçao first (gf) and the opponent second (ga). Null scores = upcoming. Real results EXCEPT two the site owner set by hand: Germany 1-2 (really 1-7) and Scotland 1-0 (really 1-4). Squad = the September 2026 Nations League call-up plus Hendrik Leito (MF, added by the site owner). Stats are Curaçao 2026 games only; null = not confirmed (shown as a dash). Dates are stored but not shown.",
  "players": [
   {
    "pos": "GK",
@@ -142,7 +142,7 @@
    "pos": "MF",
    "name": "Ar'jany Martha",
    "stats": {
-    "goals": 1,
+    "goals": 0,
     "assists": null,
     "yellows": null,
     "reds": 0
@@ -240,25 +240,6 @@
   }
  ],
  "games": [
-  {
-   "date": "2026-03-27",
-   "opponent": "China",
-   "code": "cn",
-   "home": false,
-   "neutral": true,
-   "gf": 0,
-   "ga": 2,
-   "competition": "FIFA Series"
-  },
-  {
-   "date": "2026-03-31",
-   "opponent": "Australia",
-   "code": "au",
-   "home": false,
-   "gf": 1,
-   "ga": 5,
-   "competition": "FIFA Series"
-  },
   {
    "date": "2026-05-30",
    "opponent": "Scotland",
