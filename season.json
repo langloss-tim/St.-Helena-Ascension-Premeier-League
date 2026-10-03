@@ -1,7 +1,7 @@
 {
   "season": "2026",
   "updated": "2026-10-03",
-  "note": "Source of truth for the whole site. Curaçao Promé Divishon — ten clubs, each plays every other club twice (home and away), 18 matchdays. Matchdays 1-4 simulated 2026-10-03; the rest are upcoming fixtures.",
+  "note": "Source of truth for the whole site. Curaçao Promé Divishon — ten clubs, each plays every other club twice (home and away), 18 matchdays. Matchdays 1-12 simulated (1-4 on 2026-10-03, 5-12 later the same day); the rest are upcoming fixtures.",
   "playoffs_open": false,
   "matchdays": [
     {
@@ -155,32 +155,32 @@
         {
           "home": "RKSV Scherpenheuvel",
           "away": "RKSV Centro Dominguito",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 1
         },
         {
           "home": "CVV Inter Willemstad",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 3,
+          "as": 0
         },
         {
           "home": "CSD Barber",
           "away": "CRKSV Jong Colombia",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         },
         {
           "home": "SV Victory Boys",
           "away": "SC Atletiko Salina",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 1
         },
         {
           "home": "SV SUBT",
           "away": "CRKSV Jong Holland",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 1
         }
       ]
     },
@@ -191,32 +191,32 @@
         {
           "home": "CVV Inter Willemstad",
           "away": "RKSV Scherpenheuvel",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 0
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "CRKSV Jong Colombia",
-          "hs": null,
-          "as": null
+          "hs": 3,
+          "as": 0
         },
         {
           "home": "SV Victory Boys",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 0
         },
         {
           "home": "CSD Barber",
           "away": "CRKSV Jong Holland",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         },
         {
           "home": "SV SUBT",
           "away": "SC Atletiko Salina",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 0
         }
       ]
     },
@@ -227,32 +227,32 @@
         {
           "home": "RKSV Scherpenheuvel",
           "away": "CRKSV Jong Colombia",
-          "hs": null,
-          "as": null
+          "hs": 3,
+          "as": 3
         },
         {
           "home": "SV Victory Boys",
           "away": "CVV Inter Willemstad",
-          "hs": null,
-          "as": null
+          "hs": 5,
+          "as": 1
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "CRKSV Jong Holland",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 2
         },
         {
           "home": "SV SUBT",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 0
         },
         {
           "home": "CSD Barber",
           "away": "SC Atletiko Salina",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         }
       ]
     },
@@ -263,32 +263,32 @@
         {
           "home": "SV Victory Boys",
           "away": "RKSV Scherpenheuvel",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 2
         },
         {
           "home": "CRKSV Jong Colombia",
           "away": "CRKSV Jong Holland",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 1
         },
         {
           "home": "SV SUBT",
           "away": "CVV Inter Willemstad",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 1
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "SC Atletiko Salina",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         },
         {
           "home": "CSD Barber",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 3
         }
       ]
     },
@@ -299,32 +299,32 @@
         {
           "home": "RKSV Scherpenheuvel",
           "away": "CRKSV Jong Holland",
-          "hs": null,
-          "as": null
+          "hs": 3,
+          "as": 2
         },
         {
           "home": "SV SUBT",
           "away": "SV Victory Boys",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 2
         },
         {
           "home": "CRKSV Jong Colombia",
           "away": "SC Atletiko Salina",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 2
         },
         {
           "home": "CSD Barber",
           "away": "CVV Inter Willemstad",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 0
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 1
         }
       ]
     },
@@ -335,32 +335,32 @@
         {
           "home": "SV SUBT",
           "away": "RKSV Scherpenheuvel",
-          "hs": null,
-          "as": null
+          "hs": 3,
+          "as": 1
         },
         {
           "home": "CRKSV Jong Holland",
           "away": "SC Atletiko Salina",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 1
         },
         {
           "home": "CSD Barber",
           "away": "SV Victory Boys",
-          "hs": null,
-          "as": null
+          "hs": 4,
+          "as": 0
         },
         {
           "home": "CRKSV Jong Colombia",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 4,
+          "as": 2
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "CVV Inter Willemstad",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 2
         }
       ]
     },
@@ -371,32 +371,32 @@
         {
           "home": "RKSV Scherpenheuvel",
           "away": "SC Atletiko Salina",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 0
         },
         {
           "home": "CSD Barber",
           "away": "SV SUBT",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 0
         },
         {
           "home": "CRKSV Jong Holland",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 3,
+          "as": 2
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "SV Victory Boys",
-          "hs": null,
-          "as": null
+          "hs": 4,
+          "as": 2
         },
         {
           "home": "CRKSV Jong Colombia",
           "away": "CVV Inter Willemstad",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 1
         }
       ]
     },
@@ -407,32 +407,32 @@
         {
           "home": "CSD Barber",
           "away": "RKSV Scherpenheuvel",
-          "hs": null,
-          "as": null
+          "hs": 4,
+          "as": 3
         },
         {
           "home": "SC Atletiko Salina",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "SV SUBT",
-          "hs": null,
-          "as": null
+          "hs": 0,
+          "as": 1
         },
         {
           "home": "CRKSV Jong Holland",
           "away": "CVV Inter Willemstad",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 2
         },
         {
           "home": "CRKSV Jong Colombia",
           "away": "SV Victory Boys",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 0
         }
       ]
     },
