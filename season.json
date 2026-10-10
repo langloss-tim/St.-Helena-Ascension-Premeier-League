@@ -676,6 +676,46 @@
       "home": null,
       "cs": 1,
       "os": 0
+    },
+    {
+      "club": "CRKSV Jong Holland",
+      "opponent": "Defence Force FC",
+      "competition": "CONCACAF Champions League",
+      "badge": "CONCACAF",
+      "leg": "First leg",
+      "home": null,
+      "cs": 6,
+      "os": 0
+    },
+    {
+      "club": "CRKSV Jong Holland",
+      "opponent": "Defence Force FC",
+      "competition": "CONCACAF Champions League",
+      "badge": "CONCACAF",
+      "leg": "Second leg",
+      "home": null,
+      "cs": 3,
+      "os": 0
+    },
+    {
+      "club": "CRKSV Jong Holland",
+      "opponent": "Philadelphia Union",
+      "competition": "CONCACAF Champions League",
+      "badge": "CONCACAF",
+      "leg": "First leg",
+      "home": null,
+      "cs": null,
+      "os": null
+    },
+    {
+      "club": "CRKSV Jong Holland",
+      "opponent": "Philadelphia Union",
+      "competition": "CONCACAF Champions League",
+      "badge": "CONCACAF",
+      "leg": "Second leg",
+      "home": null,
+      "cs": null,
+      "os": null
     }
   ]
 }
