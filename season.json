@@ -664,6 +664,17 @@
       "badge": "CONCACAF",
       "home": null,
       "cs": 1,
+      "os": 0,
+      "leg": "First leg"
+    },
+    {
+      "club": "CRKSV Jong Holland",
+      "opponent": "Club Olimpia FC",
+      "competition": "CONCACAF Champions League",
+      "badge": "CONCACAF",
+      "leg": "Second leg",
+      "home": null,
+      "cs": 1,
       "os": 0
     }
   ]
