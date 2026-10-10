@@ -1,7 +1,7 @@
 {
   "season": "2026",
-  "updated": "2026-10-03",
-  "note": "Source of truth for the whole site. Curaçao Promé Divishon — ten clubs, each plays every other club twice (home and away), 18 matchdays. Matchdays 1-12 simulated (1-4 on 2026-10-03, 5-12 later the same day); the rest are upcoming fixtures.",
+  "updated": "2026-10-10",
+  "note": "Source of truth for the whole site. Curaçao Promé Divishon — ten clubs, each plays every other club twice (home and away), 18 matchdays. Matchdays 1-13 simulated (1-4 on 2026-10-03, 5-12 later the same day, 13 on 2026-10-10); the rest are upcoming fixtures.",
   "playoffs_open": false,
   "matchdays": [
     {
@@ -443,32 +443,32 @@
         {
           "home": "RKSV Scherpenheuvel",
           "away": "UD Banda Abou",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 1
         },
         {
           "home": "RKSV Centro Dominguito",
           "away": "CSD Barber",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 1
         },
         {
           "home": "SC Atletiko Salina",
           "away": "CVV Inter Willemstad",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 2
         },
         {
           "home": "CRKSV Jong Colombia",
           "away": "SV SUBT",
-          "hs": null,
-          "as": null
+          "hs": 1,
+          "as": 1
         },
         {
           "home": "CRKSV Jong Holland",
           "away": "SV Victory Boys",
-          "hs": null,
-          "as": null
+          "hs": 2,
+          "as": 0
         }
       ]
     },
@@ -656,5 +656,15 @@
   "scorers": [],
   "friendlies": [],
   "playoffs": [],
-  "outside": []
+  "outside": [
+    {
+      "club": "CRKSV Jong Holland",
+      "opponent": "Club Olimpia FC",
+      "competition": "CONCACAF Champions League",
+      "badge": "CONCACAF",
+      "home": null,
+      "cs": 1,
+      "os": 0
+    }
+  ]
 }
