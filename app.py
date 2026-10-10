@@ -28,6 +28,7 @@ import bracket
 import facts
 import feed as datafeed
 import national
+import squads
 import teams
 
 st.set_page_config(
@@ -432,6 +433,16 @@ div[data-testid="stButton"] > button{ font-size:1.25rem !important; font-weight:
    border:1px solid var(--line); border-radius:7px; padding:.1rem .4rem; }
 .nt-next{ font-size:1.2rem; color:var(--muted); margin:-.4rem 0 1.4rem; }
 .nt-next b{ color:var(--ink); }
+
+/* Club squad */
+.sq-row{ display:flex; align-items:center; justify-content:space-between; gap:.8rem;
+   padding:.55rem .8rem; border-bottom:1px solid var(--line); font-size:1.05rem; }
+.sq-row:last-child{ border-bottom:none; }
+.sq-name{ font-weight:600; }
+.sq-flags{ display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; justify-content:flex-end;
+   color:var(--muted); font-size:.95rem; text-align:right; }
+.sq-flags .flagimg{ height:1em; }
+.sq-list{ border:1px solid var(--line); border-radius:12px; margin-bottom:1rem; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -675,6 +686,7 @@ def clock_component():
 NON_LEAGUE_STAGES = ("friendly", "outside")
 # What the league's own button says on a club page, beside its cup buttons.
 LEAGUE_BUTTON = "CPD"
+SQUAD_BUTTON = "Squad"
 
 
 def league_only(matches):
@@ -1070,9 +1082,13 @@ def render_club_detail(feed, club_id):
     # A club that plays outside the league gets one button per competition —
     # the league first, then each cup — and the page shows only the one picked.
     # The pick remembers its club, so opening another club starts fresh.
-    if outside:
+    # A club with a squad on file gets a Squad button on the end of that row.
+    squad = load_squads().get(str(club_id))
+    if outside or squad:
         comps = [LEAGUE_BUTTON] + list(dict.fromkeys(
             m.get("competition") or "Other" for m in outside))
+        if squad:
+            comps.append(SQUAD_BUTTON)
         picked = st.session_state.get("club_comp")
         comp = picked[1] if picked and picked[0] == str(club_id) else None
         cols = st.columns(len(comps))
@@ -1082,8 +1098,12 @@ def render_club_detail(feed, club_id):
                 st.session_state.club_comp = (str(club_id), name)
                 st.rerun()
         if comp not in comps:
-            st.markdown('<div class="hint">Pick a competition to see this club’s matches.</div>',
+            what = "matches or squad" if squad else "matches"
+            st.markdown(f'<div class="hint">Pick one to see this club’s {what}.</div>',
                         unsafe_allow_html=True)
+            return
+        if comp == SQUAD_BUTTON:
+            _render_club_squad(squad)
             return
         if comp != LEAGUE_BUTTON:
             _render_club_cup(feed, club_id, comp,
@@ -1138,6 +1158,36 @@ def render_club_detail(feed, club_id):
         else:
             html = "".join(_club_match_html(m, club_id, feed) for m in league_up)
             st.markdown(html, unsafe_allow_html=True)
+
+
+@st.cache_data(ttl=15, show_spinner=False)
+def load_squads():
+    try:
+        return squads.load()
+    except (OSError, ValueError, KeyError) as e:
+        st.error(f"Club squads could not be loaded: {e}")
+        return {}
+
+
+def _render_club_squad(players):
+    """A club's squad by position: name on the left, every country the player
+    represents on the right as flag + name, or "---" when none was given."""
+    st.markdown('<div class="eyebrow"><span class="bar" '
+                f'style="background:#3d9be0"></span>👥 Squad ({len(players)})</div>',
+                unsafe_allow_html=True)
+    for code, label, group in squads.by_position(players):
+        if not group:
+            continue
+        rows = []
+        for p in group:
+            countries = p.get("countries") or []
+            where = (" ".join(f'{flag_img(c["code"], label=c["name"])} {c["name"]}'
+                              for c in countries) if countries else "---")
+            rows.append(f'<div class="sq-row"><span class="sq-name">{p["name"]}</span>'
+                        f'<span class="sq-flags">{where}</span></div>')
+        st.markdown(f'<div class="formlabel" style="margin:.4rem 0 .7rem">'
+                    f'{label} ({len(group)})</div>'
+                    f'<div class="sq-list">{"".join(rows)}</div>', unsafe_allow_html=True)
 
 
 def _render_club_cup(feed, club_id, comp, games):
