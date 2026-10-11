@@ -319,9 +319,18 @@ def _espn_matches(slug):
     return leagues.espn_matches(slug)
 
 
+# Bump when wiki_league's result changes shape: the cache is keyed on this
+# wrapper, not on leagues.py, so old results would otherwise outlive a deploy.
+WIKI_SHAPE = 2
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
-def _wiki(query):
-    return leagues.wiki_league(query)
+def _wiki(query, shape=WIKI_SHAPE):
+    found = leagues.wiki_league(query)
+    if found:
+        for k in ("standings", "matches", "facts"):
+            found.setdefault(k, [])
+    return found
 
 
 def _e(s):
