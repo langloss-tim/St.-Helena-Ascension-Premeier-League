@@ -171,7 +171,7 @@
 "Caribbean",
 "Trinidad and Tobago",
 "tt",
-"TT Premier League"
+"TT Premier Football League"
 ],
 [
 "Caribbean",
@@ -201,7 +201,7 @@
 "North & Central America",
 "Nicaragua",
 "ni",
-"Liga Primera de Nicaragua"
+"Liga Primera"
 ],
 [
 "North & Central America",
@@ -507,7 +507,7 @@
 "Africa",
 "Congo",
 "cg",
-"Congo Premier League"
+"Congo Ligue 1"
 ],
 [
 "Africa",
@@ -717,7 +717,7 @@
 "Africa",
 "Sudan",
 "sd",
-"Sudan Premier League"
+"=Sudan Premier League"
 ],
 [
 "Africa",
@@ -891,7 +891,7 @@
 "Asia",
 "Nepal",
 "np",
-"Martyr's Memorial A-Division League"
+"=Martyr's Memorial A-Division League"
 ],
 [
 "Asia",
@@ -1017,7 +1017,7 @@
 "Oceania",
 "Fiji",
 "fj",
-"Fiji Premier League"
+"=Fiji Premier League"
 ],
 [
 "Oceania",
@@ -1069,12 +1069,6 @@
 ],
 [
 "Island Games",
-"Åland",
-"ax",
-"Åland football league"
-],
-[
-"Island Games",
 "Greenland",
 "gl",
 "Greenlandic Football Championship"
@@ -1096,12 +1090,6 @@
 "Isle of Man",
 "im",
 "Isle of Man Football League"
-],
-[
-"Island Games",
-"Isle of Wight",
-"",
-"Isle of Wight Football League"
 ],
 [
 "Island Games",
@@ -1129,18 +1117,6 @@
 ],
 [
 "Island Games",
-"Gotland",
-"",
-"Gotland football"
-],
-[
-"Island Games",
-"Menorca",
-"",
-"Menorca football league"
-],
-[
-"Island Games",
 "Ynys Môn",
 "",
 "Anglesey League"
@@ -1150,11 +1126,5 @@
 "Saint Helena",
 "sh",
 "Saint Helena Football League"
-],
-[
-"Island Games",
-"Falkland Islands",
-"fk",
-"Falkland Islands football league"
 ]
 ]

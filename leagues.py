@@ -144,13 +144,29 @@ def _wiki_search(q, n=10):
     return [s["title"] for s in d.get("query", {}).get("search", [])]
 
 
-def _wiki_tables(title):
+def _wiki_html(title):
     d = _get(WIKI, action="parse", page=title, prop="text", format="json", redirects=1)
-    html = d.get("parse", {}).get("text", {}).get("*", "")
+    return d.get("parse", {}).get("text", {}).get("*", "")
+
+
+def _wiki_tables(title, html=None):
+    html = html if html is not None else _wiki_html(title)
+    # A hand-typed span like colspan="2style=..." makes pandas give up on the
+    # whole page; keep the number and drop the junk.
+    html = re.sub(r'(colspan|rowspan)="?(\d+)[^"\s>]*"?', r'\1="\2"', html)
     try:
         return pd.read_html(io.StringIO(html))
-    except ValueError:
-        return []
+    except (ValueError, ImportError):   # ImportError: pandas wanted html5lib
+        pass
+    # Still failing: read the tables one at a time and skip the broken one.
+    from lxml import html as lh
+    out = []
+    for t in lh.fromstring(html).xpath("//table[not(ancestor::table)]"):
+        try:
+            out.extend(pd.read_html(io.StringIO(lh.tostring(t, encoding="unicode"))))
+        except (ValueError, ImportError):
+            continue
+    return out
 
 
 def _flat(cols):
@@ -164,8 +180,14 @@ def _is_league_table(t):
 
 
 def _is_results_grid(t):
-    first = _flat(t.columns)[0]
-    return "Home" in first and "Away" in first
+    """Home team down the side, away team across the top. Usually headed
+    "Home \\ Away"; some pages head it "Team" over a row of short codes."""
+    cols = _flat(t.columns)
+    if "Home" in cols[0] and "Away" in cols[0]:
+        return True
+    codes = [c for c in cols[1:] if re.fullmatch(r"[A-ZÀ-Þ0-9.]{2,5}", c)]
+    return cols[0].startswith(("Team", "Club", "Home")) and len(codes) >= 4 \
+        and len(codes) >= len(cols) - 2 and abs(len(t) - len(codes)) <= 1
 
 
 def _clean(t):
@@ -190,12 +212,27 @@ def _words(text):
     return {w for w in re.findall(r"\w+", text.casefold()) if len(w) > 2 and not w.isdigit()}
 
 
+OTHER_SPORTS = re.compile(r"(?i)hockey|basketball|cricket|rugby|handball|volleyball|bandy|"
+                          r"futsal|lacrosse|baseball|netball|women|beach soccer")
+
+
 def _about(title, query):
     """A page only counts if it carries every distinctive word of the league
     asked for ("Jamaica" in Jamaica Premier League) -- otherwise a search for
     one league lands on another country's, or on a cricket league."""
-    want = _words(query) - GENERIC or _words(query)
-    return not want or want <= _words(title)
+    if OTHER_SPORTS.search(title) and not OTHER_SPORTS.search(query):
+        return False
+    if query.startswith("="):
+        query = query[1:]
+        stem = re.sub(r"^\d{4}(?:[–-]\d{2,4})?\s+", "", title)
+        return stem.casefold() == query.strip().casefold()
+    want = _words(query) - GENERIC
+    if not want:
+        # A name made only of common words ("Liga Primera") must match the
+        # title exactly, year aside -- or Chile's "Liga de Primera" would do.
+        stem = re.sub(r"^\d{4}(?:[–-]\d{2,4})?\s+", "", title)
+        return stem.casefold() == query.strip().casefold()
+    return want <= _words(title)
 
 
 def wiki_league(query):
@@ -204,29 +241,43 @@ def wiki_league(query):
     facts:[(label, value)]} or None. `facts` is only filled when there is no
     table to show."""
     query = query.strip()
+    search = query.lstrip("=")
     titles = []
-    for q in (f"{query} season", query):
+    for q in (f"{search} season", search):
         for t in _wiki_search(q):
             if t not in titles:
                 titles.append(t)
     seasons = sorted((t for t in titles if _season_year(t) and _about(t, query)),
                      key=_season_year, reverse=True)
     for title in seasons[:5] + [t for t in titles if not _season_year(t) and _about(t, query)][:2]:
-        tables = _wiki_tables(title)
+        page = _wiki_html(title)
+        tables = _wiki_tables(title, page)
         league = [_clean(t) for t in tables if _is_league_table(t)]
         if not league:
             continue
-        grid = next((_clean(t) for t in tables if _is_results_grid(t)), None)
-        return {"title": title, "tables": league, "grid": grid, "facts": [],
+        grids = [_clean(t) for t in tables if _is_results_grid(t)]
+        standings = [g for g in (_standings_from(t) for t in league[:4]) if g["rows"]]
+        teams = [r["team"] for g in standings for r in g["rows"]]
+        played = [m for g in grids for m in _grid_matches(g, teams)]
+        # A pairing left blank in one grid but already played in another (leagues
+        # that meet three times split the grids) is not a game still to come.
+        met = {(m["home"], m["away"]) for m in played if m["state"] == "post"}
+        grid_games = [m for m in played if m["state"] == "post"
+                      or (m["home"], m["away"]) not in met]
+        matches = _footballboxes(page) + _dedupe_fixtures(grid_games)
+        return {"title": title, "tables": league, "grid": grids[0] if grids else None,
+                "standings": standings, "matches": matches, "facts": [],
                 "url": _url(title)}
     # No table anywhere: fall back to the league's own article and its info
     # box (founded, clubs, champions...). Some leagues -- Saint Helena's among
     # them -- publish nothing more than that.
     for title in [t for t in titles if not _season_year(t) and _about(t, query)][:2]:
         facts = _infobox(_wiki_tables(title))
-        if facts:
-            return {"title": title, "tables": [], "grid": None, "facts": facts,
-                    "url": _url(title)}
+        league_box = any(re.search(r"(?i)clubs|champion|pyramid|level|teams", a)
+                         for a, _ in facts)
+        if facts and league_box:
+            return {"title": title, "tables": [], "grid": None, "standings": [],
+                    "matches": [], "facts": facts, "url": _url(title)}
     return None
 
 
@@ -246,3 +297,120 @@ def _infobox(tables):
             if rows:
                 return rows
     return []
+
+
+# --------------------------------------------------------------------------- #
+# Wikipedia -> the same shapes ESPN gives, so both draw the same way
+# --------------------------------------------------------------------------- #
+# Qualification / relegation bands, in the order a table usually lists them.
+BAND_COLORS = ["#2e7d32", "#1e88e5", "#00acc1", "#8e24aa", "#f9a825", "#6d4c41", "#c62828"]
+SCORE = re.compile(r"(\d+)\s*[–\-−]\s*(\d+)")
+
+
+def _team_name(text):
+    """'KÍ (C)' -> 'KÍ'. Drops the champion/qualified/relegated markers."""
+    text = re.sub(r"\s*\((?:[A-Z]{1,2}(?:,\s*[A-Z]{1,2})*)\)", "", str(text))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _num(v):
+    v = str(v).replace("−", "-").replace("–", "-").strip()
+    v = re.sub(r"^([+\-]?\d+)\.0$", r"\1", v)
+    return v if re.fullmatch(r"[+\-]?\d+", v) else ""
+
+
+def _standings_from(t):
+    # "Teamvte" -> "Team": the v·t·e links of a navbox template land in the header.
+    cols = {re.sub(r"\s*v\W*t\W*e$", "", c.split("[")[0].strip()): c for c in t.columns}
+    def col(*names):
+        for n in names:
+            if n in cols:
+                return cols[n]
+        return None
+    c_pos, c_team = col("Pos", "Rank", "#"), col("Team", "Club")
+    c_note = next((c for c in t.columns if c.startswith(("Qualification", "Promotion",
+                                                         "Relegation"))), None)
+    keys = {"gp": col("Pld", "P", "GP"), "w": col("W"), "d": col("D"), "l": col("L"),
+            "gf": col("GF", "F"), "ga": col("GA", "A"), "gd": col("GD"), "pts": col("Pts")}
+    notes, rows = {}, []
+    for i, r in enumerate(t.to_dict("records")):
+        team = _team_name(r.get(c_team, "")) if c_team else ""
+        pts = _num(r.get(keys["pts"], "")) if keys["pts"] else ""
+        if not team or pts == "":
+            continue
+        note = str(r.get(c_note, "")).strip() if c_note else ""
+        if note and note not in notes:
+            notes[note] = BAND_COLORS[len(notes) % len(BAND_COLORS)]
+        row = {k: (_num(r.get(c, "")) if c else "") for k, c in keys.items()}
+        rank = _num(r.get(c_pos, "")) if c_pos else ""
+        row.update(rank=rank or str(len(rows) + 1), team=team, logo="",
+                   note=note, color=notes.get(note, ""))
+        rows.append(row)
+    return {"name": "", "rows": rows}
+
+
+def _match(home, away, hs=None, as_=None, when="", label=""):
+    played = hs is not None
+    return {"date": when, "state": "post" if played else "pre",
+            "detail": "FT" if played else "", "home": home, "away": away,
+            "home_logo": "", "away_logo": "", "hs": hs, "as": as_, "label": label}
+
+
+def _grid_matches(g, teams):
+    """A results grid (home team down, away across) -> one match per score in
+    each cell. An empty cell is a game still to be played."""
+    rows = [_team_name(x) for x in g.iloc[:, 0]]
+    abbrs = list(g.columns[1:])
+    # Columns run in the same order as the rows; match by position.
+    away_names = rows if len(abbrs) == len(rows) else abbrs
+    out = []
+    for i, home in enumerate(rows):
+        for j, away in enumerate(away_names):
+            if j >= len(abbrs) or home == away:
+                continue
+            cell = str(g.iat[i, j + 1]).strip()
+            scores = SCORE.findall(cell)
+            for hs, as_ in scores:
+                out.append(_match(home, away, hs, as_))
+            if not scores and cell in ("", "a", "—") and cell != "—":
+                out.append(_match(home, away))
+    return out
+
+
+def _dedupe_fixtures(ms):
+    seen, out = set(), []
+    for m in ms:
+        key = (m["home"], m["away"])
+        if m["state"] == "pre":
+            if key in seen:
+                continue
+            seen.add(key)
+        out.append(m)
+    return out
+
+
+def _footballboxes(page):
+    """Dated games laid out one box each (common for cups and playoffs)."""
+    if "footballbox" not in page:
+        return []
+    from lxml import html as lh
+    doc = lh.fromstring(page)
+    out = []
+    for box in doc.xpath('//div[contains(@class,"footballbox")]'):
+        def text(cls):
+            el = box.xpath(f'.//*[contains(@class,"{cls}")]')
+            return re.sub(r"\s+", " ", el[0].text_content()).strip() if el else ""
+        home, away, score = text("fhome"), text("faway"), text("fscore")
+        if not home or not away:
+            continue
+        when = ""
+        stamp = box.xpath('.//span[contains(@class,"bday")]/text()')
+        if stamp:
+            when = stamp[0] + "T12:00Z"
+        m = SCORE.search(score)
+        if not m and when and when[:10] < date.today().isoformat():
+            continue        # already played but no score on the page
+        label = text("fdate")
+        out.append(_match(_team_name(home), _team_name(away),
+                          m.group(1) if m else None, m.group(2) if m else None, when, label))
+    return out

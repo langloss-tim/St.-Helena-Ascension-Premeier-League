@@ -28,6 +28,12 @@ Look up any league's table and matches.
 - The 216 leagues and cups in `leagues.json` are live from ESPN's public
   scoreboard: the table, live games, results from the last two weeks and
   fixtures for the next two weeks.
+- The top league of 188 more countries and islands (`world_leagues.json`):
+  the Caribbean, Africa, Asia, Oceania, the rest of Europe and the Island
+  Games. These come from each league's newest Wikipedia season page: the
+  table, and the games when the page lists them. A league with no table
+  anywhere (Saint Helena, Guernsey...) shows its league facts instead.
+  An entry starting with `=` must match the Wikipedia title exactly.
 - For any other league, type its name. The site finds that league's newest
   season page on Wikipedia and shows its table, plus the results grid when the
   page has one.
@@ -41,6 +47,7 @@ Look up any league's table and matches.
 | `clubs.json` | `[name, flag code, rating]` for every listed club |
 | `leagues.py` | ESPN and Wikipedia lookups |
 | `leagues.json` | `[slug, name]` for every ESPN league |
+| `world_leagues.json` | `[region, country, flag code, Wikipedia league name]` |
 | `flags/` | Vendored flag images. Any other code loads from flagcdn |
 
 Run locally: `pip install -r requirements.txt && streamlit run app.py`
