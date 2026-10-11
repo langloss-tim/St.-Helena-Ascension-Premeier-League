@@ -2,9 +2,11 @@
 League lookup: a table and matches for any league.
 
 The 216 leagues and cups in leagues.json come straight from ESPN's public
-scoreboard API (live tables, results and fixtures). Any other league name is
-looked up on Wikipedia instead: the newest season article that carries a
-league table, plus its results grid when it has one.
+scoreboard API (live tables, results and fixtures). Every other country's top
+league (world_leagues.json -- the Caribbean, Africa, Asia, Oceania, the rest of
+Europe and the Island Games) and any name typed in is looked up on Wikipedia
+instead: the newest season article that carries a league table, plus its
+results grid when it has one, or the league's info box when there's no table.
 """
 
 import io
@@ -32,6 +34,13 @@ class Unavailable(Exception):
 def espn_leagues():
     """[(slug, name)] for every league/cup ESPN covers, sorted by name."""
     rows = json.loads((HERE / "leagues.json").read_text(encoding="utf-8"))
+    return [tuple(r) for r in rows]
+
+
+def world_leagues():
+    """[(region, country, flag code, league name)] -- the top league of every
+    country ESPN doesn't cover, looked up on Wikipedia."""
+    rows = json.loads((HERE / "world_leagues.json").read_text(encoding="utf-8"))
     return [tuple(r) for r in rows]
 
 
@@ -181,20 +190,49 @@ def _about(title, query):
 
 def wiki_league(query):
     """Newest Wikipedia season article for `query` that has a league table.
-    Returns {title, url, tables:[DataFrame], grid: DataFrame|None} or None."""
+    Returns {title, url, tables:[DataFrame], grid: DataFrame|None,
+    facts:[(label, value)]} or None. `facts` is only filled when there is no
+    table to show."""
     query = query.strip()
     titles = []
     for q in (f"{query} season", query):
         for t in _wiki_search(q):
             if t not in titles:
                 titles.append(t)
-    seasons = sorted((t for t in titles if _season_year(t) and _about(t, query)), key=_season_year, reverse=True)
+    seasons = sorted((t for t in titles if _season_year(t) and _about(t, query)),
+                     key=_season_year, reverse=True)
     for title in seasons[:5] + [t for t in titles if not _season_year(t) and _about(t, query)][:2]:
         tables = _wiki_tables(title)
         league = [_clean(t) for t in tables if _is_league_table(t)]
         if not league:
             continue
         grid = next((_clean(t) for t in tables if _is_results_grid(t)), None)
-        return {"title": title, "tables": league, "grid": grid,
-                "url": "https://en.wikipedia.org/wiki/" + title.replace(" ", "_")}
+        return {"title": title, "tables": league, "grid": grid, "facts": [],
+                "url": _url(title)}
+    # No table anywhere: fall back to the league's own article and its info
+    # box (founded, clubs, champions...). Some leagues -- Saint Helena's among
+    # them -- publish nothing more than that.
+    for title in [t for t in titles if not _season_year(t) and _about(t, query)][:2]:
+        facts = _infobox(_wiki_tables(title))
+        if facts:
+            return {"title": title, "tables": [], "grid": None, "facts": facts,
+                    "url": _url(title)}
     return None
+
+
+def _url(title):
+    return "https://en.wikipedia.org/wiki/" + title.replace(" ", "_")
+
+
+def _infobox(tables):
+    """[(label, value)] from the first two-column info box on the page."""
+    for t in tables:
+        if t.shape[1] == 2 and 2 <= len(t) <= 30:
+            rows = []
+            for a, b in t.astype(str).itertuples(index=False):
+                a, b = (re.sub(r"\[[^\]]*\]", "", x).strip() for x in (a, b))
+                if a and b and a != b and a != "nan" and b != "nan":
+                    rows.append((a, b))
+            if rows:
+                return rows
+    return []

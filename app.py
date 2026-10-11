@@ -6,7 +6,8 @@ Two things on one site:
     the Island Games, and watch the game play out from 1' to 90' in about
     ninety seconds.
   * Leagues: look up any league's table and matches. ESPN covers 216 leagues
-    and cups live; anything else is read from Wikipedia's latest season page.
+    and cups live; every other country's top league (world_leagues.json), and
+    anything typed in, is read from Wikipedia's latest season page.
 
 sim.py holds the sides and the match engine; leagues.py fetches the data.
 
@@ -414,6 +415,15 @@ def render_wiki_league(query):
         st.warning(f"No league table found for “{query}”. Try the league's full name, "
                    "e.g. “Faroe Islands Premier League” or “Gibraltar Football League”.")
         return
+    if not found["tables"]:
+        st.caption(f"From Wikipedia: [{found['title']}]({found['url']})")
+        st.info("This league doesn't publish a table or results anywhere online, "
+                "so here is what is known about it.")
+        rows = "".join(f"<tr><td class='team'>{_e(a)}</td><td class='team'>{_e(b)}</td></tr>"
+                       for a, b in found["facts"])
+        st.markdown(f'<div class="tblwrap"><table class="tbl"><tbody>{rows}</tbody></table></div>',
+                    unsafe_allow_html=True)
+        return
     st.caption(f"From Wikipedia: [{found['title']}]({found['url']}) — the newest season "
                "page with a table. Leagues outside the live list update when Wikipedia does.")
     tab_table, tab_matches = st.tabs(["📊 Table", "⚽ Matches"])
@@ -429,22 +439,26 @@ def render_wiki_league(query):
 
 
 def render_leagues():
-    st.markdown('<div class="hint">Every league and cup in the list is live — tables, '
-                'results and fixtures. Any other league in the world (FIFA or Island '
-                'Games): type its name and press Enter.</div>', unsafe_allow_html=True)
-    espn = leagues.espn_leagues()
-    by_name = {n: s for s, n in espn}
-    pick = st.selectbox("League", list(by_name), index=None, accept_new_options=True,
-                        placeholder="Type any league…", label_visibility="collapsed",
-                        key="league_pick")
+    st.markdown('<div class="hint">Every country\'s top league is in the list — the '
+                'Caribbean, Africa, Asia, Oceania, Europe and the Island Games — along '
+                'with the big leagues and cups. Type a country or a league to find it. '
+                'Not listed? Type any league name and press Enter.</div>',
+                unsafe_allow_html=True)
+    # label -> ("espn", slug) or ("wiki", query)
+    choices = {n: ("espn", s) for s, n in leagues.espn_leagues()}
+    for region, country, _code, query in leagues.world_leagues():
+        choices.setdefault(f"{country} — {query} ({region})", ("wiki", query))
+    pick = st.selectbox("League", sorted(choices, key=str.casefold), index=None,
+                        accept_new_options=True, placeholder="Type a country or league…",
+                        label_visibility="collapsed", key="league_pick")
     if not pick:
         return
-    if pick in by_name:
-        st.subheader(pick)
-        render_espn_league(by_name[pick], pick)
+    src, ref = choices.get(pick, ("wiki", pick))
+    st.subheader(pick.split(" (")[0] if src == "wiki" and pick in choices else pick)
+    if src == "espn":
+        render_espn_league(ref, pick)
     else:
-        st.subheader(pick)
-        render_wiki_league(pick)
+        render_wiki_league(ref)
 
 
 # --------------------------------------------------------------------------- #
