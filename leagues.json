@@ -1,0 +1,866 @@
+[
+[
+"afc.asian.cup",
+"AFC Asian Cup"
+],
+[
+"afc.cupq",
+"AFC Asian Cup Qualifiers"
+],
+[
+"afc.champions",
+"AFC Champions League Elite"
+],
+[
+"afc.champions_qual",
+"AFC Champions League Elite Qualifying"
+],
+[
+"afc.cup",
+"AFC Champions League Two"
+],
+[
+"afc.cup_qual",
+"AFC Champions League Two Qualifying"
+],
+[
+"afc.w.asian.cup",
+"AFC Women's Asian Cup"
+],
+[
+"caf.nations",
+"Africa Cup of Nations"
+],
+[
+"caf.nations_qual",
+"Africa Cup of Nations Qualifying"
+],
+[
+"caf.championship",
+"African Nations Championship"
+],
+[
+"global.gulf_cup",
+"Arabian Gulf Cup"
+],
+[
+"arg.copa_de_la_superliga",
+"Argentine Copa de la Superliga"
+],
+[
+"arg.1",
+"Argentine Liga Profesional de Fútbol"
+],
+[
+"arg.2",
+"Argentine Nacional B"
+],
+[
+"arg.3",
+"Argentine Primera B"
+],
+[
+"arg.supercopa",
+"Argentine Supercopa"
+],
+[
+"arg.supercopa.internacional",
+"Argentine Supercopa Internacional"
+],
+[
+"arg.trofeo_de_la_campeones",
+"Argentine Trofeo de Campeones"
+],
+[
+"global.arnold.clark_cup",
+"Arnold Clark Cup"
+],
+[
+"aff.championship",
+"ASEAN Championship"
+],
+[
+"aus.1",
+"Australian A-League Men"
+],
+[
+"aus.w.1",
+"Australian A-League Women"
+],
+[
+"aut.1",
+"Austrian Bundesliga"
+],
+[
+"bel.1",
+"Belgian Pro League"
+],
+[
+"bel.promotion.relegation",
+"Belgian Pro League Promotion/Relegation Playoffs"
+],
+[
+"bol.1",
+"Bolivian Liga Profesional"
+],
+[
+"bol.ply.rel",
+"Bolivian Liga Profesional Promotion/Relegation Playoffs"
+],
+[
+"bra.camp.carioca",
+"Brazilian Campeonato Carioca"
+],
+[
+"bra.camp.gaucho",
+"Brazilian Campeonato Gaucho"
+],
+[
+"bra.camp.mineiro",
+"Brazilian Campeonato Mineiro"
+],
+[
+"bra.camp.paulista",
+"Brazilian Campeonato Paulista"
+],
+[
+"bra.1",
+"Brazilian Serie A"
+],
+[
+"bra.2",
+"Brazilian Serie B"
+],
+[
+"bra.supercopa_do_brazil",
+"Brazilian Supercopa Rei"
+],
+[
+"caf.champions",
+"CAF Champions League"
+],
+[
+"caf.confed",
+"CAF Confederation Cup"
+],
+[
+"campeones.cup",
+"Campeones Cup"
+],
+[
+"chi.1",
+"Chilean Primera División"
+],
+[
+"chi.1.promotion.relegation",
+"Chilean Primera División Promotion/Relegation Playoffs"
+],
+[
+"chi.super_cup",
+"Chilean Supercopa"
+],
+[
+"chn.1",
+"Chinese Super League"
+],
+[
+"chn.1.promotion.relegation",
+"Chinese Super League Promotion/Relegation Playoffs"
+],
+[
+"club.friendly",
+"Club Friendly"
+],
+[
+"col.1",
+"Colombian Primera A"
+],
+[
+"col.superliga",
+"Colombian Superliga"
+],
+[
+"concacaf.central.american.cup",
+"Concacaf Central American Cup"
+],
+[
+"concacaf.champions",
+"Concacaf Champions Cup"
+],
+[
+"concacaf.champions_cup",
+"CONCACAF Champions Cup"
+],
+[
+"concacaf.confederations_playoff",
+"Concacaf Cup"
+],
+[
+"concacaf.gold",
+"Concacaf Gold Cup"
+],
+[
+"concacaf.gold_qual",
+"Concacaf Gold Cup Qualifying"
+],
+[
+"concacaf.nations.league",
+"Concacaf Nations League"
+],
+[
+"concacaf.u23",
+"CONCACAF U23 Tournament"
+],
+[
+"concacaf.w.champions_cup",
+"Concacaf W Champions Cup"
+],
+[
+"concacaf.womens.championship",
+"Concacaf W Championship"
+],
+[
+"concacaf.w.gold",
+"Concacaf W Gold Cup"
+],
+[
+"fifa.w.concacaf.olympicsq",
+"Concacaf Women's Olympic Qualifying"
+],
+[
+"conmebol.libertadores",
+"CONMEBOL Libertadores"
+],
+[
+"fifa.conmebol.olympicsq",
+"CONMEBOL Pre-Olympic Tournament"
+],
+[
+"conmebol.recopa",
+"CONMEBOL Recopa"
+],
+[
+"conmebol.sudamericana",
+"CONMEBOL Sudamericana"
+],
+[
+"global.club_challenge",
+"CONMEBOL-UEFA Club Challenge"
+],
+[
+"global.finalissima",
+"CONMEBOL-UEFA Cup of Champions"
+],
+[
+"global.u20.intercontinental_cup",
+"CONMEBOL-UEFA U20 Intercontinental Cup"
+],
+[
+"global.w.finalissima",
+"CONMEBOL-UEFA Women's Cup of Champions"
+],
+[
+"conmebol.america",
+"Copa América"
+],
+[
+"conmebol.america.femenina",
+"Copa América Femenina"
+],
+[
+"arg.copa",
+"Copa Argentina"
+],
+[
+"bol.copa",
+"Copa Bolivia"
+],
+[
+"chi.copa_chi",
+"Copa Chile"
+],
+[
+"col.copa",
+"Copa Colombia"
+],
+[
+"bra.copa_do_brazil",
+"Copa do Brasil"
+],
+[
+"ita.coppa_italia",
+"Coppa Italia"
+],
+[
+"caf.cosafa",
+"COSAFA Cup"
+],
+[
+"crc.1",
+"Costa Rican Primera Division"
+],
+[
+"fra.coupe_de_france",
+"Coupe de France"
+],
+[
+"den.1",
+"Danish Superliga"
+],
+[
+"ned.1",
+"Dutch Eredivisie"
+],
+[
+"ned.playoff.relegation",
+"Dutch Eredivisie Promotion/Relegation Playoffs"
+],
+[
+"ned.supercup",
+"Dutch Johan Cruyff Shield"
+],
+[
+"ned.2",
+"Dutch Keuken Kampioen Divisie"
+],
+[
+"ned.cup",
+"Dutch KNVB Beker"
+],
+[
+"ned.w.knvb_cup",
+"Dutch KNVB Beker Vrouwen"
+],
+[
+"ned.3.promotion.relegation",
+"Dutch Tweede Divisie Promotion/Relegation Playoffs"
+],
+[
+"ned.w.1",
+"Dutch Vrouwen Eredivisie"
+],
+[
+"friendly.emirates_cup",
+"Emirates Cup"
+],
+[
+"eng.league_cup",
+"English Carabao Cup"
+],
+[
+"eng.trophy",
+"English EFL Trophy"
+],
+[
+"eng.charity",
+"English FA Community Shield"
+],
+[
+"eng.fa",
+"English FA Cup"
+],
+[
+"eng.fa_qual",
+"English FA Cup Qualifying"
+],
+[
+"eng.2",
+"English League Championship"
+],
+[
+"eng.3",
+"English League One"
+],
+[
+"eng.4",
+"English League Two"
+],
+[
+"eng.5",
+"English National League"
+],
+[
+"eng.1",
+"English Premier League"
+],
+[
+"eng.w.fa",
+"English Women's FA Cup"
+],
+[
+"eng.w.1",
+"English Women's Super League"
+],
+[
+"eng.w.promotion.relegation",
+"English Women's Super League Promotion/Relegation Playoff"
+],
+[
+"eng.w.league_cup",
+"English WSL Players Cup"
+],
+[
+"fifa.cwc",
+"FIFA Club World Cup"
+],
+[
+"fifa.intercontinental_cup",
+"FIFA Intercontinental Cup"
+],
+[
+"fifa.wworld.u17",
+"FIFA Under-17 Women's World Cup"
+],
+[
+"fifa.world.u17",
+"FIFA Under-17 World Cup"
+],
+[
+"fifa.world.u20",
+"FIFA Under-20 World Cup"
+],
+[
+"fifa.w.champions_cup",
+"FIFA Women's Champions Cup"
+],
+[
+"fifa.wwc",
+"FIFA Women's World Cup"
+],
+[
+"fifa.wwcq.ply",
+"FIFA Women's World Cup Qualifying - Playoff Tournament"
+],
+[
+"fifa.wworldq.uefa",
+"FIFA Women's World Cup Qualifying - UEFA"
+],
+[
+"fifa.world",
+"FIFA World Cup"
+],
+[
+"fifa.worldq.afc",
+"FIFA World Cup Qualifying - AFC"
+],
+[
+"fifa.worldq.caf",
+"FIFA World Cup Qualifying - CAF"
+],
+[
+"fifa.worldq.concacaf",
+"FIFA World Cup Qualifying - Concacaf"
+],
+[
+"fifa.worldq.conmebol",
+"FIFA World Cup Qualifying - CONMEBOL"
+],
+[
+"fifa.worldq.ofc",
+"FIFA World Cup Qualifying - OFC"
+],
+[
+"fifa.wcq.ply",
+"FIFA World Cup Qualifying - Playoff Tournament"
+],
+[
+"fifa.worldq.uefa",
+"FIFA World Cup Qualifying - UEFA"
+],
+[
+"fra.1",
+"French Ligue 1"
+],
+[
+"fra.1.promotion.relegation",
+"French Ligue 1 Promotion/Relegation Playoffs"
+],
+[
+"fra.2",
+"French Ligue 2"
+],
+[
+"fra.w.1",
+"French Première Ligue"
+],
+[
+"fra.super_cup",
+"French Trophee des Champions"
+],
+[
+"ger.2",
+"German 2. Bundesliga"
+],
+[
+"ger.1",
+"German Bundesliga"
+],
+[
+"ger.2.promotion.relegation",
+"German Bundesliga 2. Promotion/Relegation Playoffs"
+],
+[
+"ger.playoff.relegation",
+"German Bundesliga Promotion/Relegation Playoff"
+],
+[
+"ger.dfb_pokal",
+"German Cup"
+],
+[
+"ger.super_cup",
+"German Supercup"
+],
+[
+"gre.1",
+"Greek Super League"
+],
+[
+"gua.1",
+"Guatemalan Liga Nacional"
+],
+[
+"hon.1",
+"Honduran Liga Nacional"
+],
+[
+"ind.1",
+"Indian Super League"
+],
+[
+"fifa.intercontinental.cup",
+"Intercontinental Cup (India)"
+],
+[
+"fifa.friendly",
+"International Friendly"
+],
+[
+"ita.1",
+"Italian Serie A"
+],
+[
+"ita.2",
+"Italian Serie B"
+],
+[
+"ita.super_cup",
+"Italian Supercoppa"
+],
+[
+"jpn.1",
+"Japanese J.League"
+],
+[
+"jpn.world_challenge",
+"Japanese J.League World Challenge"
+],
+[
+"concacaf.leagues.cup",
+"Leagues Cup"
+],
+[
+"uru.1",
+"Liga AUF Uruguaya"
+],
+[
+"ecu.1",
+"LigaPro Ecuador"
+],
+[
+"fifa.concacaf.olympicsq",
+"Men's Olympic Qualifying Playoff"
+],
+[
+"fifa.olympics",
+"Men's Olympic Soccer Tournament"
+],
+[
+"mex.campeon",
+"Mexican Campeon de Campeones"
+],
+[
+"mex.1",
+"Mexican Liga BBVA MX"
+],
+[
+"mex.w.1",
+"Mexican Liga BBVA MX Femenil"
+],
+[
+"mex.2",
+"Mexican Liga de Expansión MX"
+],
+[
+"usa.1",
+"MLS"
+],
+[
+"can.w.nsl",
+"Northern Super League"
+],
+[
+"nor.1",
+"Norwegian Eliteserien"
+],
+[
+"nor.1.promotion.relegation",
+"Norwegian Eliteserien Promotion/Relegation Playoffs"
+],
+[
+"usa.nwsl",
+"NWSL"
+],
+[
+"usa.nwsl.cup",
+"NWSL Challenge Cup"
+],
+[
+"par.1",
+"Paraguayan Primera División"
+],
+[
+"par.1.supercopa",
+"Paraguayan Supercopa"
+],
+[
+"per.1",
+"Peruvian Liga 1"
+],
+[
+"global.pinatar_cup",
+"Pinatar Cup"
+],
+[
+"por.1",
+"Portuguese Primeira Liga"
+],
+[
+"por.1.promotion.relegation",
+"Portuguese Primeira Liga Promotion/Relegation Playoffs"
+],
+[
+"rus.1",
+"Russian Premier League"
+],
+[
+"rus.1.promotion.relegation",
+"Russian Premier League Relegation/Promotion Playoffs"
+],
+[
+"afc.saff.championship",
+"SAFF Championship"
+],
+[
+"slv.1",
+"Salvadoran Primera Division"
+],
+[
+"ksa.kings.cup",
+"Saudi King's Cup"
+],
+[
+"ksa.1",
+"Saudi Pro League"
+],
+[
+"sco.2",
+"Scottish Championship"
+],
+[
+"sco.2.promotion.relegation",
+"Scottish Championship Promotion/Relegation Playoffs"
+],
+[
+"sco.tennents",
+"Scottish Cup"
+],
+[
+"sco.tennents_qual",
+"Scottish Cup Qualifying"
+],
+[
+"sco.challenge",
+"Scottish League Challenge Cup"
+],
+[
+"sco.cis",
+"Scottish League Cup"
+],
+[
+"sco.1",
+"Scottish Premiership"
+],
+[
+"sco.1.promotion.relegation",
+"Scottish Premiership Promotion/Relegation Playoffs"
+],
+[
+"uru.2",
+"Segunda División de Uruguay"
+],
+[
+"fifa.shebelieves",
+"SheBelieves Cup"
+],
+[
+"rsa.1",
+"South African Premiership"
+],
+[
+"esp.copa_de_la_reina",
+"Spanish Copa de la Reina"
+],
+[
+"esp.copa_del_rey",
+"Spanish Copa del Rey"
+],
+[
+"esp.1",
+"Spanish LALIGA"
+],
+[
+"esp.2",
+"Spanish LALIGA 2"
+],
+[
+"esp.w.1",
+"Spanish Liga F"
+],
+[
+"esp.super_cup",
+"Spanish Supercopa"
+],
+[
+"swe.1",
+"Swedish Allsvenskan"
+],
+[
+"swe.1.promotion.relegation",
+"Swedish Allsvenskan Promotion/Relegation Playoffs"
+],
+[
+"por.taca.portugal",
+"Taca de Portugal"
+],
+[
+"esp.joan_gamper",
+"Trofeo Joan Gamper"
+],
+[
+"tur.1",
+"Turkish Super Lig"
+],
+[
+"usa.open",
+"U.S. Open Cup"
+],
+[
+"uefa.champions",
+"UEFA Champions League"
+],
+[
+"uefa.champions_qual",
+"UEFA Champions League Qualifying"
+],
+[
+"uefa.europa.conf",
+"UEFA Conference League"
+],
+[
+"uefa.europa.conf_qual",
+"UEFA Conference League Qualifying"
+],
+[
+"uefa.europa",
+"UEFA Europa League"
+],
+[
+"uefa.europa_qual",
+"UEFA Europa League Qualifying"
+],
+[
+"uefa.euro",
+"UEFA European Championship"
+],
+[
+"uefa.euroq",
+"UEFA European Championship Qualifying"
+],
+[
+"uefa.euro.u19",
+"UEFA European Under-19 Championship"
+],
+[
+"uefa.euro_u21",
+"UEFA European Under-21 Championship"
+],
+[
+"uefa.euro_u21_qual",
+"UEFA European Under-21 Championship Qualifying"
+],
+[
+"uefa.nations",
+"UEFA Nations League"
+],
+[
+"uefa.super_cup",
+"UEFA Super Cup"
+],
+[
+"uefa.wchampions",
+"UEFA Women's Champions League"
+],
+[
+"uefa.wchampions_qual",
+"UEFA Women's Champions League Qualifying"
+],
+[
+"uefa.w.europa",
+"UEFA Women's Europa Cup"
+],
+[
+"uefa.weuro",
+"UEFA Women's European Championship"
+],
+[
+"uefa.w.nations",
+"UEFA Women's Nations League"
+],
+[
+"fifa.friendly_u21",
+"Under-21 International Friendly"
+],
+[
+"usa.usl.1",
+"USL Championship"
+],
+[
+"usa.usl.l1.cup",
+"USL Cup"
+],
+[
+"usa.usl.l1",
+"USL League One"
+],
+[
+"usa.w.usl.1",
+"USL Super League"
+],
+[
+"ven.1",
+"Venezuelan Primera División"
+],
+[
+"caf.w.nations",
+"Women's Africa Cup of Nations"
+],
+[
+"fifa.friendly.w",
+"Women's International Friendly"
+],
+[
+"fifa.w.olympics",
+"Women's Olympic Soccer Tournament"
+]
+]

@@ -1,80 +1,48 @@
 """
-Curaçao Promé Divishon — Streamlit app.
+Match Simulator -- Streamlit app.
 
-A fan site for a Caribbean island league: ten clubs in one table.
-The competition is its own — it doesn't
-shadow any other league, and it isn't wired to any outside sports feed.
+Two things on one site:
+  * Simulator: pick (or type) any two clubs, or any two nations from FIFA and
+    the Island Games, and watch the game play out from 1' to 90' in about
+    ninety seconds.
+  * Leagues: look up any league's table and matches. ESPN covers 216 leagues
+    and cups live; anything else is read from Wikipedia's latest season page.
 
-Everything on every page (tables, form, results, fixtures, projections and the
-playoff bracket) is computed from season.json by league.py. To publish new
-scores, edit season.json.
+sim.py holds the sides and the match engine; leagues.py fetches the data.
 
 Run locally:  streamlit run app.py
 """
 
 import base64
-import re
+import html
 import json
-from datetime import date, datetime, timedelta
+import random
+import re
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
-import bracket
-import facts
-import feed as datafeed
-import national
-import squads
-import teams
+import leagues
+import sim
 
-st.set_page_config(
-    page_title="Curaçao Promé Divishon",
-    page_icon="⚽",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.set_page_config(page_title="Match Simulator", page_icon="⚽", layout="wide")
 
-# Curaçao is UTC-4 all year.
-# Times shown American-style in US Eastern; a world clock (Home) covers other zones.
 LOCAL_TZ = ZoneInfo("America/New_York")
 
-ISLAND_META = {
-    teams.CURACAO: {"flag": "🇨🇼", "code": "cw", "accent": "#f9e814"},
-}
-
-
-# The flags the site flies are VENDORED into flags/ and inlined as data URIs,
-# not hotlinked. Ascension used to be fetched from Wikimedia and it broke on
-# its own: Wikimedia renders only certain thumbnail widths of that file, the
-# 320px one stopped being among them, the URL started answering 400, and the
-# Golden Boot drew a broken-image icon where the flag should be. A file sitting
-# next to the app cannot 404, cannot rate-limit and cannot be reached for.
-#
-# flagcdn stays as the fallback for any code that isn't vendored, so a new
-# country still needs nothing but its two-letter code. It draws the real
-# ensigns: St. Helena comes back with its shield (the wirebird and the ship),
-# not a bare Union Jack. lipis/flag-icons was tried first and had to be
-# abandoned -- its sh.svg is byte-for-byte the UK flag, so the site was flying
-# Britain over the St. Helena Division.
-#
-# To vendor a new flag: drop a <code>.png in flags/ and nothing else changes.
+# Flags are vendored into flags/ where a file exists (they can't 404 or be
+# rate-limited) and fall back to flagcdn for every other code, so any country
+# needs nothing but its code. "gb-sct" style codes cover the UK home nations.
 FLAG_DIR = Path(__file__).resolve().parent / "flags"
 CDN_ROOT = "https://flagcdn.com/w160"
 
 
 @lru_cache(maxsize=None)
 def flag_src(code):
-    """The image source for a two-letter code -- the vendored flag as a data
-    URI when flags/ has it, a flagcdn URL when it doesn't, "" when the code
-    isn't usable. Cached because the same handful of flags is rebuilt on every
-    rerun and base64 of a file on disk is pure repeat work."""
     code = (code or "").strip().lower()
-    # Two letters, or a UK home nation like "gb-sct" (Scotland has no
-    # two-letter code of its own).
     if not re.fullmatch(r"[a-z]{2}(-[a-z]{3})?", code):
         return ""
     try:
@@ -84,1711 +52,414 @@ def flag_src(code):
     return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 
-def flag_img(code, emoji="", label="", cls="flagimg"):
-    """A flag as a drawn image rather than the regional-indicator emoji.
-    Windows has no glyphs for those emoji -- it renders them as the two bare
-    letters ("SH", "AC"), so the emoji on its own is not a flag on the machines
-    this site is actually read on. The emoji stays as the alt text, which is
-    what shows if the image cannot be drawn."""
-    src = flag_src(code)
-    if not src:
-        return emoji
-    return (f'<img class="{cls}" src="{src}" '
-            f'alt="{emoji or label}" title="{label}" loading="lazy">')
-
-
-def island_img(island, cls="flagimg"):
-    """The flag for one of the two islands, ready to drop into markup."""
-    meta = ISLAND_META.get(island, {})
-    return flag_img(meta.get("code"), meta.get("flag", ""), str(island), cls)
-
-
-# --------------------------------------------------------------------------- #
-# Cached data (one snapshot powers every page)
-# --------------------------------------------------------------------------- #
-# Short TTL: a live match ticks its minute in season.json while it is being
-# played, and a two-minute cache would show a minute that had already gone.
-@st.cache_data(ttl=15, show_spinner=False)
-def load_feed(season=None):
-    return datafeed.load_feed(season)
-
-
-@st.cache_data(ttl=600, show_spinner=False)
-def load_seasons():
-    return datafeed.load_seasons()
-
-
-# Weather ------------------------------------------------------------------- #
-WMO = {
-    0: ("☀️", "Clear"), 1: ("🌤️", "Mainly clear"), 2: ("⛅", "Partly cloudy"),
-    3: ("☁️", "Overcast"), 45: ("🌫️", "Fog"), 48: ("🌫️", "Fog"),
-    51: ("🌦️", "Light drizzle"), 53: ("🌦️", "Drizzle"), 55: ("🌦️", "Drizzle"),
-    56: ("🌦️", "Freezing drizzle"), 57: ("🌦️", "Freezing drizzle"),
-    61: ("🌧️", "Light rain"), 63: ("🌧️", "Rain"), 65: ("🌧️", "Heavy rain"),
-    66: ("🌧️", "Freezing rain"), 67: ("🌧️", "Freezing rain"),
-    71: ("🌨️", "Light snow"), 73: ("🌨️", "Snow"), 75: ("🌨️", "Heavy snow"),
-    80: ("🌦️", "Showers"), 81: ("🌦️", "Showers"), 82: ("⛈️", "Heavy showers"),
-    95: ("⛈️", "Thunderstorm"), 96: ("⛈️", "Thunderstorm"), 99: ("⛈️", "Thunderstorm"),
-}
-WEATHER_LOCATIONS = [
-    ("Willemstad", "🇨🇼", "cw", 12.11, -68.93),
-]
-
-
-@st.cache_data(ttl=1800, show_spinner=False)
-def load_weather():
-    out = []
-    for name, flag, fcode, lat, lon in WEATHER_LOCATIONS:
-        entry = {"name": name, "flag": flag, "fcode": fcode,
-                 "temp": None, "code": None, "wind": None, "hum": None}
-        try:
-            r = requests.get(
-                "https://api.open-meteo.com/v1/forecast",
-                params={"latitude": lat, "longitude": lon,
-                        "current": "temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m",
-                        "temperature_unit": "fahrenheit", "wind_speed_unit": "mph"},
-                timeout=8,
-            )
-            c = r.json()["current"]
-            entry.update(temp=round(c["temperature_2m"]), code=int(c["weather_code"]),
-                         wind=round(c["wind_speed_10m"]), hum=c.get("relative_humidity_2m"))
-        except Exception:
-            pass
-        out.append(entry)
-    return out
-
-
-# --------------------------------------------------------------------------- #
-# Styling
-# --------------------------------------------------------------------------- #
 CSS = """
 <style>
-:root{
-  --bg:#0e1117; --panel:#161b26; --line:rgba(255,255,255,.09);
-  --ink:#eef1f6; --muted:rgba(238,241,246,.55); --accent:#e4572e;
-  --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+html{ font-size:18px; }
+.block-container{ padding-top:2rem; max-width:1100px; }
+.hero-title{ font-size:3rem; font-weight:800; letter-spacing:-1px; line-height:1.05; margin:0; }
+.hero-sub{ font-size:1.15rem; color:rgba(238,241,246,.6); margin:.4rem 0 1rem; }
+.hint{ font-size:1rem; color:rgba(238,241,246,.6); margin:-.2rem 0 1rem; }
+button[data-baseweb="tab"] p{ font-size:1.1rem !important; font-weight:700 !important; }
+
+.tblwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:1.2rem; }
+.tbl{ width:100%; border-collapse:collapse; font-size:1rem; }
+.tbl th{ text-transform:uppercase; font-size:.75rem; letter-spacing:.5px; color:rgba(238,241,246,.55);
+         padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.12); text-align:center; }
+.tbl td{ padding:.45rem .4rem; border-bottom:1px solid rgba(255,255,255,.06); text-align:center;
+         white-space:nowrap; }
+.tbl td.team, .tbl th.team{ text-align:left; }
+.tbl td.pts{ font-weight:800; }
+.tbl img{ width:22px; height:22px; object-fit:contain; vertical-align:middle; margin-right:.45rem; }
+.tbl .mark{ display:inline-block; width:4px; height:1.2rem; border-radius:2px; vertical-align:middle; }
+.legend{ font-size:.85rem; color:rgba(238,241,246,.6); margin:-.6rem 0 1.2rem; }
+.legend span{ display:inline-block; margin-right:1rem; }
+.legend i{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:.35rem; }
+
+.mday{ font-weight:800; margin:1rem 0 .4rem; color:rgba(238,241,246,.75); }
+.match{ display:grid; grid-template-columns:1fr auto 1fr; gap:.6rem; align-items:center;
+        background:#161b26; border:1px solid rgba(255,255,255,.07); border-radius:12px;
+        padding:.6rem .8rem; margin-bottom:.45rem; }
+.match .h{ text-align:right; } .match .a{ text-align:left; }
+.match img{ width:22px; height:22px; object-fit:contain; vertical-align:middle; margin:0 .4rem; }
+.match .sc{ font-weight:800; font-size:1.15rem; min-width:4.2rem; text-align:center; }
+.match .st{ font-size:.75rem; color:rgba(238,241,246,.55); text-align:center; font-weight:600; }
+.match .live{ color:#2ecc71; }
+.match .win{ font-weight:800; }
+@media (max-width:640px){
+  html{ font-size:16px; }
+  .hero-title{ font-size:2.1rem; }
+  .match{ padding:.5rem; gap:.3rem; font-size:.9rem; }
+  .match img{ width:18px; height:18px; margin:0 .25rem; }
 }
-html{ font-size:19px; }   /* scales the whole app up */
-html, body, [class*="st-"], .stMarkdown, p, span, div { font-family: var(--font); }
-
-/* Sidebar */
-section[data-testid="stSidebar"]{ min-width:290px; }
-.side-title{ font-size:1.55rem; font-weight:800; line-height:1.1; margin:.2rem 0 .1rem; }
-.side-sub{ font-size:.95rem; color:var(--muted); margin:0 0 .4rem; }
-.stRadio label p { font-size:1.2rem !important; font-weight:600; }
-button[data-baseweb="tab"]{ font-size:1.15rem !important; font-weight:600 !important; }
-.block-container{ padding-top:2rem; max-width:1250px; }
-
-/* Header */
-.hero-title{ font-size:3.7rem; font-weight:800; letter-spacing:-1.5px; line-height:1.02; margin:0; }
-.hero-sub{ font-size:1.35rem; color:var(--muted); margin:.5rem 0 0; }
-
-/* Section eyebrow */
-.eyebrow{ font-size:2rem; font-weight:800; letter-spacing:.1px; margin:.2rem 0 1.1rem;
-          display:flex; align-items:center; gap:.7rem; }
-.eyebrow .bar{ width:40px; height:5px; border-radius:99px; display:inline-block; }
-.hint{ font-size:1.2rem; color:var(--muted); margin:-.2rem 0 1.4rem; }
-
-.dot{ width:17px; height:17px; border-radius:50%; display:inline-block; flex:0 0 auto;
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,.22); vertical-align:middle; }
-
-/* Standings table */
-.tblwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:1.28rem; }
-.tbl thead th{ text-transform:uppercase; font-size:.9rem; letter-spacing:.6px;
-   color:var(--muted); font-weight:700; padding:.55rem .5rem; border-bottom:1px solid var(--line);
-   text-align:center; }
-.tbl thead th.l{ text-align:left; }
-.tbl td{ padding:.85rem .5rem; border-bottom:1px solid rgba(255,255,255,.05); text-align:center; }
-.tbl td.club{ text-align:left; font-weight:600; }
-.tbl td.club .dot{ margin-right:.65rem; }
-.tbl td.rank{ color:var(--muted); font-variant-numeric:tabular-nums; width:2.6rem; }
-.tbl td.pts{ font-weight:800; font-size:1.5rem; color:#fff;
-              background:#1c1f25; }
-.tbl thead th.pts{ color:#fff; background:#1c1f25; }
-/* Pts is pinned to the right edge. Its background MUST stay opaque -- with a
-   translucent one the GD/GA cells scroll underneath and bleed through it,
-   which reads as a smudged, double-printed column. #1c1f25 is exactly the old
-   rgba(255,255,255,.06) already flattened onto --bg, so it looks unchanged. */
-.tbl td.pts, .tbl thead th.pts{ position:sticky; right:0; z-index:2;
-              box-shadow:-1px 0 0 var(--line); }
-.tbl thead th.pts{ z-index:3; }
-.legend .scoring{ color:var(--text); font-size:1.1rem; }
-.legend .scoring b{ font-weight:800; }
-.legend .scoring b.w{ color:#7fe08f; }
-.legend .scoring b.d{ color:var(--muted); }
-.legend .scoring b.l{ color:#ff9273; }
-.tbl tr:hover td{ background:rgba(255,255,255,.03); }
-.tbl tr:hover td.pts{ background:#23262c; }
-.tbl tr.cutoff td{ border-bottom:2px solid rgba(255,255,255,.22); }
-.tbl tr.qual td.rank{ color:#57c66a; font-weight:700; }
-.legend{ font-size:1.05rem; color:var(--muted); margin-top:.9rem; }
-.legend b{ color:#57c66a; }
-.legend b.wc{ color:#f4b942; }
-.tbl tr.wildcard td.rank{ color:#f4b942; font-weight:700; }
-.tbl td.form{ text-align:left; white-space:nowrap; padding-left:.9rem; }
-.tbl td.form .formchip{ width:1.55rem; height:1.55rem; font-size:.8rem; margin-right:.18rem; }
-/* Form sits immediately left of Pts, so the two read together once a narrow
-   table is scrolled to its right-hand end. It shrinks with the table: letters
-   while there is room for them, plain colour dots on a phone. */
-.tbl.tight td.form{ padding-left:.5rem; }
-.tbl.tight td.form .formchip{ width:1.05rem; height:1.05rem; font-size:.58rem;
-   border-radius:4px; margin-right:.1rem; }
-.tbl.mini td.form{ padding-left:.45rem; }
-.tbl.mini td.form .formchip{ width:.6rem; height:.6rem; border-radius:50%;
-   font-size:0; margin-right:.17rem; }
-.tbl .tbd{ color:var(--muted); }
-.tbl td.club .isl{ margin-left:.55rem; font-size:.6em; font-weight:800;
-   letter-spacing:.5px; padding:.14em .42em; border-radius:6px;
-   border:1px solid currentColor; vertical-align:.14em; opacity:.85; }
-/* Side-by-side tables get half the width; shrink the furniture so the columns
-   that remain still fit without forcing a scrollbar. */
-.tbl.tight{ font-size:1.12rem; }
-.tbl.tight thead th{ font-size:.82rem; padding:.5rem .34rem; }
-.tbl.tight td{ padding:.7rem .34rem; }
-.tbl.tight td.rank{ width:2.2rem; }
-.tbl.tight td.pts{ font-size:1.32rem; }
-.tbl.tight td.club .dot{ margin-right:.45rem; }
-.champline{ margin-top:1rem; font-size:1.3rem; text-align:center;
-            border:1px solid rgba(244,200,0,.5); border-radius:14px; padding:.9rem 1rem;
-            background:rgba(244,200,0,.07); }
-
-/* Match-day grouping */
-.daygroup{ margin-bottom:1.6rem; }
-.dayhdr{ display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
-   margin:1.4rem 0 .7rem; padding-bottom:.4rem; border-bottom:1px solid var(--line); }
-.dayhdr > span:first-child{ font-size:1.35rem; font-weight:700; }
-.dayhdr .daycount{ font-size:1rem; color:var(--muted); white-space:nowrap; }
-
-/* Match cards */
-.match{ border:1px solid var(--line); border-left-width:6px; border-radius:18px;
-   padding:1.2rem 1.5rem; margin-bottom:1rem; background:var(--panel); }
-.match .top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.65rem; }
-.mrow{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.24rem 0; }
-.tname{ display:flex; align-items:center; gap:.8rem; font-size:1.75rem; font-weight:600; }
-.tname .dot{ width:20px; height:20px; }
-.tname.win{ font-weight:800; }
-.tname.lose{ color:var(--muted); }
-.score{ font-size:2.2rem; font-weight:800; min-width:2rem; text-align:center;
-        font-variant-numeric:tabular-nums; }
-.status{ font-size:1.1rem; color:var(--muted); }
-.kick{ font-size:1.15rem; color:var(--muted); margin-top:.6rem; }
-.live{ color:#fff; background:var(--accent); padding:.22rem .7rem; border-radius:99px;
-       font-size:.95rem; font-weight:800; letter-spacing:.4px; }
-.match.islive{ border-color:var(--accent); }
-/* A sending-off, shown against the club that lost the player. */
-.redcard{ display:inline-block; width:.72em; height:.72em; background:#e0322d;
-          border-radius:2px; margin-left:.45rem; vertical-align:-.02em;
-          box-shadow:0 0 0 1px rgba(0,0,0,.45); }
-
-/* Win probability bar */
-.wp{ margin:.85rem 0 .2rem; }
-.wp .bar{ height:15px; border-radius:99px; overflow:hidden; display:flex; }
-.wp .bar > div{ height:100%; }
-.wp .labels{ display:flex; justify-content:space-between; font-size:1.1rem; margin-top:.5rem; color:var(--ink); }
-.wp .labels .mid{ color:var(--muted); }
-.wp .note{ font-size:1rem; color:var(--muted); margin-top:.4rem; }
-
-/* Club cards */
-.clubgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:.9rem; }
-.club{ border:1px solid var(--line); border-left-width:6px; border-radius:15px;
-   padding:1.1rem 1.25rem; background:var(--panel); font-size:1.45rem; font-weight:600;
-   display:flex; align-items:center; gap:.8rem; }
-
-.foot{ color:var(--muted); font-size:1.05rem; margin-top:.5rem; }
-
-/* Home / away tags */
-.ha{ font-size:.72rem; font-weight:800; letter-spacing:.5px; padding:.12rem .5rem;
-     border-radius:99px; margin-left:.2rem; vertical-align:middle; }
-.ha.home{ background:rgba(87,198,106,.18); color:#7fe08f; }
-.ha.away{ background:rgba(255,255,255,.08); color:var(--muted); }
-.cm-leg{ font-size:.72rem; font-weight:700; color:var(--muted);
-         letter-spacing:.4px; text-transform:uppercase; }
-.cm-pens{ font-size:.82rem; color:var(--muted); font-weight:700;
-          margin-right:.6rem; white-space:nowrap; }
-.ha.friendly{ background:rgba(124,133,149,.22); color:#c3cad6;
-              border:1px solid rgba(255,255,255,.14); }
-
-/* Golden Boot */
-.scorers{ border:1px solid var(--line); border-radius:14px; background:var(--panel);
-          overflow:hidden; }
-.scorer{ display:flex; align-items:center; gap:.75rem; padding:.75rem 1rem;
-         border-bottom:1px solid rgba(255,255,255,.05); }
-.scorer:last-child{ border-bottom:none; }
-.scorer .srank{ min-width:2.1rem; color:var(--muted); font-weight:700;
-                font-variant-numeric:tabular-nums; }
-.scorer.lead .srank{ color:#f4c800; }
-.scorer .sname{ font-size:1.25rem; font-weight:600; white-space:nowrap;
-                overflow:hidden; text-overflow:ellipsis; min-width:0; }
-.scorer .sgoals{ margin-left:auto; font-size:1.45rem; font-weight:800;
-                 font-variant-numeric:tabular-nums; }
-.scorer .sgoals small{ font-size:.8rem; font-weight:600; color:var(--muted);
-                       margin-left:.3rem; }
-/* The flag is an <img>, so it needs a drawn size rather than a font size.
-   The span rule is the fallback for a country with no usable code. */
-.scorer img.sflag{ width:2.1rem; height:auto; display:block; border-radius:3px;
-                   box-shadow:0 0 0 1px rgba(255,255,255,.14); }
-.scorer span.sflag{ font-size:1.5rem; line-height:1; min-width:2.1rem;
-                    text-align:right; }
-.scorer .srank, .scorer .sgoals, .scorer .sflag{ flex:none; }
-
-/* Island/country flags in running text. Sized in em so they track whatever
-   type they sit next to, from the small weather label to the club hero. */
-.flagimg{ width:1.9em; height:auto; display:inline-block; vertical-align:-.26em;
-          border-radius:2px; box-shadow:0 0 0 1px rgba(255,255,255,.14); }
-
-/* Fact of the day (two compact cards side by side) */
-.factrow{ display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin:.3rem 0 1.5rem; }
-@media (max-width:800px){ .factrow{ grid-template-columns:1fr; } }
-.factcard{ border:1px solid var(--line); border-left:5px solid var(--accent); border-radius:14px;
-   padding:.9rem 1.1rem; background:var(--panel); }
-.factcard.sh{ border-left-color:#3d9be0; }
-.factlabel{ font-size:.82rem; font-weight:800; color:var(--accent); letter-spacing:.4px;
-   text-transform:uppercase; margin-bottom:.35rem; }
-.factlabel.sh{ color:#3d9be0; }
-.facttext{ font-size:1.1rem; font-weight:500; line-height:1.4; }
-
-/* Weather */
-.wxrow{ display:grid; grid-template-columns:1fr 1fr; gap:.9rem; margin:.2rem 0 1.4rem; }
-@media (max-width:800px){ .wxrow{ grid-template-columns:1fr; } }
-.wx{ display:flex; align-items:center; gap:1rem; border:1px solid var(--line); border-radius:14px;
-   padding:.9rem 1.2rem; background:var(--panel); }
-.wx-emoji{ font-size:2.6rem; line-height:1; }
-.wx-loc{ font-size:1.05rem; color:var(--muted); }
-.wx-temp{ font-size:2rem; font-weight:800; line-height:1.1; }
-.wx-sub{ font-size:.95rem; color:var(--muted); margin-top:.15rem; }
-
-/* Match of the Day */
-.motd{ border:1px solid var(--line); border-left:6px solid #f4c800; border-radius:18px;
-   padding:1.3rem 1.6rem; background:var(--panel); margin-bottom:1.6rem; }
-.motd-label{ font-size:1rem; font-weight:800; color:#f4c800; text-transform:uppercase;
-   letter-spacing:.4px; margin-bottom:.6rem; }
-.motd-teams{ display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; font-size:2rem; font-weight:800; }
-.motd-v{ color:var(--muted); font-weight:600; font-size:1.4rem; margin:0 .3rem; }
-.motd-when{ font-size:1.1rem; color:var(--muted); margin:.5rem 0 .2rem; }
-
-/* Leaders */
-.leader{ border:1px solid var(--line); border-left-width:6px; border-radius:16px;
-   padding:1.1rem 1.3rem; background:var(--panel); }
-.leader-isl{ font-size:1.05rem; color:var(--muted); margin-bottom:.4rem; }
-.leader-name{ font-size:1.9rem; font-weight:800; display:flex; align-items:center; gap:.6rem; }
-.leader-pts{ font-size:1.15rem; color:var(--muted); margin-top:.35rem; }
-
-/* Club buttons */
-div[data-testid="stButton"] > button{ font-size:1.25rem !important; font-weight:600 !important;
-   padding:.75rem 1rem !important; border-radius:13px !important; }
-
-/* Club detail */
-.club-hero{ border:1px solid var(--line); border-left-width:8px; border-radius:18px;
-   padding:1.3rem 1.6rem; background:var(--panel); margin:.6rem 0 1.2rem; }
-.club-hero-name{ font-size:2.6rem; font-weight:800; display:flex; align-items:center; gap:.7rem; }
-.club-hero-isl{ font-size:1.2rem; color:var(--muted); margin-top:.3rem; }
-
-.statrow{ display:flex; flex-wrap:wrap; gap:.7rem; margin-bottom:1.4rem; }
-.stat{ flex:1 1 auto; min-width:92px; border:1px solid var(--line); border-radius:14px;
-   padding:.85rem 1rem; background:var(--panel); text-align:center; }
-.stat .v{ font-size:1.8rem; font-weight:800; line-height:1; }
-.stat .k{ font-size:.9rem; color:var(--muted); margin-top:.35rem; }
-
-.formline{ display:flex; align-items:center; gap:.5rem; margin:.2rem 0 1.4rem; }
-.formlabel{ font-size:1.1rem; color:var(--muted); margin-right:.3rem; }
-.formchip{ display:inline-flex; align-items:center; justify-content:center; width:2rem; height:2rem;
-   border-radius:8px; font-weight:800; font-size:1rem; }
-.formchip.w{ background:rgba(87,198,106,.22); color:#7fe08f; }
-.formchip.d{ background:rgba(255,255,255,.10); color:var(--muted); }
-.formchip.l{ background:rgba(228,87,46,.20); color:#ff9273; }
-
-/* Club-perspective match rows */
-.cmatch{ display:flex; align-items:center; justify-content:space-between; gap:1rem;
-   border:1px solid var(--line); border-left-width:6px; border-radius:14px;
-   padding:.9rem 1.2rem; margin-bottom:.7rem; background:var(--panel); }
-.cm-left{ display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; }
-.cm-when{ font-size:1rem; color:var(--muted); min-width:5.5rem; }
-.cm-opp{ font-size:1.4rem; font-weight:600; display:flex; align-items:center; gap:.5rem; }
-.cm-right{ display:flex; align-items:center; gap:.7rem; }
-.cm-score{ font-size:1.6rem; font-weight:800; font-variant-numeric:tabular-nums; }
-.cm-pred{ font-size:1.2rem; font-weight:700; color:var(--accent); }
-.cm-pred.muted{ color:var(--muted); font-weight:600; }
-
-/* Playoff bracket */
-.brk-cols{ display:flex; gap:1rem; overflow-x:auto; padding-bottom:.8rem; margin-bottom:1.4rem; }
-.brk-col{ flex:0 0 auto; min-width:230px; display:flex; flex-direction:column; gap:.7rem; }
-.brk-h{ font-size:1rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
-   color:var(--muted); padding-bottom:.3rem; border-bottom:1px solid var(--line); }
-.series{ border:1px solid var(--line); border-radius:13px; background:var(--panel); padding:.7rem .85rem; }
-.series.big{ max-width:420px; margin:0 auto; border-color:#f4c800; }
-.steam{ display:flex; align-items:center; gap:.5rem; font-size:1.2rem; font-weight:600; padding:.18rem 0; }
-.steam .seed{ font-size:.85rem; color:var(--muted); min-width:1.8rem; font-weight:700; }
-.steam .swins{ margin-left:auto; font-weight:800; font-variant-numeric:tabular-nums; }
-.steam .tbd{ color:var(--muted); font-weight:500; }
-.steam.win{ font-weight:800; }
-.steam.out{ opacity:.5; }
-.smeta{ font-size:.85rem; color:var(--muted); margin-top:.4rem; border-top:1px solid rgba(255,255,255,.05);
-   padding-top:.35rem; }
-.brk-final{ margin-bottom:1rem; }
-.brk-final .steam{ font-size:1.5rem; }
-
-/* National team */
-.nt-pos{ font-size:.85rem; font-weight:800; letter-spacing:.5px; color:var(--muted);
-   border:1px solid var(--line); border-radius:7px; padding:.1rem .4rem; }
-.nt-next{ font-size:1.2rem; color:var(--muted); margin:-.4rem 0 1.4rem; }
-.nt-next b{ color:var(--ink); }
-
-/* Club squad */
-.sq-row{ display:flex; align-items:center; justify-content:space-between; gap:.8rem;
-   padding:.55rem .8rem; border-bottom:1px solid var(--line); font-size:1.05rem; }
-.sq-row:last-child{ border-bottom:none; }
-.sq-name{ font-weight:600; }
-.sq-flags{ display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; justify-content:flex-end;
-   color:var(--muted); font-size:.95rem; text-align:right; }
-.sq-flags .flagimg{ height:1em; }
-.sq-list{ border:1px solid var(--line); border-radius:12px; margin-bottom:1rem; }
 </style>
 """
-st.markdown(CSS, unsafe_allow_html=True)
-
-# --------------------------------------------------------------------------- #
-# Device sizing — the user picks their device and everything scales to fit.
-# --------------------------------------------------------------------------- #
-DEVICES = ["🖥️ Desktop", "💻 Laptop", "📟 iPad", "📱 Phone"]
-# base font size (px) that all rem-based sizes scale from, and how many columns
-# the side-by-side sections (tables, leaders) use.
-DEVICE_CFG = {
-    "🖥️ Desktop": {"px": 19, "cols": 2},
-    "💻 Laptop":  {"px": 15, "cols": 2},
-    "📟 iPad":    {"px": 15, "cols": 1},
-    "📱 Phone":   {"px": 12, "cols": 1},
-}
-
-
-def apply_device_css(device):
-    cfg = DEVICE_CFG.get(device, DEVICE_CFG["💻 Laptop"])
-    px = cfg["px"]
-    extra = f"<style>html{{font-size:{px}px !important;}}"
-    if device in ("📱 Phone", "📟 iPad"):
-        extra += ".factrow{grid-template-columns:1fr;}"
-        extra += ".block-container{padding-left:.6rem;padding-right:.6rem;}"
-    if device == "📱 Phone":
-        extra += ".hero-title{font-size:2.3rem;letter-spacing:-.5px;}"
-        extra += ".scorer{gap:.5rem;}.scorer img.sflag{width:1.8rem;}"
-        extra += ".brk-col{min-width:200px;}"
-    extra += "</style>"
-    st.markdown(extra, unsafe_allow_html=True)
-
-
-def device_cols(device):
-    return DEVICE_CFG.get(device, DEVICE_CFG["💻 Laptop"])["cols"]
-
-
-def dot(color):
-    return f'<span class="dot" style="background:{color}"></span>'
 
 
 # --------------------------------------------------------------------------- #
-# Header
+# Simulator
 # --------------------------------------------------------------------------- #
-def header(season):
-    st.markdown('<p class="hero-title">Curaçao Promé Divishon</p>', unsafe_allow_html=True)
-    sub = "🇨🇼 Curaçao · Caribbean football"
-    if season:
-        sub += f" · {season} season"
-    st.markdown(f'<p class="hero-sub">{sub}</p>', unsafe_allow_html=True)
-
-
-# --------------------------------------------------------------------------- #
-# Tables page
-# --------------------------------------------------------------------------- #
-def season_started(standings):
-    """Has anyone actually played? Before the first kick-off every club is level
-    on nothing, and a table sorted from an all-zero row is alphabetical — which
-    must not be dressed up as a standing."""
-    return any(t["played"] for conf in standings.get("conferences", [])
-               for t in conf["table"])
-
-
-def render_standings(standings, ncols=2, device=None):
-    # Two tables side by side each get HALF the width, so that is the layout
-    # most likely to push Points off the edge -- not the single-column one,
-    # which hands the whole width to one table. This test used to be the wrong
-    # way round, so the widest column set was rendered in the narrowest box.
-    # Points is the column people came to read. Form is always shown -- it just
-    # gets smaller (letters, then dots) -- so GF/GA are the only columns that
-    # drop, and that happens only on a phone.
-    if ncols == 1 or len(standings["conferences"]) == 1:
-        ncols = 1
-        level = "min" if device == "📱 Phone" else "full"
-    else:
-        level = "mid"
-
-    started = season_started(standings)
-
-    def one(conf):
-        meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
-        st.markdown(
-            f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-            f'{island_img(conf["island"])} {conf["name"]}</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(_standings_html(conf["table"], level=level,
-                                    qual=started, legend=started),
-                    unsafe_allow_html=True)
-        if not started:
-            st.markdown('<div class="legend">No matches played yet — every club '
-                        'is level. Win 3 pts &middot; Draw 1 pt &middot; Loss 0 pts.'
-                        '</div>', unsafe_allow_html=True)
-
-    confs = standings["conferences"]
-    if ncols == 1:
-        for conf in confs:
-            one(conf)
-    else:
-        cols = st.columns(len(confs), gap="large")
-        for col, conf in zip(cols, confs):
-            with col:
-                one(conf)
-
-def _standings_html(rows, level="full", gfga=None, qual=True, island=False,
-                    legend=True):
-    """The league table. Points is the point of it — it stays on screen at
-    every width, and the columns that can be dropped are dropped around it.
-
-    `qual` paints the playoff colours (green top three, amber wild card). The
-    overall table switches them OFF: those places are won inside a division,
-    so colouring a merged table by its own order would promise places that
-    aren't real. `island` adds the division flag beside each club, which only
-    the merged table needs.
-    """
-    if gfga is None:
-        gfga = level in ("full", "mid")
-    show_gfga = gfga
-    dots = level == "min"          # a phone gets colour dots, not letters
-    tcls = {"full": "tbl", "mid": "tbl tight"}.get(level, "tbl tight mini")
-
-    cols = ['<th class="l">#</th>', '<th class="l">Club</th>',
-            "<th>P</th>", "<th>W</th>", "<th>D</th>", "<th>L</th>"]
-    if show_gfga:
-        cols += ["<th>GF</th>", "<th>GA</th>"]
-    cols += ["<th>GD</th>", '<th class="l">Form</th>', '<th class="pts">Pts</th>']
-    head = f'<table class="{tcls}"><thead><tr>' + "".join(cols) + "</tr></thead><tbody>"
-
-    body = []
-    for r in rows:
-        classes = []
-        if qual:
-            if r["rank"] <= 4:
-                classes.append("qual")
-            if r["rank"] == 4:
-                classes.append("cutoff")  # last club into the playoffs
-        cls = f' class="{" ".join(classes)}"' if classes else ""
-
-        # A two-letter division pill, not the island flag: the flags are inlined
-        # base64 PNGs, and repeating one on all ten rows put 130KB of data
-        # URI into a single table. The pill is tinted with the island's accent.
-        badge = ""
-        if island:
-            meta = ISLAND_META.get(r.get("division"), {})
-            code = (meta.get("code") or "")[:2].upper()
-            if code:
-                badge = (f'<span class="isl" style="color:{meta.get("accent", "#888")}" '
-                         f'title="{r.get("division_name", "")}">{code}</span>')
-        cells = [f'<td class="rank">{r["rank"]}</td>',
-                 f'<td class="club">{dot(r["primary"])}{r["name"]}{badge}</td>',
-                 f'<td>{r["played"]}</td>', f'<td>{r["wins"]}</td>',
-                 f'<td>{r["draws"]}</td>', f'<td>{r["losses"]}</td>']
-        if show_gfga:
-            cells += [f'<td>{r["gf"]}</td>', f'<td>{r["ga"]}</td>']
-        form = "".join(
-            f'<span class="formchip {o.lower()}" title="{o}">{"" if dots else o}</span>'
-            for o in r.get("form", [])) or '<span class="tbd">–</span>'
-        cells += [f'<td>{r["gd"]:+d}</td>', f'<td class="form">{form}</td>',
-                  f'<td class="pts">{r["points"]}</td>']
-        body.append(f"<tr{cls}>" + "".join(cells) + "</tr>")
-
-    foot = ('<div class="legend">'
-            '<span class="scoring"><b class="w">Win 3 pts</b> · '
-            '<b class="d">Draw 1 pt</b> · <b class="l">Loss 0 pts</b></span><br>'
-            'Ranked on points, then goal difference, then goals scored.<br>'
-            'Form = last five matches, oldest first.<br>'
-            '<b>Green</b> = top four, into the playoff semi-finals'
-            '</div>') if legend else ""
-    return '<div class="tblwrap">' + head + "".join(body) + "</tbody></table></div>" + foot
-
-
-def render_overall(feed, device=None):
-    """Every club in one table, under the two division tables.
-
-    Same ranking rule as the tables above it, and the same Form column — it is
-    a view of the very same rows, not a second set of numbers. Full width, so
-    it keeps GF/GA off and shows nothing the divisions don't already say.
-    """
-    table = datafeed.get_overall(feed)
-    if not table:
-        return
-    st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
-                'Overall &mdash; all ten clubs</div>', unsafe_allow_html=True)
-    st.markdown(_standings_html(table,
-                                level=("min" if device == "📱 Phone" else "full"),
-                                gfga=False, qual=False, island=True, legend=False),
-                unsafe_allow_html=True)
-    st.markdown('<div class="legend">One league-wide order, ranked exactly like the '
-                'division tables — points, then goal difference, then goals scored.<br>'
-                'It settles bragging rights only: every playoff place is won inside '
-                'a club&rsquo;s own division.</div>', unsafe_allow_html=True)
-
-# --------------------------------------------------------------------------- #
-# Matches page
-# --------------------------------------------------------------------------- #
-CLOCK_HTML = r"""
+# The whole game is decided in Python the moment Kick off is pressed; the
+# browser only reveals it a minute at a time, so a rerun can't change a score.
+MATCH_HTML = r"""
+<div id="sim">
+  <div class="board">
+    <div class="side home"><div class="badge" id="hb"></div><div class="nm" id="hn"></div></div>
+    <div class="mid">
+      <div class="score"><span id="hs">0</span><span class="dash">–</span><span id="as">0</span></div>
+      <div class="clock" id="clock">KO</div>
+    </div>
+    <div class="side away"><div class="badge" id="ab"></div><div class="nm" id="an"></div></div>
+  </div>
+  <div class="bar"><div id="fill"></div><div class="ht"></div></div>
+  <div class="ctl"><button id="skip">Skip to full time ⏭</button></div>
+  <div class="feed" id="feed"></div>
+</div>
 <style>
-  body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#eef1f6; background:transparent; }
-  .clockrow{ display:flex; gap:.6rem; overflow-x:auto; padding-bottom:.3rem; }
-  .clk{ flex:0 0 auto; min-width:120px; border:1px solid rgba(255,255,255,.09); border-radius:12px;
-        background:#161b26; padding:.6rem .8rem; }
-  .clk.sh{ border-left:4px solid #ffc726; }
-  .cl-l{ font-size:.8rem; color:#8b93a1; white-space:nowrap; }
-  .cl-l span{ background:rgba(255,255,255,.08); padding:.02rem .3rem; border-radius:5px; margin-left:.2rem; }
-  .cl-l img.flagimg{ width:1.6em; height:auto; vertical-align:-.25em; border-radius:2px;
-                     box-shadow:0 0 0 1px rgba(255,255,255,.14); }
-  .cl-t{ font-size:1.3rem; font-weight:800; font-variant-numeric:tabular-nums; margin-top:.15rem; }
-</style>
-<div class="clockrow" id="clocks"></div>
-<script>
-  const ZONES = [
-    {label:"<img class='flagimg' src='__SH_FLAG__' alt='🇨🇼'> Curaçao", tz:"America/Curacao", abbr:"AST", sh:true},
-    {label:"Eastern", tz:"America/New_York", abbr:"ET"},
-    {label:"Central", tz:"America/Chicago", abbr:"CT"},
-    {label:"Mountain", tz:"America/Denver", abbr:"MT"},
-    {label:"Pacific", tz:"America/Los_Angeles", abbr:"PT"},
-    {label:"Alaska", tz:"America/Anchorage", abbr:"AKT"},
-    {label:"Hawaii", tz:"Pacific/Honolulu", abbr:"HT"}
-  ];
-  function tick(){
-    const now = new Date();
-    document.getElementById("clocks").innerHTML = ZONES.map(z => {
-      const t = now.toLocaleTimeString('en-US', {timeZone:z.tz, hour:'numeric', minute:'2-digit', second:'2-digit'});
-      return '<div class="clk'+(z.sh?' sh':'')+'"><div class="cl-l">'+z.label+' <span>'+z.abbr+'</span></div><div class="cl-t">'+t+'</div></div>';
-    }).join("");
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:#eef1f6; }
+  #sim{ background:linear-gradient(180deg,#15402a,#0f2b1d); border-radius:18px; padding:18px 16px 14px;
+        border:1px solid rgba(255,255,255,.08); }
+  .board{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; }
+  .side{ display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; min-width:0; }
+  .badge{ width:84px; height:56px; display:flex; align-items:center; justify-content:center; }
+  .badge img{ max-width:84px; max-height:56px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+  .badge .init{ width:56px; height:56px; border-radius:50%; background:#24314a; display:flex;
+                align-items:center; justify-content:center; font-weight:800; font-size:20px; }
+  .nm{ font-weight:800; font-size:19px; line-height:1.15; overflow-wrap:anywhere; }
+  .mid{ text-align:center; }
+  .score{ font-size:56px; font-weight:900; letter-spacing:2px; line-height:1; font-variant-numeric:tabular-nums; }
+  .dash{ opacity:.6; margin:0 8px; }
+  .clock{ margin-top:8px; display:inline-block; background:#0b1a12; border-radius:99px; padding:4px 14px;
+          font-weight:800; font-size:18px; color:#2ecc71; font-variant-numeric:tabular-nums; }
+  .clock.done{ color:#eef1f6; background:#e4572e; }
+  .bar{ position:relative; height:6px; background:rgba(255,255,255,.12); border-radius:99px; margin:16px 0 10px; }
+  #fill{ height:100%; width:0; background:#2ecc71; border-radius:99px; transition:width .9s linear; }
+  .ht{ position:absolute; left:50%; top:-3px; width:2px; height:12px; background:rgba(255,255,255,.5); }
+  .ctl{ text-align:right; }
+  #skip{ background:transparent; color:rgba(238,241,246,.75); border:1px solid rgba(255,255,255,.25);
+         border-radius:8px; padding:4px 10px; font-size:13px; cursor:pointer; }
+  .feed{ margin-top:10px; max-height:230px; overflow-y:auto; }
+  .ev{ display:flex; gap:10px; align-items:center; padding:7px 10px; border-radius:10px;
+       background:rgba(0,0,0,.22); margin-bottom:6px; font-size:15px; animation:pop .35s ease-out; }
+  .ev.away{ flex-direction:row-reverse; text-align:right; }
+  .ev .m{ font-weight:800; min-width:34px; color:#2ecc71; }
+  .ev.goal{ background:rgba(46,204,113,.22); font-weight:700; }
+  .ev.note{ justify-content:center; background:rgba(255,255,255,.08); font-weight:700; }
+  .card{ display:inline-block; width:11px; height:15px; border-radius:2px; }
+  @keyframes pop{ from{ transform:scale(.96); opacity:0 } to{ transform:none; opacity:1 } }
+  @media (max-width:520px){
+    .score{ font-size:40px; } .nm{ font-size:15px; } .badge{ width:60px; height:40px; }
+    .badge img{ max-width:60px; max-height:40px; }
   }
-  tick(); setInterval(tick, 1000);
+</style>
+<script>
+const M = __MATCH__;
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+M.home.name = esc(M.home.name); M.away.name = esc(M.away.name);
+function badge(el, side){
+  if (side.flag){ el.innerHTML = `<img src="${side.flag}" alt="">`; }
+  else {
+    const ini = side.name.split(/\s+/).filter(w => /^[\p{L}\d]/u.test(w)).slice(0,2).map(w => w[0]).join("").toUpperCase();
+    el.innerHTML = `<div class="init">${ini || "?"}</div>`;
+  }
+}
+$("hn").innerHTML = M.home.name; $("an").innerHTML = M.away.name;
+badge($("hb"), M.home); badge($("ab"), M.away);
+const score = {home:0, away:0};
+function row(cls, html){ const d = document.createElement("div"); d.className = "ev " + cls;
+  d.innerHTML = html; $("feed").prepend(d); }
+function show(ev){
+  const name = (ev.side === "home" ? M.home : M.away).name;
+  if (ev.type === "goal"){
+    score[ev.side]++; $("hs").textContent = score.home; $("as").textContent = score.away;
+    row(ev.side + " goal", `<span class="m">${ev.min}'</span><span>⚽ GOAL — ${name}</span>`);
+  } else {
+    const c = ev.type === "red" ? "#e53935" : "#fdd835";
+    const word = ev.type === "red" ? "Red card" : "Yellow card";
+    row(ev.side, `<span class="m">${ev.min}'</span><span><i class="card" style="background:${c}"></i> ${word} — ${name}</span>`);
+  }
+}
+let minute = 0, timer = null;
+const STEP = 1000;            // one match minute per second -> about 90 seconds
+function tick(){
+  minute++;
+  $("clock").textContent = minute + "'";
+  $("fill").style.width = (minute / 90 * 100) + "%";
+  M.events.filter(e => e.min === minute).forEach(show);
+  if (minute === 45){
+    row("note", `Half time · ${M.home.name} ${score.home}–${score.away} ${M.away.name}`);
+    $("clock").textContent = "HT"; clearInterval(timer);
+    setTimeout(() => { timer = setInterval(tick, STEP); }, 2500);
+    return;
+  }
+  if (minute >= 90) finish();
+}
+function finish(){
+  clearInterval(timer); timer = null;
+  $("clock").textContent = "FT"; $("clock").classList.add("done");
+  $("fill").style.width = "100%";
+  const [h, a] = [score.home, score.away];
+  const res = h > a ? M.home.name + " win" : a > h ? M.away.name + " win" : "Draw";
+  row("note", `Full time · ${M.home.name} ${h}–${a} ${M.away.name} · ${res}`);
+  $("skip").style.display = "none";
+}
+$("skip").onclick = () => {
+  if (!timer) return;
+  clearInterval(timer);
+  while (minute < 90){ minute++; M.events.filter(e => e.min === minute).forEach(show); }
+  finish();
+};
+$("clock").textContent = "KO";
+setTimeout(() => { timer = setInterval(tick, STEP); }, 900);
 </script>
 """
 
 
-def clock_component():
-    # The clock is an iframe with its own document, so it cannot call
-    # flag_img() -- the source is substituted in on the way out.
-    components.html(CLOCK_HTML.replace("__SH_FLAG__", flag_src("cw")),
-                    height=110, scrolling=False)
+def _side_payload(s):
+    return {"name": s["name"], "flag": flag_src(s.get("code"))}
 
 
-# Every stage that is NOT the league. "friendly" is the older spelling and is
-# still honoured so an archived season keeps rendering.
-NON_LEAGUE_STAGES = ("friendly", "outside")
-# What the league's own button says on a club page, beside its cup buttons.
-LEAGUE_BUTTON = "CPD"
-SQUAD_BUTTON = "Squad"
+def render_match(m):
+    payload = {"home": _side_payload(m["home"]), "away": _side_payload(m["away"]),
+               "events": m["result"]["events"]}
+    # One extra key per kick-off so pressing Kick off again with the same two
+    # sides always restarts the animation instead of reusing the old frame.
+    page = MATCH_HTML.replace("__MATCH__", json.dumps(payload).replace("</", "<\\/")) + f"<!-- {m['id']} -->"
+    components.html(page, height=600, scrolling=False)
 
 
-def league_only(matches):
-    """Everything the league table is built from. A friendly or a continental
-    tie counts for nothing and belongs on exactly one screen — the club's own
-    page — so every other view filters through here."""
-    return [m for m in matches if m.get("stage") not in NON_LEAGUE_STAGES]
-
-
-def render_matches(matches, feed):
-    matches = league_only(matches)
-    focus = st.session_state.get("focus_group")
-    if focus:
-        group = [m for m in matches if _group_key(m) == focus]
-        if st.button("← Show all matches"):
-            st.session_state.focus_group = None
-            st.rerun()
-        st.markdown(f'<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
-                    f'{_group_label_html(focus)}</div>', unsafe_allow_html=True)
-        if group:
-            _render_day_groups(group, feed, show_prob=True, newest_first=False)
-        else:
-            st.info("Nothing scheduled there yet.")
-        return
-
-    live = [m for m in matches if m["state"] == "in"]
-    upcoming = [m for m in matches if m["state"] == "pre"]
-    past = [m for m in matches if m["state"] == "post"]
-
-    tab_live, tab_up, tab_past = st.tabs(
-        [f"🔴 Live ({len(live)})", f"📅 Upcoming ({len(upcoming)})", f"✅ Results ({len(past)})"]
-    )
-    with tab_live:
-        if live:
-            _render_day_groups(live, feed, show_prob=False, newest_first=False)
-        else:
-            st.info("No match is being played right now. Kick-offs show up here "
-                    "the moment one starts.")
-    with tab_up:
-        if not upcoming:
-            st.info("No fixtures announced yet — they'll appear here as soon as "
-                    "the next matchday is set.")
-        else:
-            st.caption(f"{len(upcoming)} fixtures to come")
-            _render_day_groups(upcoming, feed, show_prob=True, newest_first=False)
-    with tab_past:
-        if not past:
-            st.info("No results yet this season.")
-        else:
-            days = len({_group_key(m) for m in past})
-            st.caption(f"{len(past)} {'match' if len(past) == 1 else 'matches'} played across "
-                       f"{days} {'matchday' if days == 1 else 'matchdays'} this season")
-            _render_day_groups(past, feed, show_prob=False, newest_first=True)
-
-def _group_key(m):
-    """Matches are grouped by matchday, not by calendar date — a matchday is
-    how this league is actually scheduled, and fixtures often arrive before a
-    date is set."""
-    if m.get("stage") == "playoff":
-        return f"playoff|{m.get('round') or 'Playoffs'}"
-    return f"md|{m.get('matchday') or 0}"
-
-
-def _group_sort(key):
-    kind, rest = key.split("|", 1)
-    if kind == "playoff":
-        order = {"Semi-Final": 1, "Final": 2}
-        return (2, order.get(rest, 9), rest)
-    try:
-        n = int(rest)
-    except ValueError:
-        n = 0
-    return (1, n, kind)
-
-
-def _group_label(key):
-    kind, rest = key.split("|", 1)
-    if kind == "playoff":
-        return f"🏆 {rest}"
-    return f"Matchday {rest}"
-
-
-def _group_label_html(key):
-    """The same label for the places that render HTML. _group_label itself has
-    to stay plain text: it also fills button captions and the search haystack,
-    neither of which can render a tag."""
-    kind, rest = key.split("|", 1)
-    if kind == "playoff":
-        return f"🏆 {rest}"
-    return f"Matchday {rest}"
-
-
-def _day_label(m):
-    """The date under a match card, when one has been set."""
-    d = m.get("day")
-    if not d:
-        return ""
-    return f"{d.strftime('%A')}, {d.strftime('%B')} {d.day}, {d.year}"
-
-
-def _render_day_groups(matches, feed, show_prob, newest_first):
-    """Group matches by matchday and render each group in a single call."""
-    groups = {}
-    for m in matches:
-        groups.setdefault(_group_key(m), []).append(m)
-
-    keys = sorted(groups, key=_group_sort, reverse=newest_first)
-    for key in keys:
-        group = groups[key]
-        n = len(group)
-        dates = {_day_label(m) for m in group} - {""}
-        count = f"{n} {'match' if n == 1 else 'matches'}"
-        right = f"{dates.pop()} · {count}" if len(dates) == 1 else count
-        header = (f'<div class="dayhdr"><span>{_group_label_html(key)}</span>'
-                  f'<span class="daycount">{right}</span></div>')
-        cards = "".join(_match_html(m, feed, show_prob) for m in group)
-        st.markdown(f'<div class="daygroup">{header}{cards}</div>', unsafe_allow_html=True)
-
-def _short_when(m):
-    """Which matchday (or round) a match belongs to — the card's top line."""
-    if m.get("stage") == "playoff":
-        return m.get("round") or "Playoffs"
-    if m.get("matchday"):
-        return f"Matchday {m['matchday']}"
-    return m.get("division") or ""
-
-
-def _when_label(m):
-    """A short, human line for when a match is / was played."""
-    bits = []
-    if m.get("stage") == "playoff":
-        bits.append(m.get("round") or "Playoffs")
-    elif m.get("matchday"):
-        bits.append(f"Matchday {m['matchday']}")
-    d = _day_label(m)
-    if d:
-        bits.append(d)
-    if m.get("time"):
-        bits.append(m["time"])
-    return " · ".join(bits) or "Date to be confirmed"
-
-def _is_draw(m):
-    hs, as_ = m["home"]["score"], m["away"]["score"]
-    return hs is not None and hs == as_
-
-
-def _match_html(m, feed, show_prob):
-    live = m["state"] == "in"
-    home, away = m["home"], m["away"]
-    show_score = m["state"] in ("in", "post")
-
-    if live:
-        top_left = f'<span class="live">● LIVE · {m["status_detail"]}</span>'
+def render_simulator():
+    st.markdown('<div class="hint">Pick two sides and press Kick off. The game runs '
+                'from 1\' to 90\' in about 90 seconds.</div>', unsafe_allow_html=True)
+    kind = st.radio("Mode", ["🛡️ Clubs", "🌍 Nations"], horizontal=True,
+                    label_visibility="collapsed", key="sim_kind")
+    is_club = kind.startswith("🛡️")
+    if is_club:
+        options = sim.club_names()
+        help_ = (f"{len(options):,} clubs listed. Not in the list? Type its name "
+                 "and press Enter — every club can play.")
+        ph = "Type any club…"
     else:
-        top_left = f'<span class="status">{_short_when(m)}</span>'
-    hosting = f'<span class="status">{home["name"]} hosting</span>'
-
-    def row(side, is_home):
-        s = side["score"] if side["score"] is not None else "–"
-        score = f'<span class="score">{s}</span>' if show_score else '<span class="score"></span>'
-        cls = "tname"
-        if show_score and m["completed"]:
-            cls += " win" if side.get("winner") else (" lose" if not _is_draw(m) else "")
-        tag = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
-        # One square per player sent off, so two reds show as two squares.
-        reds = ''.join(
-            '<span class="redcard" title="Sent off"></span>'
-            for _ in range(side.get("reds", 0)))
-        return (f'<div class="mrow"><span class="{cls}">{dot(side["primary"])}{side["name"]}'
-                f'{reds}{tag}</span>{score}</div>')
-
-    when = _day_label(m) or "Date to be confirmed"
-    if m.get("time"):
-        when += f' · {m["time"]}'
-    kick = "" if show_score else f'<div class="kick">🕓 {when}</div>'
-    winbar = _winbar_html(m, feed) if show_prob else ""
-    border = f'border-left-color:{home["primary"]};'
-    card_cls = "match islive" if live else "match"
-
-    return (f'<div class="{card_cls}" style="{border}">'
-            f'<div class="top">{top_left}{hosting}</div>'
-            f'{row(home, True)}{row(away, False)}{kick}{winbar}</div>')
-
-
-def _winbar_html(m, feed):
-    wp = datafeed.get_win_probabilities(feed, m["id"])
-    if not wp:
-        return ""
-    h, d, a = wp["home_pct"], wp["draw_pct"], wp["away_pct"]
-    hc, ac = m["home"]["primary"], m["away"]["primary"]
-    return (
-        '<div class="wp"><div class="bar">'
-        f'<div style="width:{h}%;background:{hc}"></div>'
-        f'<div style="width:{d}%;background:#7c8595"></div>'
-        f'<div style="width:{a}%;background:{ac}"></div></div>'
-        '<div class="labels">'
-        f'<span>{m["home"]["name"]} · {h}%</span>'
-        f'<span class="mid">Draw {d}%</span>'
-        f'<span>{a}% · {m["away"]["name"]}</span></div>'
-        '<div class="note">CPD model projection · from form so far</div></div>'
-    )
-
-
-# --------------------------------------------------------------------------- #
-# Home page
-# --------------------------------------------------------------------------- #
-def match_of_the_day(feed):
-    """Pick a featured upcoming fixture: the most evenly-matched one the model
-    can't call, else simply the next one up. Returns (match, projection) or None."""
-    up = [m for m in league_only(datafeed.get_matches(feed)) if m["state"] == "pre"]
-    if not up:
-        return None
-    scored = []
-    for m in up[:40]:
-        wp = datafeed.get_win_probabilities(feed, m["id"])
-        if wp:
-            scored.append((abs(wp["home_pct"] - wp["away_pct"]), m, wp))
-    if scored:
-        scored.sort(key=lambda x: x[0])
-        return scored[0][1], scored[0][2]
-    return up[0], None
-
-def render_scorers(feed, limit=None):
-    """The scoring chart. Reads left to right the way it was asked for:
-    name, then goals, then the player's flag. The flag is an image rather
-    than the regional-indicator emoji, because Windows draws that emoji as the
-    bare letters ("SH", "TR") instead of a flag. The emoji is kept as the alt
-    text, so it still stands in if the image cannot be fetched."""
-    rows = feed.get("scorers") or []
-    if not rows:
-        return
-    st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
-                '🥇 Golden Boot</div>', unsafe_allow_html=True)
-    shown = rows[:limit] if limit else rows
-    cards = ""
-    for r in shown:
-        cls = "scorer lead" if r["rank"] == 1 else "scorer"
-        drawn = flag_img(r["code"], r["flag"], r["country"], "sflag")
-        flag = (drawn if drawn.startswith("<img")
-                else f'<span class="sflag" title="{r["country"]}">{drawn}</span>')
-        cards += (f'<div class="{cls}"><span class="srank">{r["rank"]}</span>'
-                  f'<span class="sname">{r["name"]}</span>'
-                  f'<span class="sgoals">{r["goals"]}<small>goals</small></span>'
-                  f'{flag}</div>')
-    st.markdown(f'<div class="scorers">{cards}</div>', unsafe_allow_html=True)
-    if limit and len(rows) > limit:
-        st.caption(f"Top {limit} of {len(rows)} — the full chart is on the Tables page.")
-
-
-def render_weather():
-    cards = ""
-    for w in load_weather():
-        emoji, desc = WMO.get(w["code"], ("🌡️", "—")) if w["code"] is not None else ("🌡️", "Unavailable")
-        temp = f'{w["temp"]}°F' if w["temp"] is not None else "—"
-        extra = ""
-        if w["temp"] is not None:
-            extra = f'<div class="wx-sub">{desc} · 💨 {w["wind"]} mph · 💧 {w["hum"]}%</div>'
-        cards += (f'<div class="wx"><div class="wx-emoji">{emoji}</div>'
-                  f'<div><div class="wx-loc">{flag_img(w["fcode"], w["flag"], w["name"])} {w["name"]}</div>'
-                  f'<div class="wx-temp">{temp}</div>{extra}</div></div>')
-    st.markdown(f'<div class="wxrow">{cards}</div>', unsafe_allow_html=True)
-
-
-def render_home(feed, ncols=2):
-    clock_component()
-    render_weather()
-
-    day = datetime.now(LOCAL_TZ).timetuple().tm_yday
-    st.markdown(
-        '<div class="factrow">'
-        f'<div class="factcard"><div class="factlabel">⚽ Soccer fact of the day</div>'
-        f'<div class="facttext">{facts.soccer_fact(day)}</div></div>'
-        f'<div class="factcard sh"><div class="factlabel sh">'
-        f'{flag_img("cw", "🇨🇼", "Curaçao")} Curaçao fact of the day</div>'
-        f'<div class="facttext">{facts.curacao_fact(day)}</div></div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-
-    motd = match_of_the_day(feed)
-    if motd:
-        m, wp = motd
-        h, a = m["home"], m["away"]
-        bar = ""
-        if wp:
-            bar = ('<div class="wp"><div class="bar">'
-                   f'<div style="width:{wp["home_pct"]}%;background:{h["primary"]}"></div>'
-                   f'<div style="width:{wp["draw_pct"]}%;background:#7c8595"></div>'
-                   f'<div style="width:{wp["away_pct"]}%;background:{a["primary"]}"></div></div>'
-                   '<div class="labels">'
-                   f'<span>{h["name"]} · {wp["home_pct"]}%</span>'
-                   f'<span class="mid">Draw {wp["draw_pct"]}%</span>'
-                   f'<span>{wp["away_pct"]}% · {a["name"]}</span></div></div>')
-        st.markdown(
-            '<div class="motd"><div class="motd-label">⭐ Match of the Day</div>'
-            f'<div class="motd-teams">{dot(h["primary"])}{h["name"]}'
-            f'<span class="motd-v">v</span>{dot(a["primary"])}{a["name"]}</div>'
-            f'<div class="motd-when">🕓 {_when_label(m)} · {h["name"]} hosting</div>'
-            f'{bar}</div>',
-            unsafe_allow_html=True,
-        )
-
-    standings = datafeed.get_standings(feed)
-    if standings["conferences"] and not season_started(standings):
-        st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
-                    'The season is about to start</div>', unsafe_allow_html=True)
-        st.markdown('<div class="hint">No matches have been played yet. Ten '
-                    'clubs, one table, everyone level on nothing.</div>',
-                    unsafe_allow_html=True)
-    elif standings["conferences"]:
-        st.markdown('<div class="eyebrow"><span class="bar" style="background:#e4572e"></span>'
-                    'League leaders</div>', unsafe_allow_html=True)
-
-        def leader(conf):
-            meta = ISLAND_META.get(conf["island"], {"flag": "", "accent": "#888"})
-            top = conf["table"][0] if conf["table"] else None
-            if top:
-                st.markdown(
-                    f'<div class="leader" style="border-left-color:{top["primary"]}">'
-                    f'<div class="leader-isl">{island_img(conf["island"])} {conf["island"]}</div>'
-                    f'<div class="leader-name">{dot(top["primary"])}{top["name"]}</div>'
-                    f'<div class="leader-pts">{top["points"]} pts · {top["wins"]}-{top["draws"]}-{top["losses"]}</div>'
-                    f'</div>', unsafe_allow_html=True)
-
-        if ncols == 1:
-            for conf in standings["conferences"]:
-                leader(conf)
-        else:
-            cols = st.columns(len(standings["conferences"]), gap="large")
-            for col, conf in zip(cols, standings["conferences"]):
-                with col:
-                    leader(conf)
-
-    render_scorers(feed, limit=3)
-
-    # Next few fixtures
-    matches = league_only(datafeed.get_matches(feed))
-    upcoming = [m for m in matches if m["state"] == "pre"][:5]
-    if upcoming:
-        st.markdown('<div class="eyebrow"><span class="bar" style="background:#3d9be0"></span>'
-                    'Next up</div>', unsafe_allow_html=True)
-        html = "".join(_match_html(m, feed, show_prob=False) for m in upcoming)
-        st.markdown(html, unsafe_allow_html=True)
-
-
-# --------------------------------------------------------------------------- #
-# Clubs page (grid -> click a club -> detail)
-# --------------------------------------------------------------------------- #
-def render_clubs(feed):
-    st.markdown('<div class="hint">Tap a club to see its season — results, fixtures and predictions.</div>',
-                unsafe_allow_html=True)
-    for island in teams.ISLANDS:
-        meta = ISLAND_META.get(island, {"flag": "", "accent": "#888"})
-        st.markdown(
-            f'<div class="eyebrow"><span class="bar" style="background:{meta["accent"]}"></span>'
-            f'{island_img(island)} {island}</div>',
-            unsafe_allow_html=True,
-        )
-        club_list = [t for t in teams.TEAMS if t.island == island]
-        cols = st.columns(3)
-        for i, t in enumerate(club_list):
-            if cols[i % 3].button(t.name, key=f"club_{t.id}", use_container_width=True):
-                st.session_state.selected_club = t.id
-                st.rerun()
-        st.write("")
-
-
-def render_club_detail(feed, club_id):
-    team = teams.BY_ID.get(str(club_id))
-    if not team:
-        st.session_state.selected_club = None
-        st.rerun()
-        return
-
-    if st.button("← Back to all clubs"):
-        st.session_state.selected_club = None
-        st.rerun()
-
-    meta = ISLAND_META.get(team.island, {"flag": "", "accent": "#888"})
-    st.markdown(
-        f'<div class="club-hero" style="border-left-color:{team.primary}">'
-        f'<div class="club-hero-name">{dot(team.primary)}{team.name}</div>'
-        f'<div class="club-hero-isl">{island_img(team.island)} {team.island}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    matches = [m for m in datafeed.get_matches(feed)
-               if m["home"]["id"] == str(club_id) or m["away"]["id"] == str(club_id)]
-    # Upcoming non-league games belong here too — the club page is the only
-    # screen they ever appear on, so leaving them out hides them entirely.
-    outside = [m for m in matches if m.get("stage") in NON_LEAGUE_STAGES]
-
-    # A club that plays outside the league gets one button per competition —
-    # the league first, then each cup — and the page shows only the one picked.
-    # The pick remembers its club, so opening another club starts fresh.
-    # A club with a squad on file gets a Squad button on the end of that row.
-    squad = load_squads().get(str(club_id))
-    if outside or squad:
-        comps = [LEAGUE_BUTTON] + list(dict.fromkeys(
-            m.get("competition") or "Other" for m in outside))
-        if squad:
-            comps.append(SQUAD_BUTTON)
-        picked = st.session_state.get("club_comp")
-        comp = picked[1] if picked and picked[0] == str(club_id) else None
-        cols = st.columns(len(comps))
-        for col, name in zip(cols, comps):
-            if col.button(name, key=f"comp_{club_id}_{name}", use_container_width=True,
-                          type="primary" if name == comp else "secondary"):
-                st.session_state.club_comp = (str(club_id), name)
-                st.rerun()
-        if comp not in comps:
-            what = "matches or squad" if squad else "matches"
-            st.markdown(f'<div class="hint">Pick one to see this club’s {what}.</div>',
-                        unsafe_allow_html=True)
-            return
-        if comp == SQUAD_BUTTON:
-            _render_club_squad(squad)
-            return
-        if comp != LEAGUE_BUTTON:
-            _render_club_cup(feed, club_id, comp,
-                             [m for m in outside if (m.get("competition") or "Other") == comp])
-            return
-
-    # Standings summary
-    standings = datafeed.get_standings(feed)
-    row = None
-    for conf in standings["conferences"]:
-        for r in conf["table"]:
-            if r["id"] == str(club_id):
-                row = r
-                break
-    if row:
-        stats = [
-            (f"#{row['rank']}", "in the table"), (row["points"], "Points"),
-            (row["played"], "Played"), (row["wins"], "Won"),
-            (row["draws"], "Drawn"), (row["losses"], "Lost"),
-            (f"{row['gd']:+d}", "Goal diff"),
-        ]
-        cells = "".join(f'<div class="stat"><div class="v">{v}</div><div class="k">{k}</div></div>'
-                        for v, k in stats)
-        st.markdown(f'<div class="statrow">{cells}</div>', unsafe_allow_html=True)
-
-    # This club's league matches
-    played = [m for m in matches if m["state"] in ("in", "post")]
-    upcoming = [m for m in matches if m["state"] == "pre"]
-
-    # Form is a league record — a friendly never moves it.
-    last5 = [m for m in league_only(played) if m["state"] == "post"][-5:]
-    if last5:
-        chips = "".join(_form_chip(m, club_id) for m in last5)
-        st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>{chips}</div>',
-                    unsafe_allow_html=True)
-
-    tab_res, tab_fix = st.tabs([f"✅ Results ({len(league_only(played))})",
-                                f"📅 Fixtures ({len(league_only(upcoming))})"])
-
-    with tab_res:
-        league_played = league_only(played)
-        if not league_played:
-            st.info("No matches played yet.")
-        else:
-            html = "".join(_club_match_html(m, club_id, feed) for m in reversed(league_played))
-            st.markdown(html, unsafe_allow_html=True)
-
-    with tab_fix:
-        league_up = league_only(upcoming)
-        if not league_up:
-            st.info("No upcoming fixtures.")
-        else:
-            html = "".join(_club_match_html(m, club_id, feed) for m in league_up)
-            st.markdown(html, unsafe_allow_html=True)
-
-
-@st.cache_data(ttl=15, show_spinner=False)
-def load_squads():
-    try:
-        return squads.load()
-    except (OSError, ValueError, KeyError) as e:
-        st.error(f"Club squads could not be loaded: {e}")
-        return {}
-
-
-def _render_club_squad(players):
-    """A club's squad by position: name on the left, every country the player
-    represents on the right as flag + name, or "---" when none was given."""
-    st.markdown('<div class="eyebrow"><span class="bar" '
-                f'style="background:#3d9be0"></span>👥 Squad ({len(players)})</div>',
-                unsafe_allow_html=True)
-    for code, label, group in squads.by_position(players):
-        if not group:
-            continue
-        rows = []
-        for p in group:
-            countries = p.get("countries") or []
-            where = (" ".join(f'{flag_img(c["code"], label=c["name"])} {c["name"]}'
-                              for c in countries) if countries else "---")
-            rows.append(f'<div class="sq-row"><span class="sq-name">{p["name"]}</span>'
-                        f'<span class="sq-flags">{where}</span></div>')
-        st.markdown(f'<div class="formlabel" style="margin:.4rem 0 .7rem">'
-                    f'{label} ({len(group)})</div>'
-                    f'<div class="sq-list">{"".join(rows)}</div>', unsafe_allow_html=True)
-
-
-def _render_club_cup(feed, club_id, comp, games):
-    """One cup competition on a club page: its own record, then every game.
-
-    Non-league games are NOT put in a tab. A tab past the second is pushed off
-    the edge of the tab strip on a phone, which is how a CAF tie once ended up
-    invisible — so this is a plain list, latest result first, then fixtures.
-    """
-    st.markdown('<div class="eyebrow"><span class="bar" '
-                f'style="background:#f4c800"></span>🏆 {comp}</div>',
-                unsafe_allow_html=True)
-    played = [m for m in games if m["state"] == "post"]
-    results = [_outcome(m, club_id) for m in played]
-    gf = ga = 0
-    for m in played:
-        mine, theirs = ((m["home"], m["away"]) if m["home"]["id"] == str(club_id)
-                        else (m["away"], m["home"]))
-        gf += mine["score"] or 0
-        ga += theirs["score"] or 0
-    stats = [(len(played), "Played"), (results.count("W"), "Won"),
-             (results.count("D"), "Drawn"), (results.count("L"), "Lost"),
-             (gf, "Scored"), (ga, "Conceded")]
-    cells = "".join(f'<div class="stat"><div class="v">{v}</div><div class="k">{k}</div></div>'
-                    for v, k in stats)
-    st.markdown(f'<div class="statrow">{cells}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="hint">Outside the {LEAGUE_BUTTON} &mdash; it does '
-                'not count towards points, goals, form or the table.</div>',
-                unsafe_allow_html=True)
-    order = played[::-1] + [m for m in games if m["state"] != "post"]
-    st.markdown("".join(_club_match_html(m, club_id, feed) for m in order),
-                unsafe_allow_html=True)
-
-
-def _outcome(m, club_id):
-    """Return 'W'/'D'/'L' for the given club, or None if not decided.
-
-    A tie settled on penalties is a win for whoever took the shootout — the
-    club went through, and a D beside it reads as though they didn't. Only
-    non-league matches can carry `pens`, so the league table and the form guide
-    are untouched by this.
-    """
-    if m["home"]["score"] is None or m["away"]["score"] is None:
-        return None
-    is_home = m["home"]["id"] == str(club_id)
-    mine = m["home"]["score"] if is_home else m["away"]["score"]
-    theirs = m["away"]["score"] if is_home else m["home"]["score"]
-    if mine == theirs:
-        # `pens` is recorded from the league club's point of view, not the home
-        # side's, so it needs no home/away flip.
-        pens = m.get("pens") or {}
-        if pens.get("mine") is not None and pens["mine"] != pens["theirs"]:
-            return "W" if pens["mine"] > pens["theirs"] else "L"
-    return "W" if mine > theirs else ("L" if mine < theirs else "D")
-
-
-def _form_chip(m, club_id):
-    o = _outcome(m, club_id) or "–"
-    cls = {"W": "w", "D": "d", "L": "l"}.get(o, "")
-    return f'<span class="formchip {cls}">{o}</span>'
-
-
-def _club_match_html(m, club_id, feed):
-    is_home = m["home"]["id"] == str(club_id)
-    opp = m["away"] if is_home else m["home"]
-    ha = '<span class="ha home">HOME</span>' if is_home else '<span class="ha away">AWAY</span>'
-    if m.get("venue_known") is False:
-        ha = ""  # home or away not announced yet
-    played = m["state"] in ("in", "post")
-
-    if played:
-        mine = m["home"]["score"] if is_home else m["away"]["score"]
-        theirs = m["away"]["score"] if is_home else m["home"]["score"]
-        o = _outcome(m, club_id)
-        ocls = {"W": "w", "D": "d", "L": "l"}.get(o, "")
-        right = f'<span class="cm-score">{mine} – {theirs}</span><span class="formchip {ocls}">{o or "–"}</span>'
-        when = _when_label(m)
-    elif m.get("stage") in NON_LEAGUE_STAGES:
-        # The league model only rates league games; a non-league fixture never
-        # gets a projection, so don't promise one.
-        right = '<span class="cm-pred muted">Upcoming</span>'
-        when = _when_label(m)
-    else:
-        wp = datafeed.get_win_probabilities(feed, m["id"])
-        if wp:
-            pct = wp["home_pct"] if is_home else wp["away_pct"]
-            right = f'<span class="cm-pred">Win chance {pct:.0f}%</span>'
-        else:
-            right = '<span class="cm-pred muted">Prediction soon</span>'
-        when = _when_label(m)
-
-    prep = "vs" if is_home else "at"
-    # A non-league match is badged with its OWN competition — a cup tie is not a
-    # friendly and must never be labelled as one.
-    tag = ""
-    if m.get("stage") in NON_LEAGUE_STAGES:
-        label = (m.get("badge") or m.get("competition") or m.get("round")
-                 or "Non-league")
-        tag = f'<span class="ha friendly">{label.upper()}</span>'
-    leg = (f'<span class="cm-leg">{m["leg"]}</span>') if m.get("leg") else ""
-    pens = m.get("pens") or {}
-    pen_note = ""
-    if pens.get("mine") is not None:
-        won = pens["mine"] > pens["theirs"]
-        pen_note = (f'<span class="cm-pens">{"won" if won else "lost"} '
-                    f'{pens["mine"]}&ndash;{pens["theirs"]} on pens</span>')
-    return (f'<div class="cmatch" style="border-left-color:{opp["primary"]}">'
-            f'<div class="cm-left"><span class="cm-when">{when}</span>{ha}{tag}{leg}'
-            f'<span class="cm-opp">{prep} {dot(opp["primary"])}{opp["name"]}</span></div>'
-            f'<div class="cm-right">{pen_note}{right}</div></div>')
-
-
-# --------------------------------------------------------------------------- #
-# Playoffs bracket
-# --------------------------------------------------------------------------- #
-def render_playoffs(feed):
-    standings = datafeed.get_standings(feed)
-    matches = datafeed.get_matches(feed)
-    brk = bracket.build_bracket(standings, matches)
-
-    if brk["has_postseason"]:
-        st.markdown('<div class="hint">The bracket fills in game by game — each winner '
-                    'moves straight into the next round.</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="hint">🔮 Projected bracket. Seeding is provisional until the '
-                    'league season ends, then it fills in game by game once the playoffs '
-                    'begin.<br>The top four qualify: <b>1st v 4th</b> and <b>2nd v 3rd</b> '
-                    'in the semi-finals, and the winners meet in the Final.</div>',
-                    unsafe_allow_html=True)
-
-    st.markdown('<div class="eyebrow"><span class="bar" style="background:#ffc726"></span>'
-                'Semi-Finals</div>', unsafe_allow_html=True)
-    col_html = ('<div class="brk-col">'
-                + "".join(_series_html(x) for x in brk["sf"]) + '</div>')
-    st.markdown(f'<div class="brk-cols">{col_html}</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="eyebrow"><span class="bar" style="background:#f4c800"></span>'
-                '🏆 Final</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="brk-final">{_series_html(brk["final"], big=True)}</div>',
-                unsafe_allow_html=True)
-    if brk["champion"]:
-        st.markdown(f'<div class="champline">🏆 <b>{brk["champion"]["name"]}</b> '
-                    'are champions of the Curaçao Promé Divishon.</div>',
-                    unsafe_allow_html=True)
-
-def _series_html(s, big=False):
-    game = s.get("game")
-
-    def team_row(slot, is_winner):
-        cls = "steam"
-        if s["winner"]:
-            cls += " win" if is_winner else " out"
-        seed = f'<span class="seed">#{slot["seed"]}</span>' if slot.get("seed") else ""
-        if slot["team"]:
-            name = f'{dot(slot["team"]["primary"])}{slot["label"]}'
-        else:
-            name = f'<span class="tbd">{slot["label"]}</span>'
-        score = ""
-        if game and game["completed"]:
-            tid = slot["team"]["id"] if slot["team"] else None
-            side = game["home"] if game["home"]["id"] == tid else game["away"]
-            score = f'<span class="swins">{side["score"]}</span>'
-        chk = " ✓" if (s["winner"] and is_winner) else ""
-        return f'<div class="{cls}">{seed}{name}{chk}{score}</div>'
-
-    if game and game["completed"]:
-        meta = "Full time"
-    elif game:
-        meta = "In progress"
-    else:
-        meta = "Single game"
-
-    cls = "series big" if big else "series"
-    return (f'<div class="{cls}">'
-            f'{team_row(s["a"], s["winner"] == "A")}'
-            f'{team_row(s["b"], s["winner"] == "B")}'
-            f'<div class="smeta">{meta}</div></div>')
-
-
-# --------------------------------------------------------------------------- #
-# National team
-# --------------------------------------------------------------------------- #
-# Its own data (national.json) and its own page. Nothing here feeds the league
-# tables, form or projections. The page opens on a rundown of the squad and the
-# games, with a button into each; `nt_view` remembers which one is open.
-@st.cache_data(ttl=15, show_spinner=False)
-def load_national():
-    return national.load()
-
-
-def _nt_stats(stats):
-    cells = "".join(f'<div class="stat"><div class="v">{v}</div><div class="k">{k}</div></div>'
-                    for v, k in stats)
-    return f'<div class="statrow">{cells}</div>'
-
-
-def _nt_eyebrow(text, color="#e4572e"):
-    return (f'<div class="eyebrow"><span class="bar" style="background:{color}"></span>'
-            f'{text}</div>')
-
-
-def _nt_where(g):
-    if g.get("neutral"):
-        return "vs"
-    return "vs" if g["home"] else "at"
-
-
-def _nt_game_html(g, team="Curaçao"):
-    if g.get("neutral"):
-        ha = '<span class="ha">NEUTRAL</span>'
-    else:
-        ha = ('<span class="ha home">HOME</span>' if g["home"]
-              else '<span class="ha away">AWAY</span>')
-    opp = f'{flag_img(g.get("code"), label=g["opponent"])} {g["opponent"]}'
-    reds = "".join(f'<span class="redcard" title="{team} player sent off"></span>'
-                   for _ in range(g.get("reds", 0)))
-    o = national.outcome(g)
-    if o:
-        ocls = {"W": "w", "D": "d", "L": "l"}[o]
-        right = (f'{reds}<span class="cm-score">{g["gf"]} – {g["ga"]}</span>'
-                 f'<span class="formchip {ocls}">{o}</span>')
-    else:
-        right = '<span class="cm-pred muted">Upcoming</span>'
-    comp = (f'<span class="cm-pred muted" style="margin-left:.5rem">{g["competition"]}</span>'
-            if g.get("competition") else "")
-    return (f'<div class="cmatch" style="border-left-color:#ffc726">'
-            f'<div class="cm-left">{ha}<span class="cm-opp">{_nt_where(g)} {opp}</span>{comp}</div>'
-            f'<div class="cm-right">{right}</div></div>')
-
-
-def render_national():
-    try:
-        data = load_national()
-    except (OSError, ValueError) as e:
-        st.error(f"The national team page could not be loaded: {e}")
-        return
-
-    view = st.session_state.get("nt_view")
-    by_name = {p["name"]: p for p in data.get("players", [])}
-    player = by_name.get(st.session_state.get("nt_player")) if view == "players" else None
-    if player:
-        if st.button("← Back to all players"):
-            st.session_state.nt_player = None
-            st.rerun()
-    elif view:
-        if st.button("← Back to the national team"):
-            st.session_state.nt_view = None
-            st.rerun()
-
-    team = data.get("team", "Curaçao")
-    st.markdown(
-        f'<div class="club-hero" style="border-left-color:#ffc726">'
-        f'<div class="club-hero-name">{flag_img(data.get("code"), label=team)} {team}</div>'
-        f'<div class="club-hero-isl">National team</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    squad = national.squad_by_position(data)
-    rec = national.record(data)
-
-    if player:
-        label = dict(national.POSITIONS)[player["pos"]][:-1]  # "Goalkeepers" -> "Goalkeeper"
-        st.markdown(_nt_eyebrow(f'<span class="nt-pos">{player["pos"]}</span> '
-                                f'{player["name"]}'), unsafe_allow_html=True)
-        st.markdown(f'<div class="hint">{label} · stats for {team} only</div>',
-                    unsafe_allow_html=True)
-        st.markdown(_nt_stats([("–" if v is None else v, k)
-                               for k, v in national.player_stats(player)]),
-                    unsafe_allow_html=True)
-        return
-
-    if view == "players":
-        st.markdown(_nt_eyebrow(f"👥 Players ({len(data.get('players', []))})"),
-                    unsafe_allow_html=True)
-        st.markdown('<div class="hint">Tap a player to see their stats.</div>',
-                    unsafe_allow_html=True)
-        for code, label, names in squad:
-            if not names:
-                continue
-            st.markdown(f'<div class="formlabel" style="margin:.4rem 0 .7rem">'
-                        f'{label} ({len(names)})</div>', unsafe_allow_html=True)
-            cols = st.columns(3)
-            for i, n in enumerate(names):
-                if cols[i % 3].button(n, key=f"ntp_{n}", use_container_width=True):
-                    st.session_state.nt_player = n
-                    st.rerun()
-            st.write("")
-        return
-
-    if view == "games":
-        played, upcoming = national.played(data), national.upcoming(data)
-        st.markdown(_nt_eyebrow(f"✅ Results ({len(played)})"), unsafe_allow_html=True)
-        if played:
-            st.markdown("".join(_nt_game_html(g, team) for g in played), unsafe_allow_html=True)
-        else:
-            st.info("No games played yet.")
-        st.markdown(_nt_eyebrow(f"📅 Upcoming ({len(upcoming)})", "#3d9be0"),
-                    unsafe_allow_html=True)
-        if upcoming:
-            st.markdown("".join(_nt_game_html(g, team) for g in upcoming), unsafe_allow_html=True)
-        else:
-            st.info("No upcoming games.")
-        return
-
-    # Rundown -------------------------------------------------------------- #
-    st.markdown(_nt_eyebrow("👥 Squad"), unsafe_allow_html=True)
-    st.markdown(_nt_stats([(len(data.get("players", [])), "Players")]
-                          + [(len(names), label) for _, label, names in squad]),
-                unsafe_allow_html=True)
-
-    st.markdown(_nt_eyebrow("⚽ Games", "#3d9be0"), unsafe_allow_html=True)
-    st.markdown(_nt_stats([
-        (rec["played"], "Played"), (rec["wins"], "Won"), (rec["draws"], "Drawn"),
-        (rec["losses"], "Lost"), (f'{rec["gf"]}–{rec["ga"]}', "Goals"),
-        (rec["clean_sheets"], "Clean sheets"), (rec["upcoming"], "Upcoming"),
-    ]), unsafe_allow_html=True)
-    played = national.played(data)
-    if played:
-        chips = "".join(f'<span class="formchip {national.outcome(g).lower()}">'
-                        f'{national.outcome(g)}</span>' for g in played[-5:])
-        st.markdown(f'<div class="formline"><span class="formlabel">Recent form</span>'
-                    f'{chips}</div>', unsafe_allow_html=True)
-    nxt = national.upcoming(data)
-    if nxt:
-        g = nxt[0]
-        st.markdown(f'<div class="nt-next">Next up: <b>{_nt_where(g)} '
-                    f'{flag_img(g.get("code"), label=g["opponent"])} {g["opponent"]}</b></div>',
-                    unsafe_allow_html=True)
+        options = sim.nation_names()
+        help_ = "All 211 FIFA member nations plus every Island Games (IIGA) member."
+        ph = "Type a nation…"
+    st.caption(help_)
 
     c1, c2 = st.columns(2)
-    if c1.button("👥 Players", key="nt_players", use_container_width=True, type="primary"):
-        st.session_state.nt_view = "players"
-        st.rerun()
-    if c2.button("📅 Games", key="nt_games", use_container_width=True, type="primary"):
-        st.session_state.nt_view = "games"
-        st.rerun()
+    sel = {}
+    for col, which in ((c1, "home"), (c2, "away")):
+        with col:
+            sel[which] = st.selectbox(
+                "Home" if which == "home" else "Away", options, index=None,
+                placeholder=ph, accept_new_options=is_club,
+                key=f"sim_{which}_{'club' if is_club else 'nation'}")
+    neutral = st.checkbox("Neutral venue (no home advantage)", key="sim_neutral")
+
+    ready = sel["home"] and sel["away"]
+    same = ready and sel["home"].strip().casefold() == sel["away"].strip().casefold()
+    if same:
+        st.warning("A side can't play itself — pick two different teams.")
+    if st.button("⚽ Kick off", type="primary", disabled=not ready or same,
+                 use_container_width=True):
+        k = "club" if is_club else "nation"
+        home, away = sim.side(sel["home"], k), sim.side(sel["away"], k)
+        mid = random.getrandbits(48)
+        st.session_state.match = {"home": home, "away": away, "id": mid,
+                                  "result": sim.simulate(home, away, neutral, seed=mid)}
+
+    m = st.session_state.get("match")
+    if m:
+        render_match(m)
+
+
+# --------------------------------------------------------------------------- #
+# Leagues
+# --------------------------------------------------------------------------- #
+@st.cache_data(ttl=120, show_spinner=False)
+def _espn_standings(slug):
+    return leagues.espn_standings(slug)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _espn_matches(slug):
+    return leagues.espn_matches(slug)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _wiki(query):
+    return leagues.wiki_league(query)
+
+
+def _e(s):
+    return html.escape(str(s if s is not None else ""))
+
+
+def _img(url):
+    return f'<img src="{_e(url)}" alt="" loading="lazy">' if url else ""
+
+
+def _standings_html(group):
+    head = ("<tr><th></th><th>#</th><th class='team'>Team</th><th>P</th><th>W</th><th>D</th>"
+            "<th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr>")
+    body = []
+    for r in group["rows"]:
+        mark = (f'<span class="mark" style="background:{_e(r["color"])}" title="{_e(r["note"])}"></span>'
+                if r["color"] else "")
+        body.append(
+            f"<tr><td>{mark}</td><td>{_e(r['rank'])}</td>"
+            f"<td class='team'>{_img(r['logo'])}{_e(r['team'])}</td>"
+            f"<td>{_e(r['gp'])}</td><td>{_e(r['w'])}</td><td>{_e(r['d'])}</td><td>{_e(r['l'])}</td>"
+            f"<td>{_e(r['gf'])}</td><td>{_e(r['ga'])}</td><td>{_e(r['gd'])}</td>"
+            f"<td class='pts'>{_e(r['pts'])}</td></tr>")
+    notes = {}
+    for r in group["rows"]:
+        if r["color"] and r["note"]:
+            notes.setdefault(r["note"], r["color"])
+    legend = "".join(f'<span><i style="background:{_e(c)}"></i>{_e(n)}</span>'
+                     for n, c in notes.items())
+    return (f'<div class="tblwrap"><table class="tbl"><thead>{head}</thead>'
+            f'<tbody>{"".join(body)}</tbody></table></div>'
+            + (f'<div class="legend">{legend}</div>' if legend else ""))
+
+
+def _when(iso):
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(LOCAL_TZ)
+    except ValueError:
+        return None
+    return dt
+
+
+def _match_html(m):
+    played = m["state"] != "pre"
+    hs, as_ = m["hs"], m["as"]
+    hw = aw = ""
+    if m["state"] == "post" and str(hs).isdigit() and str(as_).isdigit():
+        hw = " win" if int(hs) > int(as_) else ""
+        aw = " win" if int(as_) > int(hs) else ""
+    dt = _when(m["date"])
+    if played:
+        sc = f"{_e(hs)} – {_e(as_)}"
+        status = m["detail"] or ("FT" if m["state"] == "post" else "Live")
+        cls = "st live" if m["state"] == "in" else "st"
+    else:
+        sc = dt.strftime("%-I:%M %p") if dt else "vs"
+        status, cls = "ET", "st"
+    return (f'<div class="match"><div class="h{hw}">{_e(m["home"])}{_img(m["home_logo"])}</div>'
+            f'<div><div class="sc">{sc}</div><div class="{cls}">{_e(status)}</div></div>'
+            f'<div class="a{aw}">{_img(m["away_logo"])}{_e(m["away"])}</div></div>')
+
+
+def _matches_by_day(ms, newest_first):
+    ms = sorted(ms, key=lambda m: m["date"], reverse=newest_first)
+    out, last = [], None
+    for m in ms:
+        dt = _when(m["date"])
+        day = dt.strftime("%A, %B %-d") if dt else ""
+        if day != last:
+            out.append(f'<div class="mday">{_e(day)}</div>')
+            last = day
+        out.append(_match_html(m))
+    return "".join(out)
+
+
+def render_espn_league(slug, name):
+    tab_table, tab_matches = st.tabs(["📊 Table", "⚽ Matches"])
+    with tab_table:
+        try:
+            groups = _espn_standings(slug)
+        except leagues.Unavailable:
+            groups = None
+            st.error("The table couldn't be loaded right now. Try again in a minute.")
+        if groups == []:
+            st.info(f"{name} has no league table — it's a knockout competition. "
+                    "See Matches for its games.")
+        for g in groups or []:
+            if len(groups) > 1 and g["name"]:
+                st.markdown(f"**{_e(g['name'])}**")
+            st.markdown(_standings_html(g), unsafe_allow_html=True)
+    with tab_matches:
+        try:
+            ms = _espn_matches(slug)
+        except leagues.Unavailable:
+            st.error("Matches couldn't be loaded right now. Try again in a minute.")
+            return
+        live = [m for m in ms if m["state"] == "in"]
+        done = [m for m in ms if m["state"] == "post"]
+        todo = [m for m in ms if m["state"] == "pre"]
+        st.caption("The last two weeks of results and the next two weeks of fixtures. "
+                   "Times are US Eastern.")
+        t_live, t_res, t_fix = st.tabs([f"🔴 Live ({len(live)})", f"✅ Results ({len(done)})",
+                                        f"📅 Fixtures ({len(todo)})"])
+        with t_live:
+            st.markdown(_matches_by_day(live, False) or "No games being played right now.",
+                        unsafe_allow_html=True)
+        with t_res:
+            st.markdown(_matches_by_day(done, True) or "No results in the last two weeks.",
+                        unsafe_allow_html=True)
+        with t_fix:
+            st.markdown(_matches_by_day(todo, False) or "No fixtures in the next two weeks.",
+                        unsafe_allow_html=True)
+
+
+def render_wiki_league(query):
+    with st.spinner(f"Looking up {query}…"):
+        try:
+            found = _wiki(query)
+        except leagues.Unavailable:
+            st.error("Wikipedia couldn't be reached right now. Try again in a minute.")
+            return
+    if not found:
+        st.warning(f"No league table found for “{query}”. Try the league's full name, "
+                   "e.g. “Faroe Islands Premier League” or “Gibraltar Football League”.")
+        return
+    st.caption(f"From Wikipedia: [{found['title']}]({found['url']}) — the newest season "
+               "page with a table. Leagues outside the live list update when Wikipedia does.")
+    tab_table, tab_matches = st.tabs(["📊 Table", "⚽ Matches"])
+    with tab_table:
+        for t in found["tables"][:4]:
+            st.dataframe(t, hide_index=True, use_container_width=True)
+    with tab_matches:
+        if found["grid"] is not None:
+            st.caption("Results grid — home team down the left, away team across the top.")
+            st.dataframe(found["grid"], hide_index=True, use_container_width=True)
+        else:
+            st.info("That season page has no match-by-match results.")
+
+
+def render_leagues():
+    st.markdown('<div class="hint">Every league and cup in the list is live — tables, '
+                'results and fixtures. Any other league in the world (FIFA or Island '
+                'Games): type its name and press Enter.</div>', unsafe_allow_html=True)
+    espn = leagues.espn_leagues()
+    by_name = {n: s for s, n in espn}
+    pick = st.selectbox("League", list(by_name), index=None, accept_new_options=True,
+                        placeholder="Type any league…", label_visibility="collapsed",
+                        key="league_pick")
+    if not pick:
+        return
+    if pick in by_name:
+        st.subheader(pick)
+        render_espn_league(by_name[pick], pick)
+    else:
+        st.subheader(pick)
+        render_wiki_league(pick)
+
 
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
-PAGES = ["🏠 Home", "🏆 Tables", "⚽ Matches", "🛡️ Clubs", "🌍 National Team",
-         "🥇 Playoffs"]
-
-
-def nav_items(playoffs_open):
-    """Menu order. Playoffs sits at the bottom while it's still locked, and
-    jumps to second — right under Home — the day it opens, because that's what
-    everyone is there for once the postseason is in sight."""
-    rest = [p for p in PAGES if p != "🥇 Playoffs"]
-    if playoffs_open:
-        return [rest[0], "🥇 Playoffs"] + rest[1:]
-    return rest + ["🥇 Playoffs"]
-
-
-def _playoff_gate(feed):
-    """When does the Playoffs tab open? Returns (is_open, note, None).
-
-    It unlocks as soon as a playoff game exists, or the moment `playoffs_open`
-    is switched on in season.json — nothing here depends on a calendar."""
-    if not feed:
-        return (False, None, None)
-    if feed.get("has_playoff_games") or feed.get("playoffs_open"):
-        return (True, None, None)
-    return (False, "when the league season ends", None)
-
-def _search_box(search_feed):
-    """Express route: no stops unless the search is genuinely ambiguous.
-
-    A club goes straight to that club and a matchday straight to that matchday,
-    without an intermediate button to click. Buttons appear only when the text
-    matches more than one thing, where a choice can't be skipped.
-    """
-    q = st.text_input("🔎 Search", key="q_widget",
-                      placeholder="e.g. Bellboys, or matchday 3",
-                      label_visibility="collapsed")
-    ql = (q or "").strip()
-    if not ql:
-        # Clearing the box re-arms the search, so retyping the same thing works.
-        st.session_state.search_seen = None
-        return
-    low = ql.lower()
-
-    club_hits = [t for t in teams.TEAMS if low in t.name.lower()][:6]
-
-    # Matchday search is token-based, so "matchday 3" and "md3" both land on
-    # the right group of fixtures.
-    words = low.replace(",", " ").replace("md", "matchday ").split()
-    group_hits, seen = [], set()
-    for m in (league_only(datafeed.get_matches(search_feed)) if search_feed else []):
-        key = _group_key(m)
-        if key in seen:
-            continue
-        haystack = (_group_label(key) + " matchday " + str(m.get("matchday") or "")).lower()
-        if all(w in haystack for w in words):
-            group_hits.append(key)
-            seen.add(key)
-    group_hits = group_hits[:6]
-
-    # `search_seen` stops the same text re-firing on every later rerun, which
-    # would otherwise drag the user back here as they browse.
-    fresh = st.session_state.get("search_seen") != low
-
-    def _go(**state):
-        st.session_state.search_seen = low
-        for k, v in state.items():
-            st.session_state[k] = v
-        st.rerun()
-
-    if len(club_hits) + len(group_hits) == 1 and fresh:
-        if club_hits:
-            _go(selected_club=club_hits[0].id, page="🛡️ Clubs")
-        _go(focus_group=group_hits[0], page="⚽ Matches")
-
-    if club_hits or group_hits:
-        for t in club_hits:
-            if st.button(f"🛡️ {t.name}", key=f"s_{t.id}", use_container_width=True):
-                _go(selected_club=t.id, page="🛡️ Clubs")
-        for key in group_hits:
-            if st.button(f"📅 {_group_label(key)}", key=f"sd_{key}",
-                         use_container_width=True):
-                _go(focus_group=key, page="⚽ Matches")
-        return
-
-    # Not a club and not a matchday — nothing to jump to.
-    st.caption("No club or matchday matches that.")
-
-def sidebar_nav(seasons, playoffs_open, unlock_date, search_feed):
-    """Render the sidebar navigation (button menu). Returns (page, season).
-
-    Device and season live in plain session keys ('device' / 'season_year') that
-    survive across reruns; the selectboxes just read/write them. (Widget-keyed
-    state gets cleared when a nav-button rerun aborts before the widget renders.)
-    """
-    st.session_state.setdefault("page", "🏠 Home")
-    season = None
-    with st.sidebar:
-        st.markdown('<div class="side-title">⚽ CPD</div>', unsafe_allow_html=True)
-        st.markdown('<div class="side-sub">Curaçao Promé Divishon</div>', unsafe_allow_html=True)
-        st.divider()
-        _search_box(search_feed)
-        st.divider()
-        for item in nav_items(playoffs_open):
-            locked = (item == "🥇 Playoffs" and not playoffs_open)
-            label = "🔒 Playoffs" if locked else item
-            active = (st.session_state.page == item)
-            if st.button(label, key=f"nav_{item}", use_container_width=True,
-                         disabled=locked, type=("primary" if active else "secondary")):
-                st.session_state.page = item
-                st.rerun()
-        if not playoffs_open and unlock_date:
-            st.caption(f"🥇 Playoffs open {unlock_date}")
-
-        st.divider()
-        dev_default = st.session_state.get("device", "💻 Laptop")
-        if dev_default not in DEVICES:
-            dev_default = "💻 Laptop"
-        st.session_state["device"] = st.selectbox(
-            "Device", DEVICES, index=DEVICES.index(dev_default), key="device_widget")
-
-        if len(seasons) > 1:
-            current = max(seasons)
-            opts = [str(y) for y in sorted(seasons, reverse=True)]
-            labels = {str(y): (f"{y}  ·  current" if y == current else str(y)) for y in seasons}
-            sea_default = st.session_state.get("season_year", str(current))
-            if sea_default not in opts:
-                sea_default = str(current)
-            choice = st.selectbox("Season", opts, index=opts.index(sea_default),
-                                  format_func=lambda y: labels[y], key="season_widget")
-            st.session_state["season_year"] = choice
-            yr = int(choice)
-            season = None if yr == current else yr
-
-        if st.button("🔄 Refresh data", use_container_width=True, key="refresh"):
-            st.cache_data.clear()
-            st.rerun()
-    return st.session_state.page, season
-
-
-def device_prompt():
-    st.markdown('<p class="hero-title">⚽ Curaçao Promé Divishon</p>', unsafe_allow_html=True)
-    st.markdown('<p class="hero-sub">First — what are you viewing this on? '
-                'This sizes everything to fit your screen.</p>', unsafe_allow_html=True)
-    st.write("")
-    cols = st.columns(len(DEVICES))
-    for c, dev in zip(cols, DEVICES):
-        if c.button(dev, use_container_width=True, key=f"pick_{dev}"):
-            st.session_state.device = dev
-            st.rerun()
-    st.caption("You can change this any time in the sidebar.")
-
-
 def main():
-    # First visit each session: ask what device they're on, then size to fit.
-    if "device" not in st.session_state:
-        device_prompt()
-        return
-    device = st.session_state.device
-    apply_device_css(device)
-    ncols = device_cols(device)
-
-    seasons = load_seasons()
-    current_year = max(seasons) if seasons else None
-
-    # Which season is selected (persisted in a plain session key)?
-    sel = st.session_state.get("season_year")
-    selected_year = int(sel) if sel is not None else None
-    viewing_archive = (selected_year is not None and current_year is not None
-                       and selected_year != current_year)
-
-    # Playoff gate is based on the current/live season; archived seasons are
-    # always viewable (their playoffs already happened).
-    try:
-        current_feed = load_feed(None)
-    except datafeed.FeedUnavailable:
-        current_feed = None
-    gate_open, unlock, _start = _playoff_gate(current_feed)
-    playoffs_open = gate_open or viewing_archive
-
-    page, season = sidebar_nav(seasons, playoffs_open, unlock, current_feed)
-
-    # Safety: never land on a locked Playoffs page.
-    if page == "🥇 Playoffs" and not playoffs_open:
-        page = st.session_state.page = "🏠 Home"
-
-    if season is None:
-        feed = current_feed
-        if feed is None:
-            try:
-                feed = load_feed(None)
-            except datafeed.FeedUnavailable as e:
-                st.error(f"Scores are temporarily unavailable: {e}")
-    else:
-        try:
-            feed = load_feed(season)
-        except datafeed.FeedUnavailable as e:
-            feed = None
-            st.error(f"Scores are temporarily unavailable: {e}")
-
-    # Status line in the sidebar (needs the loaded feed).
-    gen = datafeed.generated_at(feed) if feed else None
-    if season is not None and feed:
-        st.sidebar.caption(f"📚 Viewing the {feed.get('season', '')} season (archived)")
-    else:
-        stamp = f" · updated {gen.strftime('%B')} {gen.day}, {gen.year}" if gen else ""
-        st.sidebar.caption(f"📋 Every table, result and projection on this site is "
-                           f"built from the league's own results{stamp}.")
-
-    header(feed["season"] if feed else "")
-
-    if season is not None and feed:
-        st.info(f"📚 You're viewing the **{feed.get('season', '')}** season (archived). "
-                "Switch back to the current season in the sidebar.")
-    st.divider()
-
-    if feed is None:
-        st.warning("Data could not be loaded right now. Try the Refresh button in the sidebar in a moment.")
-        return
-
-    standings = datafeed.get_standings(feed)
-
-    # Leaving a section clears its drill-in state.
-    if page != "🛡️ Clubs":
-        st.session_state.selected_club = None
-    if page != "⚽ Matches":
-        st.session_state.focus_group = None
-    if page != "🌍 National Team":
-        st.session_state.nt_view = None
-    if st.session_state.get("nt_view") != "players":
-        st.session_state.nt_player = None
-
-    if page == "🏠 Home":
-        render_home(feed, ncols)
-    elif page == "🏆 Tables":
-        hint = ("Final standings for this archived season." if season is not None
-                else "One table of ten, updated as each matchday is played.")
-        st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
-        if standings["conferences"]:
-            render_standings(standings, ncols, device)
-        else:
-            st.warning("Standings could not be loaded.")
-        render_scorers(feed)
-    elif page == "⚽ Matches":
-        hint = ("Fixtures & results for this archived season." if season is not None
-                else "Live, upcoming and completed matches, grouped by matchday.")
-        st.markdown(f'<div class="hint">{hint}</div>', unsafe_allow_html=True)
-        render_matches(datafeed.get_matches(feed), feed)
-    elif page == "🥇 Playoffs":
-        render_playoffs(feed)
-    elif page == "🌍 National Team":
-        render_national()
-    else:  # Clubs
-        if st.session_state.get("selected_club"):
-            render_club_detail(feed, st.session_state.selected_club)
-        else:
-            render_clubs(feed)
-
-    st.divider()
-    st.markdown(
-        '<div class="foot">Curaçao Promé Divishon · results published by the league.</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown('<div class="hero-title">⚽ Match Simulator</div>'
+                '<div class="hero-sub">Any club. Any nation. Ninety minutes.</div>',
+                unsafe_allow_html=True)
+    t_sim, t_leagues = st.tabs(["⚽ Simulator", "📊 Leagues"])
+    with t_sim:
+        render_simulator()
+    with t_leagues:
+        render_leagues()
 
 
 if __name__ == "__main__":
