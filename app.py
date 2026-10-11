@@ -262,7 +262,7 @@ def render_simulator():
     if same:
         st.warning("A side can't play itself — pick two different teams.")
     if st.button("⚽ Kick off", type="primary", disabled=not ready or same,
-                 use_container_width=True):
+                 width="stretch"):
         k = "club" if is_club else "nation"
         home, away = sim.side(sel["home"], k), sim.side(sel["away"], k)
         mid = random.getrandbits(48)
@@ -429,11 +429,11 @@ def render_wiki_league(query):
     tab_table, tab_matches = st.tabs(["📊 Table", "⚽ Matches"])
     with tab_table:
         for t in found["tables"][:4]:
-            st.dataframe(t, hide_index=True, use_container_width=True)
+            st.dataframe(t, hide_index=True, width="stretch")
     with tab_matches:
         if found["grid"] is not None:
             st.caption("Results grid — home team down the left, away team across the top.")
-            st.dataframe(found["grid"], hide_index=True, use_container_width=True)
+            st.dataframe(found["grid"], hide_index=True, width="stretch")
         else:
             st.info("That season page has no match-by-match results.")
 
@@ -446,7 +446,9 @@ def render_leagues():
                 unsafe_allow_html=True)
     # label -> ("espn", slug) or ("wiki", query)
     choices = {n: ("espn", s) for s, n in leagues.espn_leagues()}
-    for region, country, _code, query in leagues.world_leagues():
+    # getattr: Streamlit Cloud can keep an older leagues module loaded for a
+    # moment after a deploy; the big list still works without the extras.
+    for region, country, _code, query in getattr(leagues, "world_leagues", list)():
         choices.setdefault(f"{country} — {query} ({region})", ("wiki", query))
     pick = st.selectbox("League", sorted(choices, key=str.casefold), index=None,
                         accept_new_options=True, placeholder="Type a country or league…",

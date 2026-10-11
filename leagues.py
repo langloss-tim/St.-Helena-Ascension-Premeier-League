@@ -40,7 +40,10 @@ def espn_leagues():
 def world_leagues():
     """[(region, country, flag code, league name)] -- the top league of every
     country ESPN doesn't cover, looked up on Wikipedia."""
-    rows = json.loads((HERE / "world_leagues.json").read_text(encoding="utf-8"))
+    try:
+        rows = json.loads((HERE / "world_leagues.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
     return [tuple(r) for r in rows]
 
 
@@ -177,15 +180,22 @@ def _season_year(title):
     return int(m.group(1)) if m else 0
 
 
+# Words every league name shares; they can't tell one league from another.
+GENERIC = {"league", "premier", "football", "division", "first", "super", "national",
+           "championship", "the", "liga", "ligue", "pro", "professional", "senior",
+           "soccer", "elite", "top", "and", "season", "primera", "honour", "honor"}
+
+
 def _words(text):
     return {w for w in re.findall(r"\w+", text.casefold()) if len(w) > 2 and not w.isdigit()}
 
 
 def _about(title, query):
-    """Season titles must actually name the league asked for -- most of its
-    words -- or a search for one league lands on some cup it played in."""
-    want = _words(query)
-    return not want or len(want & _words(title)) >= max(1, -(-len(want) * 3 // 5))
+    """A page only counts if it carries every distinctive word of the league
+    asked for ("Jamaica" in Jamaica Premier League) -- otherwise a search for
+    one league lands on another country's, or on a cricket league."""
+    want = _words(query) - GENERIC or _words(query)
+    return not want or want <= _words(title)
 
 
 def wiki_league(query):
