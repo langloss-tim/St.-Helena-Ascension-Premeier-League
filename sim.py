@@ -37,7 +37,7 @@ FIFA = {
         ("North Macedonia", "mk", 1530), ("Northern Ireland", "gb-nir", 1580),
         ("Norway", "no", 1850), ("Poland", "pl", 1720), ("Portugal", "pt", 2020),
         ("Republic of Ireland", "ie", 1650), ("Romania", "ro", 1680),
-        ("Russia", "ru", 1700), ("San Marino", "sm", 850), ("Scotland", "gb-sct", 1730),
+        ("Russia", "ru", 1700), ("San Marino", "sm", 850), ("Scotland", "gb-sct", 1850),
         ("Serbia", "rs", 1750), ("Slovakia", "sk", 1700), ("Slovenia", "si", 1650),
         ("Spain", "es", 2170), ("Sweden", "se", 1700), ("Switzerland", "ch", 1830),
         ("Turkey", "tr", 1850), ("Ukraine", "ua", 1770), ("Wales", "gb-wls", 1700),
@@ -50,7 +50,7 @@ FIFA = {
     ],
     "CONCACAF": [
         ("Anguilla", "ai", 800), ("Antigua and Barbuda", "ag", 1100), ("Aruba", "aw", 1050),
-        ("Bahamas", "bs", 900), ("Barbados", "bb", 1050), ("Belize", "bz", 1100),
+        ("Bahamas", "bs", 1300), ("Barbados", "bb", 1450), ("Belize", "bz", 1100),
         ("Bermuda", "bm", 1150), ("British Virgin Islands", "vg", 850),
         ("Canada", "ca", 1800), ("Cayman Islands", "ky", 950), ("Costa Rica", "cr", 1650),
         ("Cuba", "cu", 1250), ("Curaçao", "cw", 1550), ("Dominica", "dm", 1000),
@@ -62,7 +62,7 @@ FIFA = {
         ("Saint Kitts and Nevis", "kn", 1100), ("Saint Lucia", "lc", 1050),
         ("Saint Vincent and the Grenadines", "vc", 1050), ("Suriname", "sr", 1450),
         ("Trinidad and Tobago", "tt", 1450), ("Turks and Caicos Islands", "tc", 800),
-        ("United States", "us", 1830), ("US Virgin Islands", "vi", 800),
+        ("United States", "us", 1950), ("US Virgin Islands", "vi", 800),
     ],
     "CAF": [
         ("Algeria", "dz", 1720), ("Angola", "ao", 1550), ("Benin", "bj", 1500),
@@ -122,7 +122,7 @@ IIGA = [
     ("Guernsey", "gg", 1000), ("Hitra", "", 800), ("Isle of Man", "im", 1050),
     ("Isle of Wight", "", 900), ("Jersey", "je", 1000), ("Menorca", "", 950),
     ("Orkney", "", 850), ("Saaremaa", "", 850), ("Sark", "", 450),
-    ("Saint Helena", "sh", 650), ("Shetland", "", 900), ("Western Isles", "", 800),
+    ("Saint Helena", "sh", 1400), ("Shetland", "", 900), ("Western Isles", "", 800),
     ("Ynys Môn", "", 950),
 ]
 
