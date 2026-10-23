@@ -17,6 +17,7 @@ Run locally:  streamlit run app.py
 import base64
 import hashlib
 import html
+import importlib
 import json
 import random
 import re
@@ -30,6 +31,10 @@ import streamlit.components.v1 as components
 
 import leagues
 import sim
+
+# Streamlit Cloud can keep an old copy of sim.py in memory after a push, so a
+# new team list wouldn't show up until a reboot. Reload it on every run.
+sim = importlib.reload(sim)
 
 st.set_page_config(page_title="Match Simulator", page_icon="⚽", layout="wide")
 
