@@ -3,8 +3,9 @@ Match simulator: who is playing, how strong they are, and a minute-by-minute
 90' game between them.
 
 Strength is one Elo-style number per side. Nations are listed by hand below
-(every FIFA member association plus every Island Games member). Clubs come
-from clubs.json, and a club that isn't in it still plays -- it gets a steady
+(every FIFA member association plus every Island Games member, with the
+United States played as its 48 contiguous states and Canada as North and
+South). Clubs come from clubs.json, and a club that isn't in it still plays -- it gets a steady
 rating made from its name, so typing the same club twice gives the same side.
 """
 
@@ -112,6 +113,41 @@ FIFA = {
     ],
 }
 
+# Two FIFA members play as smaller sides instead of as one team. The United
+# States is its 48 contiguous states (no Alaska or Hawaii) and Canada is North
+# and South. Every state has the same rating, the band that plays like about
+# 100th in the world (90th-110th). "Georgia (USA)" keeps the state apart from
+# the country Georgia.
+STATE = 1450
+SPLIT = {
+    "United States": [
+        ("Alabama", "us-al", STATE), ("Arizona", "us-az", STATE), ("Arkansas", "us-ar", STATE),
+        ("California", "us-ca", STATE), ("Colorado", "us-co", STATE),
+        ("Connecticut", "us-ct", STATE), ("Delaware", "us-de", STATE),
+        ("Florida", "us-fl", STATE), ("Georgia (USA)", "us-ga", STATE), ("Idaho", "us-id", STATE),
+        ("Illinois", "us-il", STATE), ("Indiana", "us-in", STATE), ("Iowa", "us-ia", STATE),
+        ("Kansas", "us-ks", STATE), ("Kentucky", "us-ky", STATE),
+        ("Louisiana", "us-la", STATE), ("Maine", "us-me", STATE), ("Maryland", "us-md", STATE),
+        ("Massachusetts", "us-ma", STATE), ("Michigan", "us-mi", STATE),
+        ("Minnesota", "us-mn", STATE), ("Mississippi", "us-ms", STATE),
+        ("Missouri", "us-mo", STATE), ("Montana", "us-mt", STATE),
+        ("Nebraska", "us-ne", STATE), ("Nevada", "us-nv", STATE),
+        ("New Hampshire", "us-nh", STATE), ("New Jersey", "us-nj", STATE),
+        ("New Mexico", "us-nm", STATE), ("New York", "us-ny", STATE),
+        ("North Carolina", "us-nc", STATE), ("North Dakota", "us-nd", STATE),
+        ("Ohio", "us-oh", STATE), ("Oklahoma", "us-ok", STATE), ("Oregon", "us-or", STATE),
+        ("Pennsylvania", "us-pa", STATE), ("Rhode Island", "us-ri", STATE),
+        ("South Carolina", "us-sc", STATE), ("South Dakota", "us-sd", STATE),
+        ("Tennessee", "us-tn", STATE), ("Texas", "us-tx", STATE), ("Utah", "us-ut", STATE),
+        ("Vermont", "us-vt", STATE), ("Virginia", "us-va", STATE),
+        ("Washington", "us-wa", STATE), ("West Virginia", "us-wv", STATE),
+        ("Wisconsin", "us-wi", STATE), ("Wyoming", "us-wy", STATE),
+    ],
+    "Canada": [
+        ("South Canada", "ca", 1750), ("North Canada", "ca", 1050),
+    ],
+}
+
 # The 24 Island Games (IIGA) members. Bermuda, Cayman Islands, Faroe Islands
 # and Gibraltar are FIFA members too and already appear above.
 IIGA = [
@@ -131,7 +167,8 @@ def _nations():
     out = {}
     for conf, rows in FIFA.items():
         for name, code, rating in rows:
-            out[name] = {"name": name, "code": code, "rating": rating, "group": conf}
+            for n, c, r in SPLIT.get(name, [(name, code, rating)]):
+                out[n] = {"name": n, "code": c, "rating": r, "group": conf}
     for name, code, rating in IIGA:
         if name in out:
             out[name]["group"] += " · IIGA"

@@ -21,6 +21,21 @@ Each side has one Elo-style rating. The rating gap (plus a home edge, unless
 played out at random. A red card cuts that side's scoring for the rest of the
 game. All of this is in `sim.py`.
 
+Some nations are set to match a world ranking (ratings move in steps of 50, so
+each one shares a rank band with the sides on the same number):
+
+| Nation | Rating | Plays like |
+|---|---|---|
+| Scotland | 1850 | ~21st |
+| Barbados | 1450 | ~92nd |
+| Saint Helena | 1400 | ~110th |
+| Bahamas | 1300 | ~138th |
+
+The United States plays as its 48 contiguous states (no Alaska or Hawaii) and
+Canada as North Canada and South Canada. Every state is rated 1450, which
+plays like about 100th in the world (the 90th-110th band). The state of Georgia is listed as "Georgia (USA)" so it doesn't clash
+with the country. South Canada is 1750 and North Canada 1050.
+
 ## Leagues
 
 Look up any league's table and matches.

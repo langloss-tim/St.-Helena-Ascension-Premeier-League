@@ -37,7 +37,8 @@ LOCAL_TZ = ZoneInfo("America/New_York")
 
 # Flags are vendored into flags/ where a file exists (they can't 404 or be
 # rate-limited) and fall back to flagcdn for every other code, so any country
-# needs nothing but its code. "gb-sct" style codes cover the UK home nations.
+# needs nothing but its code. "gb-sct" style codes cover the UK home nations
+# and "us-tx" style codes the US states.
 FLAG_DIR = Path(__file__).resolve().parent / "flags"
 CDN_ROOT = "https://flagcdn.com/w160"
 
@@ -45,7 +46,7 @@ CDN_ROOT = "https://flagcdn.com/w160"
 @lru_cache(maxsize=None)
 def flag_src(code):
     code = (code or "").strip().lower()
-    if not re.fullmatch(r"[a-z]{2}(-[a-z]{3})?", code):
+    if not re.fullmatch(r"[a-z]{2}(-[a-z]{2,3})?", code):
         return ""
     try:
         raw = (FLAG_DIR / f"{code}.png").read_bytes()
